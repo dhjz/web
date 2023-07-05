@@ -15,7 +15,7 @@
     label { width: 80px; display: inline-block; }
     div { margin: 10px 0;}
     h2 { margin: 26px 0 10px;}
-    .result { white-space: pre-wrap;}
+    .result { white-space: pre-wrap; word-break: break-all;}
   </style>
 </head>
 <body>
@@ -29,6 +29,9 @@
   <h2>获取本机IP</h2>
   <div><button onclick="getIp()">获取本机IP</button></div>
   <div class="result" id="result1"></div>
+  <h2>图片转base64</h2>
+  <div><input type="file" id="fileInput"><button onclick="$copy(base64Str)">复制</button></div>
+  <div class="result" id="result3"></div>
   <h2>获取测试数据</h2>
   <div><label>page: </label><input type="text" id="page" value="1"></div>
   <div><label>limit: </label><input type="text" id="limit" value="10"></div>
@@ -74,6 +77,33 @@
         console.log(res)
         $q('#result2').innerHTML = JSON.stringify(res.data, null, 2)
       })
+    }
+
+    // 选择文件输入框
+    window.base64Str = ''
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        const base64String = reader.result;
+        console.log(base64String);
+        window.base64Str = base64String
+        $q('#result3').innerHTML = base64String
+        fileInput.value = ''
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function $copy(text) {
+      if (!text) return
+      let inputElement = document.createElement('input');
+      inputElement.value = text;
+      document.body.appendChild(inputElement)
+      inputElement.select()
+      document.execCommand('copy', true);
+      inputElement.parentNode.removeChild(inputElement)
+      return true
     }
   </script>
 </body>
