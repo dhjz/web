@@ -7,7 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="keywords" content="CodeInWord,代码高亮,word,微软word高亮代码,word中美化代码" />
   <meta name="description" content="在线生成可以在word中高亮的代码，支持各类主流语言，代码美化，代码高亮。" />
-  <meta name="baidu_union_verify" content="4449b863b452523046bfae1ad8bb61cc">
   <script type="text/javascript" src="static/js/jquery.min.js"></script>
   <link type="text/css" rel="stylesheet" href="static/css/syntaxhighlighter.css">
   <script src="static/js/sh.min.js"></script>
@@ -41,8 +40,6 @@
     hr.divider {
       margin: 5px 0;
     }
- 
-
     .pre-scrollable {
       max-height: 500px;
       overflow-y: scroll;
@@ -53,8 +50,19 @@
     }
     .navbar {
     background-color: rgb(77, 193, 255);
-  
-   }
+    }
+    .form-ctro {
+      height: 50px;
+      margin: 0;
+      display: flex;
+    align-items: center;
+    color: #fff;
+    margin-left: 250px;
+    float: right;
+    }
+    .form-group {
+      margin-bottom: 0;
+    }
   
   </style>
 
@@ -73,6 +81,33 @@
                   <span class="icon-bar"></span>
                 </button>
                 <a class="navbar-brand"  style="color:rgb(251, 251, 255)"  href="#"><span>CodeInWord</span></a>
+              </div>
+              <div class="form-group form-group-sm form-ctro">
+ 
+                <label class="control-label" for="formGroupInputSmall">选择语言：</label>
+                <div style="padding-left: 1px;margin: 0 20px;">
+                  <select name="fonts" id="languageSelected" class="form-control">
+                    <option value="c++">C, C++</option>                                                        
+                    <option value="c#">C#</option>                                                        
+                    <option value="css">CSS</option>                                                        
+                    <option value="delphi">Delphi, Pascal</option>                                                        
+                    <option value="xml">XML</option>                                                                                                                
+                    <option value="java">Java</option>                                                                                                                                                                        
+                    <option value="javascript">Javascript</option>                                                                                                                                                                                                                                
+                    <option value="php">PHP</option>                                                        
+                    <option value="python">Python</option>                                                        
+                    <option value="ruby">Ruby</option>                                                        
+                    <option value="sql">SQL</option>                                                        
+                    <option value="vb">VB</option>                                                        
+                    <option value="xml">HTML</option>   
+                  </select>
+                </div>
+        
+              
+                <div class="form-group form-group-sm">
+                  <a class="btn btn-primary" style="margin-right:15px;margin-bottom:-5px;" id="startExecute"   onclick="formatcode()">高亮</a>
+                  <!-- <a class="btn btn-primary copyBtn" style="margin-right:15px;margin-bottom:-5px;" id="copyBtn" onclick="copyCode()" >复制</a> -->
+                 </div>
               </div>
               <div class="collapse navbar-collapse" id="navbar-ex-collapse">
                 <ul class="nav navbar-nav navbar-right">
@@ -97,33 +132,7 @@
 
         <div class="col-md-7" style="padding:0;position:relative;height:100%;">
 
-          <div class="form-group form-group-sm">
- 
-            <label class="col-sm-2 control-label" for="formGroupInputSmall">选择语言：</label>
-            <div class="col-sm-2" style="padding-left: 1px;margin-left: 1px;">
-              <select name="fonts" id="languageSelected" class="form-control">
-                <option value="c++">C, C++</option>                                                        
-                <option value="c#">C#</option>                                                        
-                <option value="css">CSS</option>                                                        
-                <option value="delphi">Delphi, Pascal</option>                                                        
-                <option value="xml">XML</option>                                                                                                                
-                <option value="java">Java</option>                                                                                                                                                                        
-                <option value="javascript">Javascript</option>                                                                                                                                                                                                                                
-                <option value="php">PHP</option>                                                        
-                <option value="python">Python</option>                                                        
-                <option value="ruby">Ruby</option>                                                        
-                <option value="sql">SQL</option>                                                        
-                <option value="vb">VB</option>                                                        
-                <option value="xml">HTML</option>   
-              </select>
-            </div>
-    
-          
-            <div class="form-group form-group-sm">
-              <a class="btn btn-primary" style="margin-right:15px;margin-bottom:-5px;" id="startExecute"   onclick="formatcode()">高亮</a>
-              <!-- <a class="btn btn-primary copyBtn" style="margin-right:15px;margin-bottom:-5px;" id="copyBtn" onclick="copyCode()" >复制</a> -->
-             </div>
-          </div>
+         <!-- zanwei -->
 
         
           <div id="right-box" class="common-font-size" style="width:100%;height: 87vh;min-height:520px;border:solid 1px #f6f6f6;border-radius:0;resize: none;overflow-y:scroll; outline:none;position:relative;padding-top:5px;">
