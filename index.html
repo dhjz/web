@@ -10,16 +10,20 @@
     * {margin: 0; padding:0; box-sizing: border-box;}
     body {padding: 10px 30px;}
     input { background: #fff; outline: none; line-height: 26px; border: 1px solid #ccc; padding: 0 10px; display: inline-block; min-width: 280px; margin-top: 6px;}
-    button{ outline: none; background: none; border: 1px solid #ccc; display: inline-block; margin-left: 10px; line-height: 18px; padding: 4px 10px; cursor: pointer;}
+    button, .button { outline: none; background: none; border: 1px solid #ccc; display: inline-block; margin-left: 10px; line-height: 18px; padding: 4px 10px; cursor: pointer;}
     button span{ color: #f33; display: block;}
     label { width: 80px; display: inline-block; }
     div { margin: 10px 0;}
     h2 { margin: 26px 0 10px;}
     .result { white-space: pre-wrap; word-break: break-all;}
+    .ftr { float: right;}
+    .ftl { float: left;}
+    a {color: #000; text-decoration: none;}
   </style>
 </head>
 <body>
-  <button onclick="location.reload()" style="float: right;">刷新</button>
+  <button onclick="location.reload()" class="ftr">刷新</button>
+  <a target="_blank" href="./code/index.html" class="button ftr">代码美化</a>
   <h2>Wake On Lan</h2>
   <div><label>IP: </label><input type="text" id="ip"></div>
   <div><label>PORT: </label><input type="text" id="port" value="11999"></div>
