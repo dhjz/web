@@ -51,8 +51,8 @@ exports.handler = async function (event, context) {
   // 密钥可前往官网控制台 https://console.cloud.tencent.com/cam/capi 进行获取
   const clientConfig = {
     credential: {
-      secretId: "AKID52nPm0MLPMAqNNE3lKhv28FArSxMep8K",
-      secretKey: "NemslU8b4kYF2ulgT2Gc8mQ9X7aqwvnW9g6QkzM".replace(key, ''),
+      secretId: "AKIDTpEOOH1cBqNiy7BEC5mIgrpkU1KODm7D",
+      secretKey: "DKiw64pNbfWAevGc8mQ9zvfDZjiT7f4JSaZMwL".replace(key, ''),
     },
     region: "",
     profile: {
