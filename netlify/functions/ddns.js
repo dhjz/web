@@ -22,21 +22,6 @@ function getIPAddr() {
   });
 }
 
-const gitHeaders = {
-  // 'Content-Type': 'application/json',
-  'X-GitHub-Api-Version': '2022-11-28',
-  'Accept': 'application/vnd.github+json',
-  'Authorization': 'Bearer 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'
-}
-
-function updateGit(url, data) {
-  return axios.get(url, { headers: gitHeaders })
-    .then(res => res.data ? res.data.sha : '')
-    .then(sha => {
-      return axios.put(url, { sha, message: 'change home ip', content: Buffer.from(data).toString('base64') }, { headers: gitHeaders })
-    })
-}
-
 exports.handler = async function (event, context) {
   // console.log(event)
   const { httpMethod,  queryStringParameters, headers } = event
@@ -94,8 +79,6 @@ exports.handler = async function (event, context) {
       }
     );
     console.log('更新ip到ddns成功: ' + ipAddr);
-
-    updateGit('https://api.github.com/repos/dhjz/dhjz.github.io/contents/ip.txt', ipAddr).then(() => console.log('更新ip到github成功'))
 
     result = 'ip -->> ddns success: ' + ipAddr
   } catch (error) {
