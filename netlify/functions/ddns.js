@@ -41,14 +41,18 @@ exports.handler = async function (event, context) {
   // console.log(event)
   const { httpMethod,  queryStringParameters, headers } = event
   console.log(queryStringParameters, httpMethod, headers)
-  const result = ''
+  let result = ''
 
   const DnspodClient = tencentcloud.dnspod.v20210323.Client;
 
   let { ip } = queryStringParameters
 
-  if (!ip) {
-    ip = event.headers['client-ip'] || event.headers['x-nf-client-connection-ip'] || event.headers['x-forwarded-for']
+  if (!ip) ip = event.headers['client-ip'] || event.headers['x-nf-client-connection-ip'] || event.headers['x-forwarded-for']
+
+  if (ip.includes('::1') || !/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(ip)) return {
+    statusCode: 200,
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: 'please set correct param `ip` :' + ip,
   }
 
   // 实例化一个认证对象，入参需要传入腾讯云账户 SecretId 和 SecretKey，此处还需注意密钥对的保密
@@ -89,13 +93,14 @@ exports.handler = async function (event, context) {
         console.error("error", err);
       }
     );
+    console.log('更新ip到ddns成功: ' + ipAddr);
 
     updateGit('https://api.github.com/repos/dhjz/dhjz.github.io/contents/ip.txt', ipAddr).then(() => console.log('更新ip到github成功'))
 
-    result = '更新ip到ddns成功: ' + ipAddr
+    result = 'ip -->> ddns success: ' + ipAddr
   } catch (error) {
     console.error('获取ip错误：', error);
-    result = '更新ip到ddns失败: ' + ipAddr + '--------' + error 
+    result = 'ip -->> ddns error: ' + ipAddr + '--------' + error 
   }
 
   return {
