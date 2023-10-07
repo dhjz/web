@@ -30,7 +30,13 @@ exports.handler = async function (event, context) {
 
   const DnspodClient = tencentcloud.dnspod.v20210323.Client;
 
-  let { ip } = queryStringParameters
+  let { ip, key } = queryStringParameters
+
+  if (!key) return {
+    statusCode: 200,
+    headers: { "Access-Control-Allow-Origin": "*" },
+    body: 'please set correct param `key` :' + ip,
+  }
 
   if (!ip) ip = event.headers['client-ip'] || event.headers['x-nf-client-connection-ip'] || event.headers['x-forwarded-for']
 
@@ -46,7 +52,7 @@ exports.handler = async function (event, context) {
   const clientConfig = {
     credential: {
       secretId: "AKID52nPm0MLPMAqNNE3lKhv28FArSxMep8K",
-      secretKey: "NemslU8b4kYF2ulT2X7aqwvnW9g6QkzM",
+      secretKey: "NemslU8b4kYF2ulgT2Gc8mQ9X7aqwvnW9g6QkzM".replace(key, ''),
     },
     region: "",
     profile: {
