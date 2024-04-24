@@ -69,12 +69,12 @@ exports.handler = async function (event, context) {
     // const ipAddr = await getIPAddr();
     const ipAddr = ip
     const params = {
-      Domain: 'dhjz.fun',
+      Domain: '199311.xyz',
       SubDomain: 'home',
       RecordType: 'A',
       RecordLine: '默认',
       Value: ipAddr,
-      RecordId: 1602352775,
+      RecordId: 1770147822,
     };
     await client.ModifyRecord(params).then(
       (data) => {
