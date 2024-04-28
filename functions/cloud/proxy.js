@@ -18,7 +18,7 @@ export const onRequest = async ({ request }) => {
 
   console.log(result.substring(0, 50), type);
 
-  const response = new Response(result);
+  const response = new Response(result || ('暂未获取参数' + JSON.stringify(params)));
   // const response = new Response(JSON.stringify(params) + url + (typeof axios));
   response.headers.set('Content-Type', type)
   return response;
