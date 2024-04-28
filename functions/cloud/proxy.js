@@ -12,13 +12,13 @@ export const onRequest = async ({ request }) => {
       responseType: 'text',
       timeout: 30000,
     })
-    result = res.data
+    result = res.data || ''
     // type = res.headers['content-type']
   }
 
   console.log(result.substring(0, 50), type);
 
-  const response = new Response(result.substring(0, 50) || ('暂未获取参数, ' + request.url + ' ||| ' + JSON.stringify(params)));
+  const response = new Response(result.substring(0, 50) || ('暂未获取参数或者请求结果, ' + request.url + ' ||| ' + JSON.stringify(params)));
   // const response = new Response(JSON.stringify(params) + url + (typeof axios));
   response.headers.set('Content-Type', type)
   return response;
