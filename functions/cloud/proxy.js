@@ -13,7 +13,7 @@ export const onRequest = async ({ request }) => {
         responseType: 'text',
         timeout: 30000,
       })
-      result = res.data || ''
+      result = typeof res // res.data || ''
     } catch(e) {
       result = '400 axios 请求错误' + (typeof axios + (typeof axios.get))
     }
