@@ -15,7 +15,7 @@ export const onRequest = async ({ request }) => {
       })
       result = res.data || ''
     } catch(e) {
-      result = '400 axios 请求错误'
+      result = '400 axios 请求错误' + (typeof axios + (typeof axios.get))
     }
     // type = res.headers['content-type']
   }
