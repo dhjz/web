@@ -5,16 +5,16 @@ export const onRequest = async ({ request }) => {
 
   let { url, type = 'text/plain;charset=utf-8' } = params
   let result = ''
-  // if (url) {
-  //   const res = await axios({
-  //     method: 'get',
-  //     url: url,
-  //     responseType: 'text',
-  //     timeout: 30000,
-  //   })
-  //   result = res.data
-  //   // type = res.headers['content-type']
-  // }
+  if (url) {
+    const res = await axios({
+      method: 'get',
+      url: url,
+      responseType: 'text',
+      timeout: 30000,
+    })
+    result = res.data
+    // type = res.headers['content-type']
+  }
 
   console.log(result.substring(0, 50), type);
 
