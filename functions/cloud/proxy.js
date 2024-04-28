@@ -4,7 +4,7 @@ export const onRequest = async ({ request }) => {
   const params = Object.fromEntries(new URL(request.url).searchParams);
 
   let { url, type = 'text/plain;charset=utf-8' } = params
-  // let result = ''
+  let result = ''
   // if (url) {
   //   const res = await axios({
   //     method: 'get',
