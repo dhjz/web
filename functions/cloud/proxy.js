@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'node:axios';
 
 export const onRequest = async (ctx) => {
   const { request, params } = ctx
@@ -19,8 +19,6 @@ export const onRequest = async (ctx) => {
   console.log(result.substring(0, 50), type);
 
   const response = new Response(result);
-  response.headers.set('Access-Control-Allow-Origin', '*');
-  response.headers.set('Access-Control-Max-Age', '86400');
   response.headers.set('Content-Type', type)
   return response;
 };
