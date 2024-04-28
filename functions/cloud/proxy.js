@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 export const onRequest = async ({ request }) => {
-  const { searchParams: params } = new URL(request.url);
+  const params = Object.fromEntries(new URL(request.url).searchParams);
 
-  let { url, type = 'text/plain' } = params
+  let { url, type = 'text/plain;charset=utf-8' } = params
   let result = ''
   if (url) {
     const res = await axios({
