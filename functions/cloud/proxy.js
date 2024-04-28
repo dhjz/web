@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 export const onRequest = async ({ request }) => {
   const params = Object.fromEntries(new URL(request.url).searchParams);
 
@@ -7,20 +5,18 @@ export const onRequest = async ({ request }) => {
   let result = ''
   if (url) {
     try {
-      const res = await axios({
+      const res = await fetch(url, {
         method: 'get',
-        url: url,
-        responseType: 'text',
-        timeout: 30000,
+        headers: {
+          'Accept': 'text/plain; charset=utf-8'
+        }
       })
-      result = res.data || ''
+      result = await res.text()
     } catch(e) {
-      result = '400 axios 请求错误' + e
+      result = '400 请求错误' + e
     }
     // type = res.headers['content-type']
   }
-
-  console.log(result.substring(0, 50), type);
 
   const response = new Response(result || ('暂未获取参数或者请求结果, ' + request.url + ' ||| ' + JSON.stringify(params)));
   // const response = new Response(JSON.stringify(params) + url + (typeof axios));
