@@ -1,4 +1,4 @@
-import axios from 'node:axios';
+import axios from 'axios';
 
 export const onRequest = async (ctx) => {
   const { request, params } = ctx
