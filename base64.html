@@ -16,6 +16,37 @@
     <button onclick="testDown()" style="margin-left: 20px;">模拟base64转文件</button>
   </div>
   <div id="result"></div>
+  <div>
+    <pre>
+      // 下载base64方法
+      function downloadBase64(str, type, name) {
+        download(new Blob([base64ToBuffer(str)], { type }), name)
+      }
+
+      function base64ToBuffer(base64) {
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+  
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+  
+        return bytes.buffer;
+      }
+  
+      function download(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        URL.revokeObjectURL(url);
+        setTimeout(() => link.remove(), 500);
+      }
+    </pre>
+  </div>
   <!-- <textarea id="result" ></textarea> -->
   <script>
     document.getElementById('file').addEventListener('input', (e) => {
