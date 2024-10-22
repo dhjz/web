@@ -52,7 +52,8 @@
 			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/guide">跳转wcfguide</a>
       <button class="btn" type="button" data-action="openloc">打开地址</button>
       <button class="btn" type="button" data-action="getloc">获取地址</button>
-      <button class="btn" type="button" data-action="opengd">打开高德</button>
+      <button class="btn" type="button" data-action="opengd">打开高德地图</button>
+      <button class="btn" type="button" data-action="opentx">打开腾讯地图</button>
       <button class="btn" type="button" data-action="post1">postMessage1APP登录过期</button>
       <button class="btn" type="button" data-action="post12">postMessage1微信登录过期</button>
       <button class="btn" type="button" data-action="post2">postMessage2微信App支付</button>
@@ -475,6 +476,9 @@
                 break;
               case 'opengd':
                 window.open('https://uri.amap.com/marker?position=107.076084,29.857973')
+                break;
+              case 'opentx':
+                window.open('https://map.qq.com/?addr=%E6%89%8B%E5%B8%95%E5%8F%A3%E6%A1%A5%E5%8C%97%E9%93%81%E8%B7%AF%E9%81%93%E5%8F%A3&isopeninfowin=1&markertype=1&name=%E8%B6%85%E5%A5%BD%E5%90%83%E5%86%B0%E6%BF%80%E5%87%8C&pointx=116.342763&pointy=39.892326&ref=myapp&type=marker')
                 break;
               default:
                 uni[action]({
