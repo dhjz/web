@@ -52,6 +52,7 @@
 			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/guide">跳转wcfguide</a>
       <button class="btn" type="button" data-action="openloc">打开地址</button>
       <button class="btn" type="button" data-action="getloc">获取地址</button>
+      <button class="btn" type="button" data-action="opengd">打开高德</button>
       <button class="btn" type="button" data-action="post1">postMessage1APP登录过期</button>
       <button class="btn" type="button" data-action="post12">postMessage1微信登录过期</button>
       <button class="btn" type="button" data-action="post2">postMessage2微信App支付</button>
@@ -142,7 +143,7 @@
     <script type="text/javascript" src="https://unpkg.com/@dcloudio/uni-webview-js@0.0.3/index.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/vConsole/3.14.7/vconsole.min.js"></script><script>new VConsole()</script>
     <script type="text/javascript">
-      window.version = 10
+      window.version = 11
       console.log('version ' + version);
       window.ljPay = {
         payCallback: function (obj) {
@@ -471,6 +472,9 @@
                     alert('获取地址失败' + e.message)
                   }
                 });
+                break;
+              case 'opengd':
+                window.open('https://uri.amap.com/marker?position=107.076084,29.857973')
                 break;
               default:
                 uni[action]({
