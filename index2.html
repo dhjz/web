@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>测试内嵌h5网页</title>
+    <style type="text/css">
+      .btn {
+        display: block;
+        margin: 20px auto;
+        padding: 5px;
+        background-color: #007aff;
+        border: 0;
+        color: #ffffff;
+        height: 40px;
+        width: 200px;
+      }
+
+      .btn-red {
+        background-color: #dd524d;
+      }
+
+      .btn-yellow {
+        background-color: #f0ad4e;
+      }
+
+      .desc {
+        padding: 10px;
+        color: #999999;
+      }
+
+      .post-message-section {
+        /* visibility: hidden; */
+      }
+    </style>
+  </head>
+  <body>
+    <p class="desc">web-view 组件加载网络 html 示例。点击下列按钮，跳转至其它页面。</p>
+    <div class="post-message-section">
+      <p class="desc">网页向应用发送消息，注意：小程序端应用会在此页面后退时接收到消息。</p>
+      <div class="btn-list">
+        <button class="btn btn-red" type="button" id="postMessage">普通postMessage</button>
+      </div>
+    </div>
+    <div class="btn-list1">
+      <a  class="btn" href="./index3.html">跳转本地页面</a>
+      <a  class="btn" href="javascript:goWebview('http://test.etsen.com.cn/h5/login?vconsole=1')">赛年</a>
+			<a  class="btn" href="./mini/index.html">跳转3D测试页面</a>
+			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/3dguide/index.html">跳转3D测试页面1</a>
+			<a  class="btn" href="https://v.douyin.com/Bb6JwUd/ ">跳转抖音</a>
+			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/portal/guideArea?id=26">跳转wcf</a>
+			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/guide">跳转wcfguide</a>
+      <button class="btn" type="button" data-action="openloc">打开地址</button>
+      <button class="btn" type="button" data-action="getloc">获取地址</button>
+      <button class="btn" type="button" data-action="post1">postMessage1APP登录过期</button>
+      <button class="btn" type="button" data-action="post12">postMessage1微信登录过期</button>
+      <button class="btn" type="button" data-action="post2">postMessage2微信App支付</button>
+      <button class="btn" type="button" data-action="post3">postMessage3微信小程序支付</button>
+      <button class="btn" type="button" data-action="post4">扫码handler</button>
+			<button class="btn" type="button" data-action="post41">扫码postMessage</button>
+			<button class="btn" type="button" data-action="post5">跨应用handler</button>
+			<button class="btn" type="button" data-action="post51">跨应用postMessage</button>
+			<button class="btn" type="button" data-action="post61">扫码eval_postMessage</button>
+			<button class="btn" type="button" data-action="post62">扫码eval 无call_postMessage</button>
+			<button class="btn" type="button" data-action="post71">wgs84 定位</button>
+			<button class="btn" type="button" data-action="post73">wgs84 高精度逆地址</button>
+			<button class="btn" type="button" data-action="post74">gcj02 高精度逆地址</button>
+			<button class="btn" type="button" data-action="post72">gcj02 定位</button>
+      <button class="btn" type="button" data-action="post99">postMessage5</button>
+      <button class="btn" type="button" data-action="post199">postMessage199</button>
+      <button class="btn" type="button" data-action="post81">下载文件zip</button>
+      <button class="btn" type="button" data-action="post82">下载文件自定义</button>
+      <button class="btn" type="button" data-action="post83">传header代下载</button>
+      <a href="./test.zip" download="test.zip">下载zip</a>
+      <a href="./test.pdf" download="test.pdf">下载pdf</a>
+      <a href="http://wcif.860001.xyz:26000/wcif-portal/prod-api/manage/manageBusiness/download/11a39932b4064c09a504bd169c876008" download="test.txt">下载text</a>
+			<a  class="btn" href="taobao://s.taobao.com/search">跳转app</a>
+			<a  class="btn" href="taobao://">跳转app</a>
+      <button class="btn" type="button" data-action="navigateTo">navigateTo</button>
+      <button class="btn" type="button" data-action="redirectTo">redirectTo</button>
+      <button class="btn" type="button" data-action="navigateBack">navigateBack</button>
+      <button class="btn" type="button" data-action="reLaunch">reLaunch</button>
+      <button class="btn" type="button" data-action="switchTab">switchTab首页</button>
+    </div>
+    <script type="text/javascript">
+      window.getQueryObject = function (url) {
+        url = url == null ? window.location.href : url
+        const search = url.substring(url.lastIndexOf('?') + 1)
+        const obj = {}
+        const reg = /([^?&=]+)=([^?&=]*)/g
+        search.replace(reg, (rs, $1, $2) => {
+          const name = decodeURIComponent($1)
+          let val = decodeURIComponent($2)
+          val = String(val)
+          obj[name] = val
+          return rs
+        })
+        return obj
+      }
+      var userAgent = navigator.userAgent;
+      console.log(userAgent);
+      document.write('<script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.4.0.js"><\/script>');
+        /*
+      var wxjs = document.createElement('script')
+      wxjs.src = 'https://res.wx.qq.com/open/js/jweixin-1.4.0.js'
+      document.body.append(wxjs)
+      */
+      if (/miniProgram/i.test(userAgent) && /micromessenger/i.test(userAgent)) {
+        // 微信小程序 JS-SDK 如果不需要兼容微信小程序，则无需引用此 JS 文件。
+      }
+      // if (userAgent.indexOf('AlipayClient') > -1) {
+      //   // 支付宝小程序的 JS-SDK 防止 404 需要动态加载，如果不需要兼容支付宝小程序，则无需引用此 JS 文件。
+      //   document.writeln('<script src="https://appx/web-view.min.js"' + '>' + '<' + '/' + 'script>');
+      // } else if (/QQ/i.test(userAgent) && /miniProgram/i.test(userAgent)) {
+      //   // QQ 小程序
+      //   document.write(
+      //     '<script type="text/javascript" src="https://qqq.gtimg.cn/miniprogram/webview_jssdk/qqjssdk-1.0.0.js"><\/script>'
+      //   );
+      // } else if (/miniProgram/i.test(userAgent) && /micromessenger/i.test(userAgent)) {
+      //   // 微信小程序 JS-SDK 如果不需要兼容微信小程序，则无需引用此 JS 文件。
+      //   document.write('<script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.4.0.js"><\/script>');
+      // } else if (/toutiaomicroapp/i.test(userAgent)) {
+      //   // 头条小程序 JS-SDK 如果不需要兼容头条小程序，则无需引用此 JS 文件。
+      //   document.write(
+      //     '<script type="text/javascript" src="https://s3.pstatp.com/toutiao/tmajssdk/jssdk-1.0.1.js"><\/script>');
+      // } else if (/swan/i.test(userAgent)) {
+      //   // 百度小程序 JS-SDK 如果不需要兼容百度小程序，则无需引用此 JS 文件。
+      //   document.write(
+      //     '<script type="text/javascript" src="https://b.bdstatic.com/searchbox/icms/searchbox/js/swan-2.0.18.js"><\/script>'
+      //   );
+      // } else if (/quickapp/i.test(userAgent)) {
+      //   // quickapp
+      //   document.write('<script type="text/javascript" src="https://quickapp/jssdk.webview.min.js"><\/script>');
+      // }
+      // if (!/toutiaomicroapp/i.test(userAgent)) {
+      //   document.querySelector('.post-message-section').style.visibility = 'visible';
+      // }
+    </script>
+    <!-- <script src="https://cdn.bootcdn.net/ajax/libs/axios/1.1.3/axios.min.js"></script> -->
+    <!-- uni 的 SDK -->
+    <!-- 需要把 uni.webview.1.5.4.js 下载到自己的服务器 -->
+    <script type="text/javascript" src="https://unpkg.com/@dcloudio/uni-webview-js@0.0.3/index.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/vConsole/3.14.7/vconsole.min.js"></script><script>new VConsole()</script>
+    <script type="text/javascript">
+      window.version = 8
+      console.log('version ' + version);
+      window.ljPay = {
+        payCallback: function (obj) {
+          console.log('支付成功回调执行', obj)
+          alert('支付成功回调执行' + JSON.stringify(obj))
+        }
+      }
+      window.addEventListener('hashchange', function(e){
+        console.log('hashchange...', e.newURL, e);
+        let arr = e.newURL.split('#')
+        if (arr.length > 1 && e.newURL.indexOf('ljpay') > -1) { // 附带了支付结果
+          let hash = arr[1]
+          console.log(hash);
+          let orderid = hash.substring(hash.indexOf('ljpay_') + 6, hash.lastIndexOf('_ljpay'))
+          if (orderid == 'error') {
+            alert('hashchange error...支付失败')
+          } else {
+            alert('hashchange success...支付成功, orderid: ' + orderid )
+          }
+          // window.location.href = e.oldURL
+          // window.history.back()
+        }
+      })
+
+      // 待触发 `UniAppJSBridgeReady` 事件后，即可调用 uni 的 API。
+      document.addEventListener('UniAppJSBridgeReady', function() {
+        // uni.postMessage({
+        //     data: {
+        //         action: 'message'
+        //     }
+        // });
+        uni.getEnv(function(res) {
+            console.log('当前环境：' + JSON.stringify(res));
+            alert('uni 加载完成...' + '当前环境：' + JSON.stringify(res) + '  version ' + version)
+        });
+
+        document.querySelector('.btn-list1').addEventListener('click', function(evt) {
+          var target = evt.target;
+          if (target.tagName === 'BUTTON') {
+            var action = target.getAttribute('data-action');
+            console.log(action);
+            switch (action) {
+              case 'switchTab':
+                uni.switchTab({
+                  url: '/pages/main/index/index'
+                });
+                break;
+              case 'reLaunch':
+                uni.reLaunch({
+                  url: '/pages/main/service/index'
+                });
+                break;
+              case 'navigateBack':
+                uni.navigateBack({
+                  delta: 1
+                });
+                break;
+              case 'post1':
+                uni.postMessage({
+                  data: {
+                    type: 1,
+                    msg: '登录过期, 请返回',
+                  }
+                });
+                break;
+							case 'post99':
+                uni.postMessage({
+                  data: {
+                    type: 99,
+                    msg: '亮度最亮',
+                    ext: {
+                      value: 1
+                    }
+                  }
+                });
+                break;
+							case 'post199':
+                uni.postMessage({
+                  data: {
+                    type: 199,
+                    msg: '亮度最亮',
+                    ext: {
+                      js: 'document.body.style.background = "#00FF00"'
+                    }
+                  }
+                });
+                break;
+              case 'post2':
+                fetch('https://demo.dcloud.net.cn/payment/wxpayv3.HBuilder/?total=0.01').then(res => res.json()).then(data => {
+                  console.log(data);
+                  data.orderid = '123456789'
+                  uni.postMessage({
+                    data: {
+                      type: 2,
+                      msg: '微信支付',
+                      ext: data
+                    }
+                  });
+                })
+                // axios.get('https://demo.dcloud.net.cn/payment/wxpayv3.HBuilder/?total=0.01').then(res => {
+                  
+                // })
+                break;
+              case 'post3':
+                fetch('https://demo.dcloud.net.cn/payment/wxpayv3.HBuilder/?total=0.01').then(res => res.json()).then(data => {
+                  console.log(data);
+                  let orderInfo = {
+                    appId: data.appid,
+                    timeStamp: data.timestamp + '',
+                    nonceStr: data.noncestr,
+                    package: `prepay_id=${data.prepayid}`,
+                    signType: data.signType || 'RSA',
+                    paySign: data.sign,
+                  }
+                  orderInfo.orderid = '123456789'
+                  let OBJECT = {
+                    data: {
+                      type: 3,
+                      msg: '微信支付',
+                      callback: window.location.href.includes('?') ? (window.location.href + '&') : (window.location.href + '?'),
+                      callbackType: 1,
+                      ext: orderInfo
+                    }
+                  }
+                  uni.navigateTo({ url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT))}`});
+                  // wx.miniProgram.navigateTo({ url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT))}`});
+                })
+                // wx.miniProgram.navigateTo({ url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT))}`});
+                // axios.get('https://demo.dcloud.net.cn/payment/wxpayv3.HBuilder/?total=0.01').then(res => {
+                  
+                // })
+                break;
+              case 'post4':
+                  let OBJECT4 = {
+                    data: {
+                      type: 4,
+                      msg: '登录过期了',
+											ext: 'fsadf发斯蒂芬=打发第三方撒旦法=发斯蒂芬=aasass123&?df'
+                    }
+                  }
+                  uni.navigateTo({
+                    url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT4))}`
+                  });
+                break;
+              case 'post5':
+                  let OBJECT5 = {
+                    data: {
+                      type: 5,
+                      msg: '跳转应用',
+                      target_appid: '798535726365933568',
+											ext: {
+                        path: '/qq/qq/wx',
+                        data: '不知道什么数据'
+                      }
+                    }
+                  }
+                  uni.navigateTo({
+                    url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT5))}`
+                  });
+                break;
+              case 'post51':
+                  let OBJECT51 = {
+                    data: {
+                      type: 5,
+                      msg: '跳转应用',
+                      target_appid: '798535726365933568',
+											ext: {
+                        path: '/qq/qq/wx',
+                        data: '不知道什么数据'
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT51);
+                break;
+              case 'post61':
+                  let OBJECT61 = {
+                    data: {
+                      type: 6,
+                      msg: '本页扫码xietongCheckPoint',
+                      callback: 'xietongCheckPoint',
+											ext: 'eyJ0YXNrSWQiOiIxNjQyNTI3MzEyMjQ1MzUwNDAzIiwicG9pbnRDb3VudCI6MTMsImNhbGxiYWNrIjoieGlldG9uZ0NoZWNrUG9pbnQifQ=='
+                    }
+                  }
+                  uni.postMessage(OBJECT61);
+                break;
+              case 'post62':
+                  let OBJECT62 = {
+                    data: {
+                      type: 6,
+                      msg: '本页扫码无callback',
+											ext: {
+                        pointId: '12354',
+                        tetsdf: '车发斯蒂芬'
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT62);
+                break;
+              case 'post71':
+                  let OBJECT71 = {
+                    data: {
+                      type: 7,
+											ext: {
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT71);
+                break;
+              case 'post73':
+                  let OBJECT73 = {
+                    data: {
+                      type: 7,
+											ext: {
+                        isHighAccuracy: true, // 高精度定位
+                        highAccuracyExpireTime: 3100,
+                        geocode: true, //逆地址解析
+                      }
+                    }
+                  }
+                  console.log('post', OBJECT73);
+                  uni.postMessage(OBJECT73);
+                break;
+							case 'post72':
+                  let OBJECT72 = {
+                    data: {
+                      type: 7,
+											callback: 'myLocaSuccess',
+											ext: {
+                        type: 'gcj02' // wgs84
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT72);
+                break;
+							case 'post74':
+                  let OBJECT74 = {
+                    data: {
+                      type: 7,
+											callback: 'myLocaSuccess',
+											ext: {
+                        isHighAccuracy: true, // 高精度定位
+                        highAccuracyExpireTime: 3100,
+                        geocode: true, //逆地址解析
+                        type: 'gcj02' // wgs84
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT74);
+                break;
+							case 'post81':
+                  let OBJECT81 = {
+                    data: {
+                      type: 8,
+											ext: 'http://47.108.60.114:8888/test.zip'
+                    }
+                  }
+                  uni.postMessage(OBJECT81);
+                break;
+							case 'post82':
+                  const temp = prompt('请输入下载链接', 'http://47.108.60.114:8888/test.docx'); 
+                  let OBJECT82 = {
+                    data: {
+                      type: 8,
+											ext: {
+                        url: temp
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT82);
+                break;
+							case 'post83':
+                  const temp83 = prompt('请输入代下载链接', 'http://47.108.60.114:8888/test.docx'); 
+                  const header83 = { token: 'test_token' }
+                  if (temp83.includes('zip'))  header83.responseType = 'blob'
+                  let OBJECT83 = {
+                    data: {
+                      type: 8,
+											ext: {
+                        url: temp83,
+                        header: header83 // 代下必传token, 不然直接打开
+                      }
+                    }
+                  }
+                  uni.postMessage(OBJECT83);
+                break;
+							case 'post41':
+								let OBJECT41 = {
+									data: {
+										type: 4,
+										msg: '登录过期了',
+										ext: 'fsadf发斯蒂芬=打发第三方撒旦法=发斯蒂芬=aasass123&?df'
+									}
+								}
+								uni.postMessage(OBJECT41)
+                break;
+              case 'post12':
+                  let OBJECT12 = {
+                    data: {
+                      type: 1,
+                      msg: '登录过期了',
+                    }
+                  }
+                  uni.navigateTo({
+                    url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT12))}`
+                  });
+                break;
+              case 'openloc':
+                uni.openLocation({
+                  latitude: 29.62,
+                  longitude: 106.50,
+                  scale: 18
+                })
+                break;
+              case 'getloc':
+                uni.getLocation({
+                  type: 'gcj02',
+                  success: function (res) {
+                    alert(res.longitude + ',' + res.latitude)
+                  },
+                  fail: function() {
+                    alert('获取地址失败')
+                  }
+                });
+                break;
+              default:
+                uni[action]({
+                  url: '/pages/main/service/index'
+                });
+                break;
+            }
+          }
+        });
+
+        window.xietongCheckPoint = function (data) {
+          console.log('xietongCheckPoint: ', data);
+          alert('xietongCheckPoint: ' + JSON.stringify(data))
+        }
+
+        window.qrSuccess = function (data) {
+          console.log('qrSuccess', data);
+          alert('qrSuccess' + JSON.stringify(data))
+        }
+				
+        window.myLocaSuccess = function(data) {
+					console.log('myLocaSuccess gcj02', data);
+          alert('myLocaSuccess' + JSON.stringify(data))
+          if (!data || !data.latitude) return
+          const isopen = window.confirm('是否打开地图查看点位?')
+          if (isopen) window.location.href = `./map.html?location=${data.latitude},${data.longitude}`
+				}
+				
+				window.locationSuccess = function(data) {
+					console.log('locationSuccess', data);
+          alert('locationSuccess' + JSON.stringify(data))
+          if (!data || !data.latitude) return
+          const isopen = window.confirm('是否打开地图查看点位?')
+          if (isopen) window.location.href = `./map.html?gps=true&location=${data.latitude},${data.longitude}`
+				}
+
+				
+				window.goWebview = function(url) {
+					uni.navigateTo({
+						url: '/pages/main/service/MyWebview?url=' + encodeURIComponent(url)
+					})
+				}
+        
+        document.getElementById('postMessage').addEventListener('click', function() {
+          // alert(uni)
+          console.log(uni);
+          uni.postMessage({
+            data: {
+              action: 'message',
+              foo: 'foo',
+              lest: 123123
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
