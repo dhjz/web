@@ -50,6 +50,8 @@
 			<a  class="btn" href="https://v.douyin.com/Bb6JwUd/ ">跳转抖音</a>
 			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/portal/guideArea?id=26">跳转wcf</a>
 			<a  class="btn" href="http://wcif.860001.xyz:26000/wcif-portal/guide">跳转wcfguide</a>
+      <button class="btn" type="button" data-action="handlerMap">handler打开地图</button>
+      <button class="btn" type="button" data-action="handlerPhone">handler拨打电话</button>
       <button class="btn" type="button" data-action="openloc">打开地址</button>
       <button class="btn" type="button" data-action="getloc">获取地址</button>
       <button class="btn" type="button" data-action="opengd">打开高德地图</button>
@@ -144,7 +146,7 @@
     <script type="text/javascript" src="https://unpkg.com/@dcloudio/uni-webview-js@0.0.3/index.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/vConsole/3.14.7/vconsole.min.js"></script><script>new VConsole()</script>
     <script type="text/javascript">
-      window.version = 11
+      window.version = 12
       console.log('version ' + version);
       window.ljPay = {
         payCallback: function (obj) {
@@ -479,6 +481,29 @@
                 break;
               case 'opentx':
                 window.open('https://map.qq.com/?addr=%E6%89%8B%E5%B8%95%E5%8F%A3%E6%A1%A5%E5%8C%97%E9%93%81%E8%B7%AF%E9%81%93%E5%8F%A3&isopeninfowin=1&markertype=1&name=%E8%B6%85%E5%A5%BD%E5%90%83%E5%86%B0%E6%BF%80%E5%87%8C&pointx=116.342763&pointy=39.892326&ref=myapp&type=marker')
+                break;
+              case 'handlerPhone':
+                let OBJECT20 = {
+                  data: {
+                    type: 20,
+                    ext: {
+                      phone: '18523237147'
+                    }
+                  }
+                }
+                uni.navigateTo({ url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT20))}`});
+                break;
+              case 'handlerMap':
+                let OBJECT10 = {
+                  data: {
+                    type: 10,
+                    ext: {
+                      longitude: 107.076084,
+                      latitude: 29.857973
+                    }
+                  }
+                }
+                uni.navigateTo({ url: `/pages/handler?data=${encodeURIComponent(JSON.stringify(OBJECT10))}`});
                 break;
               default:
                 uni[action]({
