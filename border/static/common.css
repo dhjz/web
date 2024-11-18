@@ -28,6 +28,7 @@ article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section {
 }
 html.full, html.full body {
 	font-family: 'Microsoft Yahei', Corbel, 'MS PGothic', 'Microsoft JhengHei', Arial, Verdana, Helvetica, sans-serif;
+	background: #eee;
 }
 input, select, textarea{
 	font-family:Arial, Verdana, Helvetica, sans-serif;
