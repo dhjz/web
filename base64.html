@@ -26,7 +26,7 @@
   <div>
     <pre>
       <code class="language-javascript">
-// 下载base64方法
+// 下载base64方法,   data:image/jpeg;base64,XXXXXXXXXXXX
 function downloadBase64(str, type, name) {
   download(new Blob([base64ToBuffer(str)], { type }), name)
 }
