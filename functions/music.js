@@ -101,7 +101,7 @@ export const onRequest = async ({ request }) => {
       const res = await fetch(url + new URLSearchParams(query).toString(), {
         method: 'get',
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/3.0.18.203152',
           referer: 'http://music.163.com',
 			    host: 'music.163.com',
         }
