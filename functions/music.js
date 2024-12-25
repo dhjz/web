@@ -54,7 +54,6 @@ export const onRequest = async ({ request }) => {
 		      outCharset: 'utf-8',
         }
         url = cURL + '/v8/fcg-bin/fcg_v8_album_info_cp.fcg?'
-        // const lyric = res.data && res.data.lyric && new Buffer.from(res.data.lyric, 'base64').toString();
       }   
       const res = await fetch(url + new URLSearchParams(query).toString(), {
         method: 'get',
