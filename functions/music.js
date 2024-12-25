@@ -7,6 +7,7 @@ export const onRequest = async ({ request }) => {
 
   let { type = 'qq',  method = 'search',  s = '', id = '' } = params
   let result = ''
+  let contentType = 'text/plain;charset=utf-8'
   if (type == 'qq') {
     try {
       let url, query;
@@ -55,6 +56,7 @@ export const onRequest = async ({ request }) => {
         }
       })
       result = await res.text()
+      if (res.headers['content-type']) contentType = res.headers['content-type']
     } catch(e) {
       result = '400 请求错误' + e
     }
@@ -62,7 +64,7 @@ export const onRequest = async ({ request }) => {
 
   const response = new Response(result || ('暂未获取参数或者请求结果, ' + request.url + ' ||| ' + JSON.stringify(params)));
   // const response = new Response(JSON.stringify(params) + url + (typeof axios));
-  response.headers.set('Content-Type', res.headers['content-type'])
+  response.headers.set('Content-Type', contentType)
   return response;
 };
 
