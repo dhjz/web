@@ -87,14 +87,32 @@
       <button class="btn" type="button" data-action="switchTab">switchTab首页</button>
     </div>
     <script type="text/javascript">
-      // 窗口激活状态监听
       let vEvent = 'visibilitychange';
-      if (document.webkitHidden != undefined) {
-          vEvent = 'webkitvisibilitychange';
+
+      if (document.hidden !== undefined) { // 如果浏览器支持 visibility API
+        document.addEventListener("visibilitychange", visibilityChanged);
+      } else if (document.webkitHidden != undefined) {
+        document.addEventListener("webkitvisibilitychange", visibilityChanged);
+      } else { // 对于不完全支持的情况提供降级方案
+          console.log('html not support visibilitychange, window.onblur event to simulate');
+          window.onblur = function () {
+            setTimeout(() => {
+              const customEvent = new CustomEvent('visibilitychangeMy', { detail: { hidden: true } });
+              document.dispatchEvent(customEvent);
+            }, 0);
+          };
+          window.onfocus = function () {
+            setTimeout(() => {
+              const customEvent = new CustomEvent('visibilitychangeMy', { detail: { hidden: false } });
+              document.dispatchEvent(customEvent);
+            }, 0);
+          };
+          document.addEventListener('visibilitychangeMy', visibilityChanged, false);
       }
 
-      function visibilityChanged() {
-          if (document.hidden || document.webkitHidden) {
+      function visibilityChanged(e) {
+          console.log(e);
+          if (document.hidden || document.webkitHidden || e.detail?.hidden) {
               document.title = '别走啊~'
               console.log("Web page is hidden.")
           } else {
@@ -102,8 +120,6 @@
               console.log("Web page is visible.")
           }
       }
-
-      document.addEventListener(vEvent, visibilityChanged, false);
 
       window.getQueryObject = function (url) {
         url = url == null ? window.location.href : url
