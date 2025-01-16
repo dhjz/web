@@ -87,6 +87,24 @@
       <button class="btn" type="button" data-action="switchTab">switchTab首页</button>
     </div>
     <script type="text/javascript">
+      // 窗口激活状态监听
+      let vEvent = 'visibilitychange';
+      if (document.webkitHidden != undefined) {
+          vEvent = 'webkitvisibilitychange';
+      }
+
+      function visibilityChanged() {
+          if (document.hidden || document.webkitHidden) {
+              document.title = '别走啊~'
+              console.log("Web page is hidden.")
+          } else {
+              document.title = '你又回来了呢~'
+              console.log("Web page is visible.")
+          }
+      }
+
+      document.addEventListener(vEvent, visibilityChanged, false);
+
       window.getQueryObject = function (url) {
         url = url == null ? window.location.href : url
         const search = url.substring(url.lastIndexOf('?') + 1)
