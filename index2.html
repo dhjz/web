@@ -87,13 +87,12 @@
       <button class="btn" type="button" data-action="switchTab">switchTab首页</button>
     </div>
     <script type="text/javascript">
-      let vEvent = 'visibilitychange';
 
-      if (document.hidden !== undefined) { // 如果浏览器支持 visibility API
-        document.addEventListener("visibilitychange", visibilityChanged);
-      } else if (document.webkitHidden != undefined) {
-        document.addEventListener("webkitvisibilitychange", visibilityChanged);
-      } else { // 对于不完全支持的情况提供降级方案
+      // if (document.hidden !== undefined) { // 如果浏览器支持 visibility API
+      //   document.addEventListener("visibilitychange", visibilityChanged);
+      // } else if (document.webkitHidden != undefined) {
+      //   document.addEventListener("webkitvisibilitychange", visibilityChanged);
+      // } else { // 对于不完全支持的情况提供降级方案
           console.log('html not support visibilitychange, window.onblur event to simulate');
           window.onblur = function () {
             setTimeout(() => {
@@ -108,7 +107,7 @@
             }, 0);
           };
           document.addEventListener('visibilitychangeMy', visibilityChanged, false);
-      }
+      // }
 
       function visibilityChanged(e) {
           console.log(e);
@@ -116,8 +115,10 @@
               document.title = '别走啊~'
               console.log("Web page is hidden.")
           } else {
-              document.title = '你又回来了呢~'
-              console.log("Web page is visible.")
+              setTimeout(() => {
+                document.title = '你又回来了呢~'
+                console.log("Web page is visible.")
+              }, 1500)
           }
       }
 
