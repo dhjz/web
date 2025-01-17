@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文本编辑器</title>
+  <style>
+    * { margin: 0; padding: 0;  }
+    #editor{ width: 100%; height: 100vh;}
+    .tools{ position: absolute; top: 2px; right: 18px;     display: flex;  flex-direction: column; align-items: flex-end; }
+    .tools button{ display: block; margin-bottom: 4px; }
+    .tools div button{ display: inline-block; margin-left: 4px; }
+    .tools select{ display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div id="editor"></div>
+  <div id="tempEditor" style="display: none;"></div>
+  <div class="tools">
+    <div><button onclick="imp()">导入</button><button onclick="save()">保存</button></div>
+    <select id="mode"><option value="nginx">nginx</option><option value="html">html</option><option value="javascript">javascript</option><option value="mysql">mysql</option><option value="json">json</option></select>
+    <select id="size"><option value="4">tabSize-4</option><option value="2">tabSize-2</option></select>
+    <button onclick="formatCode()">格式化</button>
+    <button onclick="formatCode(true)">格式化空行</button>
+    <button onclick="window.open('json-editor.html')">JSON编辑器</button>
+  </div>
+  <script src="js/ace.min.js"></script>
+  <script src="js/ext-language_tools.min.js"></script>
+  <script src="js/mode-nginx.min.js"></script>
+  <script src="js/keybinding-vscode.min.js"></script>
+  <script src="js/theme-chrome.min.js"></script>
+  <script src="js/mode-javascript.min.js"></script>
+  <script src="js/mode-html.min.js"></script>
+  <script src="js/mode-mysql.min.js"></script>
+  <script src="js/worker-javascript.js"></script>
+  <script src="js/worker-html.js"></script>
+  <script src="js/mode-json.js"></script>
+  <script src="js/worker-json.js"></script>
+  <script src="js/snippets/html.min.js"></script>
+  <script src="js/snippets/javascript.min.js"></script>
+  <script src="js/beautify-css.min.js"></script>
+  <script src="js/beautify-html.min.js"></script>
+  <script src="js/beautify.min.js"></script>
+  <script src="js/sql-formatter.min.js"></script>
+  <script>
+      var $q = (val) => document.querySelector(val)
+      window.editor = ace.edit("editor");
+      //设置风格和语言（更多风格和语言，请到github上相应目录查看）
+      theme = "chrome";
+      //语言
+      window.language = "nginx";
+      window.tabSize = 4
+      window.filename = ''
+      editor.setTheme("ace/theme/" + theme);
+      editor.session.setMode("ace/mode/" + language);
+      // editor.setFontSize(14)
+      //字体大小
+      editor.setFontSize(15);
+      //设置只读（true时只读，用于展示代码）
+      editor.setReadOnly(false);
+      //自动换行,设置为off关闭
+      editor.setOption("wrap", "free");
+      //启用提示菜单
+      ace.require("ace/ext/language_tools");
+      editor.setOptions({
+        enableBasicAutocompletion: true,
+        enableSnippets: true,
+        enableLiveAutocompletion: true
+      });
+      editor.setKeyboardHandler('ace/keyboard/vscode');
+      
+      $q('#mode').addEventListener('change', (e) => {
+        document.title = '文本编辑器'
+        filename = ''
+        language = $q('#mode').value
+        editor.session.setMode("ace/mode/" + language)
+      })
+      $q('#size').addEventListener('change', (e) => {
+        let size = parseInt($q('#size').value)
+        tabSize = size
+        editor.session.setTabSize(size);
+      })
+
+      const ext = { 'nginx': '.conf', 'javascript': '.js', 'html': '.html', 'mysql': '.sql', 'json': '.json' }
+
+      function save() {
+        const name = filename || ('文件' + ext[language])
+        download(name, editor.getValue())
+      }
+
+      document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey && event.key === 's') {
+          event.preventDefault(); // 阻止默认保存操作
+          save()
+        }
+      });
+
+      function importFile({ name, data }) {
+        window.filename = name
+        document.title = name
+        editor.setValue(data)
+        if (filename) {
+          if (filename.endsWith('html')) language = 'html'
+          if (filename.endsWith('conf')) language = 'nginx'
+          if (filename.endsWith('js')) language = 'javascript'
+          if (filename.endsWith('sql')) language = 'mysql'
+          if (filename.endsWith('json')) language = 'json'
+
+          $q('#mode').value = language
+          editor.session.setMode("ace/mode/" + language)
+        }
+      }
+
+      function imp() {
+        upload().then(importFile)
+      }
+
+      // document.addEventListener('paste', function (e) {
+      //   var items = e.clipboardData.items;
+      // items[0].getAsFile()
+      // })
+
+      document.addEventListener('dragover', (e) => e.preventDefault())
+
+      document.addEventListener('drop', (event) => {
+        console.log(666);
+        event.preventDefault()
+        const files = event.dataTransfer.files
+        if (!files || !files.length) return;
+        let resultFile = files[0]
+        if (resultFile) {
+          let reader = new FileReader()
+          reader.readAsText(resultFile, 'UTF-8')
+          reader.onload = function (e) {
+            let cont = e.target.result
+            let obj = { name: resultFile.name, data: cont }
+            // try {
+            //   obj.data = JSON.parse(cont)
+            // } catch(e) { }
+            importFile(obj)
+          }
+        }
+      })
+
+      function download(filename, text) {
+        let ele = document.createElement('a')
+        ele.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text))
+        ele.setAttribute('download', filename)
+        ele.style.display = 'none'
+        document.body.appendChild(ele)
+        ele.click()
+        document.body.removeChild(ele);
+      }
+
+      function upload() {
+        return new Promise((res, rej) => {
+          document.getElementById('importInput')?.remove()
+          let ele = document.createElement('input')
+          ele.type = 'file'
+          ele.id = "importInput" 
+          ele.style = "display: none;" 
+          document.body.append(ele)
+          ele.onchange = function () {
+            let resultFile = ele.files[0]
+            if (resultFile) {
+              let reader = new FileReader()
+              // 读取纯文本文件,且编码格式为 utf-8
+              reader.readAsText(resultFile, 'UTF-8')
+              reader.onload = function (e) {
+                  let fileContent = e.target.result
+                  document.body.removeChild(ele)
+                  let obj = { name: resultFile.name, data: fileContent }
+                  try {
+                    obj.data = JSON.parse(fileContent)
+                  } catch(e) { }
+                  res(obj)
+              }
+            } else {
+              document.body.removeChild(ele)
+              res('')
+            }
+          }
+          ele.click()
+        })
+      }
+      
+
+      // 格式化代码函数
+      function formatCode(isDelLine) {
+        // 获取编辑器中的代码
+        var code = editor.getValue();
+        let val = code
+        const options = { indent_size: tabSize, space_in_empty_paren: true }
+        if (language == 'nginx') val = formatNginxConf(code, isDelLine, tabSize)
+        if (language == 'html') val = html_beautify(code, options)
+        if (language == 'javascript') val = js_beautify(code, options)
+        if (language == 'json') val = js_beautify(code, options)
+        // if (language == 'mysql')  val = sqlFormatter.format(code, { tabWidth: tabSize });
+          
+        editor.setValue(val);
+      }
+
+      function formatNginxConf(confString, isDelLine, spacesPerIndent) {
+        // 默认缩进为4个空格
+        if (spacesPerIndent === undefined || typeof spacesPerIndent !== 'number') {
+            spacesPerIndent = 4;
+        }
+        // 将配置文件字符串按行分割
+        let lines = confString.split('\n');
+        console.log(lines);
+        // 当前缩进级别
+        let currentIndent = 0;
+        // 用来存储格式化后的行
+        let formattedLines = [];
+        // 遍历每一行
+        for (let line of lines) {
+            line = line.trim(); // 去除首尾空格
+            // 忽略空行
+            if (line === '') {
+                if (!isDelLine) formattedLines.push(line)
+                continue;
+            }
+            line = line.replace(/# +|#/, '# ')
+            // 判断行首的缩进情况
+            let leadingSpaces = 0;
+            for (let char of line) {
+                if (char === ' ') {
+                    leadingSpaces++;
+                } else {
+                    break;
+                }
+            }
+            // 计算当前行的缩进级别
+            let indentLevel = Math.floor(leadingSpaces / spacesPerIndent);
+            // 根据缩进级别计算实际缩进量
+            let actualIndent = indentLevel * spacesPerIndent;
+            // 如果当前行是结束块（以"}"结尾），则减少缩进级别
+            if (line.endsWith('}') || line.endsWith('};')) {
+                currentIndent -= spacesPerIndent;
+            }
+            // 添加当前行到格式化数组中
+            formattedLines.push(' '.repeat(currentIndent) + line);
+            // 如果当前行是开始块（以"{"结尾），增加缩进级别
+            if (line.endsWith('{')) {
+                currentIndent += spacesPerIndent;
+            }
+        }
+        // 将格式化后的行拼接成字符串返回
+        return formattedLines.join('\n');
+      }
+
+      function getStorage(key) {
+        let result = localStorage.getItem(key)
+        try {
+          return JSON.parse(result)
+        } catch {
+          return result 
+        }
+      }
+      function setStorage(key, val) {
+        if (val || val === 0) localStorage.setItem(key, JSON.stringify(val))
+      }
+
+  </script>
+</body>
+</html>
