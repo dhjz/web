@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>播放器-遥控器</title>
+  <link rel="icon" href="./favicon.ico">
+  <link rel="stylesheet" href="./css/common.css">
+</head>
+
+<body>
+  <div id="app">
+    <div id="logs"></div>
+    <div id="socket-status"></div>
+    <div v-if="tabIndex == 0">
+      <div class="server-img" @click="showServer = true"><img src="./img/server.png" alt=""></div>
+      <div class="btn-box">
+        <button v-for="item in appList" @click="open(item.path)">{{ item.name }}</button>
+        <button onclick="location.reload()">刷新</button>
+        <button @click="showDY = true">抖音</button>
+        <button @click="showScreen">远程</button>
+      </div>
+      <div class="btn-box">
+        <button @click="sendkey('ALT,TAB')">TAB</button>
+        <button @click="sendkey('ESC')">ESC</button>
+        <button @click="sendkey('ALT,F4')">关闭</button>
+        <button @click="sendkey('ENTER')">回车</button>
+        <button @click="sendkey('WIN,D')">桌面</button>
+        <button @click="showQr = true" v-show="ip">二维码</button>
+      </div>
+      <div class="btn-box">
+        <button @click="sendkey('MEDIA_PREV_TRACK')">上曲</button>
+        <button @click="sendkey('MEDIA_PLAY_PAUSE')">暂停</button>
+        <button @click="sendkey('MEDIA_NEXT_TRACK')">下曲</button>
+        <button @click="sendkey('VOLUME_DOWN')">音量-</button>
+        <button @click="sendkey('VOLUME_UP')">音量+</button>
+        <button @click="sendkey('VOLUME_MUTE')">静音</button>
+      </div>
+      <div class="btn-box">
+        <button style="width: 50px;" @click="sendkey('LEFT')">←-</button>
+        <button style="width: 50px;" @click="sendkey('UP')">↑</button>
+        <button style="width: 50px;" @click="sendkey('DOWN')">↓</button>
+        <button style="width: 50px;" @click="sendkey('RIGHT')">→</button>
+        <button style="width: 50px;" @click="sendkey('SPACE')">空格</button>
+      </div>
+      <div class="btn-box">
+        <input type="text" v-model="keystr">
+        <button @click="sendtext(keystr)">发文</button>
+        <button @click="open(keystr)">开Exe</button>
+        <button @click="keystr = ''">清空</button>
+      </div>
+      <div style="height: 65vh;"><mouse-panel></mouse-panel></div>
+      <div class="dialog" v-show="showQr" @click="showQr = false">
+        <div class="qrwrap">
+          <div id="qrcode-img"></div><div>{{ ip }}</div><div>打开手机浏览器或者微信扫一扫</div>
+        </div>
+      </div>
+      <div class="dialog" v-show="showServer">
+        <server-panel></server-panel>
+        <i class="dialog-close" @click="showServer = false" style="font-size: 30px; padding: 10px 16px; color: #fff;">&times;</i>
+      </div>
+      <div class="dialog" v-show="showPs">
+        <em></em>
+        <canvas id="screen-box" @click="screenClick" v-longtap="handleLongTap"></canvas>
+        <div class="screen-control">
+          <div class="input" v-show="inputShow"><input type="text" v-model="screenStr" round @keyup="screenInput"><i @click="screenStr = ''">&times;</i></div>
+          <i v-show="inputShow" @click="screenInput">↵</i>
+          <i v-show="inputShow" @click="sendkey('CTRL,Z')">↶</i>
+          <i v-show="inputShow" @click="sendkey('BACK')">⇦</i>
+          <i @click="inputShow = !inputShow">▩</i>
+          <i @click="hideScreen">&times;</i>
+        </div>
+      </div>
+      <div class="dialog" v-show="showDY">
+        <dou-yin></dou-yin>
+        <i class="dialog-close" @click="showDY = false" style="font-size: 30px; padding: 10px 16px;">&times;</i>
+      </div>
+    </div>
+    <div v-if="tabIndex == 1">
+      <dou-yin></dou-yin>
+    </div>
+    <div v-if="tabIndex == 2">
+      <div class="tab-km">
+        <keyboard></keyboard>
+        <div class="mouse-wrap"><mouse-panel horizon></mouse-panel></div>
+      </div>
+    </div>
+    <div v-if="tabIndex == 3" style="height: 86vh;">
+      <div class="btn-box">
+        <button style="width: 50px;" @click="sendkey('LEFT')">←-</button>
+        <button style="width: 50px;" @click="sendkey('UP')">↑</button>
+        <button style="width: 50px;" @click="sendkey('DOWN')">↓</button>
+        <button style="width: 50px;" @click="sendkey('RIGHT')">→</button>
+        <button style="width: 50px;" @click="sendkey('SPACE')">空格</button>
+      </div>
+      <mouse-panel></mouse-panel>
+    </div>
+    <div v-if="tabIndex == 4">
+      <custom-btn></custom-btn>
+    </div>
+    <div id="keyboard"><keyboard></keyboard></div>
+    <tab-bar @change="(val) => tabIndex = val"></tab-bar>
+  </div>
+
+  <script src="./lib/vue.global.prod.js"></script>
+  <!-- 调试用 -->
+  <!-- <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.js"></script>  -->
+  <script src="./lib/qr-creator.min.js"></script>
+  <script src="./lib/pako.min.js"></script>
+  <script src="./js/constants.js"></script>
+  <script src="./js/utils.js"></script>
+  <script src="./js/index.js"></script>
+  <script>
+    // 异步加载组件列表, /js/components/xxx.js
+    window.SYNC_COMPONENTS = ['DouYin', 'Keyboard', 'MousePanel', 'TabBar', 'ServerPanel', 'CustomBtn']
+    window.$eventBus = new EventBus() // 全局事件总线
+    window.deskWidth = 0
+    window.deskHeight = 0
+    window.baseHostPort = getStorage('baseHostPort') || location.host
+
+    // 其他工具类:::
+    function toggle(sel) {
+      let el = document.querySelector(sel);
+      if (!el) return;
+      el.style.display = el.style.display == 'block' ? 'none' : 'block';
+      if (sel == '#keyboard' && el.style.display == 'block') {
+        document.body.style.paddingBottom = el.offsetHeight + 'px';
+        window.scrollTo(0, document.getElementById('mousecontrol').offsetTop);
+      } else {
+        document.body.style.paddingBottom = '0';
+      }
+    };
+
+    // 全局DOM事件代理 .keyboard i 按键发送到后台
+    document.addEventListener('click', function (e) {
+      let el = e.target
+      let cls = el.parentNode.className + el.parentNode.parentNode.className + el.parentNode.parentNode.parentNode.className
+      if (cls.includes('keyboard') && el.nodeName.toLowerCase() === 'i') {
+        let key = el.getAttribute('k') || el.innerText;
+        console.log('keyboard click key: ', key);
+        request(`/monitor/sendkey?key=${key}`);
+      }
+    })
+
+    /*** 全局 websocket  ***/
+    window.isSocketOpen = false
+    window.screenCanvas = null
+    window.screenCtx = null
+    let dpr = window.devicePixelRatio || 1
+    websocket = new WebSocket(`ws://${baseHostPort}/ws`);
+    websocket.binaryType = 'arraybuffer';
+    websocket.onmessage = async function (evt) {
+      console.log('onmessage', evt.data, typeof evt.data);
+      if (evt.data && (evt.data.size || evt.data.byteLength)) { // 远程桌面截图数据
+        const img = new Image();
+        // 传json和图片用下面3行
+        // const jsonData = JSON.parse(pako.ungzip(new Uint8Array(evt.data), { to: 'string' }));
+        // console.log('Received jsonData:', jsonData);
+        // img.src = 'data:image/jpeg;base64,' + jsonData.img;
+        // 只传图片用下面3行
+        const blob = new Blob([pako.ungzip(new Uint8Array(evt.data))], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob)
+        img.src = url
+        img.onload = () => {
+          window.deskWidth = img.width
+          window.deskHeight = img.height
+          let widthScale = window.innerWidth / img.width
+          let heightScale = window.innerHeight / img.height
+          if (widthScale <= heightScale) {
+            screenCanvas.width = Math.round(window.innerWidth * dpr);
+            screenCanvas.height = screenCanvas.width * img.height / img.width;
+            screenCanvas.style.width = window.innerWidth + 'px';
+            screenCanvas.style.height = (window.innerWidth * img.height / img.width) + 'px';
+          } else {
+            screenCanvas.height = Math.round(window.innerHeight * dpr);
+            screenCanvas.width = screenCanvas.height * img.width / img.height;
+            screenCanvas.style.width = (window.innerHeight * img.width / img.height) + 'px';
+            screenCanvas.style.height = window.innerHeight + 'px';
+          }
+          screenCtx.drawImage(img, 0, 0, screenCanvas.width, screenCanvas.height);
+          // screenCtx.scale(dpr, dpr)
+          URL.revokeObjectURL(url);
+        };
+      }
+    };
+    websocket.onopen = function () {
+      console.log('socket open....');
+      isSocketOpen = true
+      $eventBus.emit('socketOpen', true)
+      $q('#socket-status').className = 'on'
+    };
+    websocket.onclose = function () {
+      console.log('socket close....');
+      isSocketOpen = false
+      $eventBus.emit('socketOpen', false)
+      $q('#socket-status').className = ''
+    };
+
+    let startTime = 0;
+    function sendData(data, force) { // 发送websocket数据
+      if (!isSocketOpen) return;
+      const curr = new Date().getTime();
+      if (curr - startTime > 60 || force) {
+        console.log('socket send....', data);
+        websocket.send(data);
+        startTime = curr;
+      }
+    };
+
+  </script>
+</body>
+
+</html>
