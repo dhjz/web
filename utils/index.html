@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D工具函数</title>
+  <!-- <script src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <link href="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"> -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-batch.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script> -->
+  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"> -->
+  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vs.min.css" rel="stylesheet"> -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; }
+    body { font-size: 14px; background: #f6f6f6;}
+    a { text-decoration: none; color: #333; }
+    a:hover { color: #409EFF; }
+    #title-list {  position: fixed; top: 10px; right: 10px; background-color: white; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      padding: 10px 10px 0; z-index: 1000; max-height: calc(100vh - 30px); overflow-y: auto; }
+    #title-list a { display: block; margin-bottom: 8px; }
+    pre[class*=language-] { margin: 0 0 8px; }
+    code[class*=language-], pre[class*=language-] { font-size: 14px; }
+    .title { padding-top: 8px; }
+    .title-box { transition: all .3s; height: auto; overflow: hidden; }
+    .spliter { margin: 0 0 6px 0; background: #409EFF; color: #fff; padding: 2px 6px; cursor: pointer; }
+    ::-webkit-scrollbar {	width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb {	background-color: #ddd; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div>
+    <pre id="list-js">
+      <code class="language-javascript" id="cont-js"></code>
+    </pre>
+    <pre id="list-batch">
+      <code class="language-batch" id="cont-bat"></code>
+    </pre>
+    <pre id="list-bash">
+      <code class="language-bash" id="cont-bash"></code>
+    </pre>
+  </div>
+  <div id="title-list"></div>
+  <script src="./javascript.js"></script>
+  <script src="./bat.js"></script>
+  <script src="./bash.js"></script>
+  <script>
+    function $q(val) { return document.querySelector(val) }
+    function $qa(val) { return Array.from(document.querySelectorAll(val)) }
+    function random(val, len) { return md5(val).slice(0, len || 4) }
+
+    async function main() {
+      const jsData = await fetch('./javascript.js').then(res => res.text()).catch(() => '')
+      $q('#cont-js').innerHTML = '\n' + jsData
+      $q('#cont-js').parentNode.style.display = jsData ? 'block' : 'none'
+      $q('#cont-bat').innerHTML = window.batJs
+      $q('#cont-bat').parentNode.style.display = window.batJs ? 'block' : 'none'
+      $q('#cont-bash').innerHTML = window.bashJs
+      $q('#cont-bash').parentNode.style.display = window.bashJs ? 'block' : 'none'
+
+      Prism.highlightAll()
+
+      let titleObj = [
+        { title: 'JavaScript', list: [], reg: /^\s*\/\/\s*#/ },
+        { title: 'Bat脚本', list: [], reg: /^\s*::\s*#/ },
+        { title: 'Bash脚本', list: [], reg: /^\s*#\s*#/ },
+      ]
+      $qa('.token.comment').forEach(item => {
+        const text = item.innerText
+        let ind = titleObj.findIndex(x => x.reg.test(text))
+        if (ind > -1) {
+          let title = text.replace(titleObj[ind].reg, '').trim()
+          item.classList.add('title')
+          item.id = 'c_' + random(title)
+          titleObj[ind].list.push(title)
+        }
+      })
+      titleObj.forEach(item => {
+        if (item.list.length) {
+          const splitEl = document.createElement('div')
+          splitEl.className = 'spliter'
+          splitEl.innerHTML = ' - ' + item.title
+          $q('#title-list').appendChild(splitEl)
+          const titleBox = document.createElement('div')
+          titleBox.className = 'title-box'
+          item.list.forEach((x, ind) => {
+            const div = document.createElement('div')
+            div.innerHTML = `<a href="#c_${random(x)}">${ind + 1}. ${x}</a>`
+            titleBox.appendChild(div)
+          })
+          $q('#title-list').appendChild(titleBox)
+          // 小于5不展开，大于5点开折叠，大于20默认折叠
+          item.list.length > 5 && splitEl.addEventListener('click', () => {
+            titleBox.style.height = '0px' === titleBox.style.height ? 'auto' : '0px' 
+          })
+          item.list.length > 20 && (titleBox.style.height = '0px');
+        }
+      })
+
+      location.hash && document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    main()
+
+    try {
+      // 测试函数
+      // dragUpload()
+    } catch (e) { console.log(e); }
+
+  </script>
+</body>
+</html>
