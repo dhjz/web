@@ -18,10 +18,13 @@
     * { margin: 0; padding: 0; }
     body { font-size: 14px; background: #f6f6f6;}
     a { text-decoration: none; color: #333; }
+    i { font-style: normal; }
     a:hover { color: #409EFF; }
-    #title-list {  position: fixed; top: 10px; right: 10px; background-color: white; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    .float-tools {  position: fixed; top: 10px; right: 10px; background-color: white; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       padding: 10px 10px 0; z-index: 1000; max-height: calc(100vh - 30px); overflow-y: auto; }
-    #title-list a { display: block; margin-bottom: 8px; }
+    .float-tools a { display: block; margin-bottom: 8px; }
+    .tools { padding-bottom: 10px; text-align: right; }
+    .tools i { border: 1px solid #dcdfe6;  color: #606266; padding: 1px 4px; border-radius: 4px; line-height: 1; cursor: pointer; }
     pre[class*=language-] { margin: 0 0 8px; }
     code[class*=language-], pre[class*=language-] { font-size: 14px; }
     .title { padding-top: 8px; }
@@ -43,7 +46,10 @@
       <code class="language-bash" id="cont-bash"></code>
     </pre>
   </div>
-  <div id="title-list"></div>
+  <div class="float-tools" >
+    <div class="tools"><i onclick="toggleTheme()" id="tool-theme" title="切换主题">🌙</i></div>
+    <div id="title-list"></div>
+  </div>
   <script src="./javascript.js"></script>
   <script src="./bat.js"></script>
   <script src="./bash.js"></script>
@@ -101,9 +107,19 @@
       })
 
       location.hash && document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth' });
+      toggleTheme(true)
     }
 
     main()
+
+    function toggleTheme(isLocal) {
+      let themeLink = document.querySelector("link[href*='min.css']");
+      const isDark = isLocal === true ? localStorage.getItem('utils-theme') == 'light' : themeLink.href.includes('dark')
+      themeLink.href = isDark ? 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css'
+        : 'https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css';
+      $q('#tool-theme').innerText = isDark ? '☀️' : '🌙'
+      localStorage.setItem('utils-theme', isDark ? 'light' : 'dark')
+    }
 
     try {
       // 测试函数
