@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <!-- when using the mode "code", it's important to specify charset utf-8 -->
+    <meta charset="utf-8">
+
+    <link href="js/jsoneditor.min.css" rel="stylesheet" type="text/css">
+    <script src="js/jsoneditor.min.js"></script>
+		<style>
+			* { margin:0; padding: 0;box-sizing: border-box; }
+			.wrap { display: flex; padding: 10px; }
+			.wrap > div { width: 40%; height: calc(100vh - 42px);position: relative;  }
+			#text{display:block;height: 100%; width: 98%; padding: 4px;}
+			#jsoneditor { width: 60%; }
+			.control button { margin-right: 8px;}
+		</style>
+</head>
+<body>
+		<div class="control" style=" height:22px; padding-left: 35%;">
+			<button onclick="genJson()">生成</button>
+			<button onclick="genJson(true)">data生成</button>
+			<button onclick="backJson()">还原</button>
+			<button onclick="window.open('index.html')">文本编辑器</button>
+		</div>
+    <div class="wrap">
+			<div>
+				<textarea id="text"></textarea>
+			</div>
+			<div id="jsoneditor"></div>
+		</div>
+
+    <script>
+        // create the editor
+        const container = document.getElementById("jsoneditor")
+        const options = {}
+        const editor = new JSONEditor(container, options)
+
+        // set json
+        const initialJson = {
+            "Array": [1, 2, 3],
+            "Boolean": true,
+            "Null": null,
+            "Number": 123,
+            "Object": {"a": "b", "c": "d"},
+            "String": "Hello World"
+        }
+        editor.set(initialJson)
+
+        // get json
+        const updatedJson = editor.get()
+				
+				function genJson(flag) {
+					let temp = ''
+					try {
+						if (flag) {
+							temp = JSON.parse(JSON.parse(document.querySelector('#text').value).data)
+						} else {
+							temp =  JSON.parse(document.querySelector('#text').value)
+						}
+						
+					} catch(e) {
+						console.log(e)
+						alert('JSON 格式有误')
+					}
+					editor.set(temp)
+				}
+				function backJson() {
+					document.querySelector('#text').value = JSON.stringify(editor.get(), null, 2)
+				}
+    </script>
+</body>
+</html>

@@ -87,6 +87,62 @@
       <button class="btn" type="button" data-action="switchTab">switchTab首页</button>
     </div>
     <script type="text/javascript">
+
+      if (document.hidden !== undefined) { // 如果浏览器支持 visibility API
+        document.addEventListener("visibilitychange", visibilityChanged);
+      } else if (document.webkitHidden != undefined) {
+        document.addEventListener("webkitvisibilitychange", visibilityChanged);
+      } else { // 对于不完全支持的情况提供降级方案
+          console.log('html not support visibilitychange, window.onblur event to simulate');
+          window.onblur = function () {
+            setTimeout(() => {
+              const customEvent = new CustomEvent('visibilitychangeMy', { detail: { hidden: true } });
+              document.dispatchEvent(customEvent);
+            }, 0);
+          };
+          window.onfocus = function () {
+            setTimeout(() => {
+              const customEvent = new CustomEvent('visibilitychangeMy', { detail: { hidden: false } });
+              document.dispatchEvent(customEvent);
+            }, 0);
+          };
+          document.addEventListener('visibilitychangeMy', visibilityChanged, false);
+      }
+
+      function visibilityChanged(e) {
+          console.log(e);
+          if (document.hidden || document.webkitHidden || e.detail?.hidden) {
+              document.title = '别走啊~'
+              console.log("Web page is hidden.")
+              dnotify('页面隐藏了')
+          } else {
+              setTimeout(() => {
+                document.title = '你又回来了呢~'
+                console.log("Web page is visible.")
+                dnotify('页面显示了')
+              }, 1500)
+          }
+      }
+
+      window.dnotifyTimer = null
+      function dnotify(txt, time) {
+        clearTimeout(dnotifyTimer)
+        if (document.getElementById('dnotify')) {
+          document.getElementById('dnotify').innerHTML = txt
+          document.getElementById('dnotify').style.display = 'block';
+        } else {
+          var notEle = document.createElement('div');
+          notEle.id = 'dnotify'
+          notEle.innerHTML = txt;
+          /*notEle.style = `min-width: 380px;box-sizing: border-box;border-radius: 4px;border: 1px solid rgb(235, 238, 245);position: fixed;left: 50%;top: 20px;transform: translateX(-50%);background-color: rgb(237, 242, 252);
+      overflow: hidden;padding: 12px 15px 12px 20px;display: flex;align-items: center;justify-content: center;color: rgb(103, 194, 58);font-size: 14px;line-height: 1;box-shadow: 3px 3px 9px #bbb;text-align: center;` */
+          notEle.style = `display: flex; min-width: 330px;max-width: 40%; padding: 12px 16px 12px 16px; border-radius: 8px; box-sizing: border-box; border: 1px solid #ebeef5; position: fixed; background-color: #fff;top:16px;right:16px;z-index: 9999999;
+          box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);  transition: opacity .3s,transform .3s,left .3s,right .3s,top .4s,bottom .3s;  overflow: hidden;font-size: 14px;line-height: 1.4;text-align: center;justify-content: center;color:#333;`
+          document.body.append(notEle)
+        } 
+        dnotifyTimer = setTimeout(function(){ document.getElementById('dnotify').style.display = 'none'; }, time ? time : 1500)
+      } 
+
       window.getQueryObject = function (url) {
         url = url == null ? window.location.href : url
         const search = url.substring(url.lastIndexOf('?') + 1)
@@ -509,7 +565,7 @@
                 break;
               default:
                 uni[action]({
-                  url: '/pages/main/service/index'
+                  url: '/pages/index/test'
                 });
                 break;
             }
