@@ -6,7 +6,7 @@ window.TabBarComp = {
   `,
   data() {
     return {
-      tabList: ['主控', '抖音', '键鼠', '鼠标', '自定义'],
+      tabList: ['主控', '抖音', '键鼠', '鼠标', '文件', '自定义'],
       currInd: 0,
     }
   },

@@ -1,11 +1,12 @@
 
+window.baseHostPort = getStorage('baseHostPort') || location.host
+window.baseApi = `http://${window.baseHostPort}/control-api`;
 function request(options, temp) {
-  let baseApi = `http://${window.baseHostPort}/control-api`;
   let opts = temp
   if (typeof options != 'string') {
     opts = options
   }
-  let { url, method = 'GET', params = {}, data = null } = opts || {};
+  let { url, method = 'GET', params = {}, data = null, headers, isFile } = opts || {};
   if (typeof options == 'string') url = options
 
   // 将查询参数转换为URL编码字符串
@@ -16,12 +17,14 @@ function request(options, temp) {
   finalUrl = finalUrl.includes('http') ? finalUrl : `${baseApi}${finalUrl}`
 
   // 设置请求头部
-  const headers = {};
-  if (data) headers['Content-Type'] = 'application/json'
+  if (!headers) {
+    headers = {}
+    if (data && !isFile) headers['Content-Type'] = 'application/json'
+  }
 
   // 发起Fetch请求
   return new Promise((resolve, reject) => {
-    fetch(finalUrl, { method, headers, body: data ? JSON.stringify(data) : null }).then(res => {
+    fetch(finalUrl, { method, headers, body: isFile ? data : data ? JSON.stringify(data) : null }).then(res => {
       if (!res.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return res.json();
     }).then(r => resolve(r)).catch(e => reject(e));
@@ -39,6 +42,20 @@ function $qa(val) {
 function logs(...val) {
   document.getElementById('logs').innerHTML = (val || []).join('  ')
 }   
+
+function getFileType(val) {
+  if (/\.(jpg|jpeg|png|gif)$/i.test(val)) return 'img'
+  if (/\.(mp4|avi|mov|wmv|flv)$/i.test(val)) return 'video'
+  if (/\.(mp3|wav|wma|aac)$/i.test(val)) return 'music'
+  if (/\.(doc|docx|odt)$/i.test(val)) return 'doc'
+  if (/\.(xls|xlsx)$/i.test(val)) return 'xls'
+  if (/\.(ppt|pptx)$/i.test(val)) return 'ppt'
+  if (/\.(pdf)$/i.test(val)) return 'pdf'
+  if (/\.(txt|ini|properties|yml|json|md)$/i.test(val)) return 'txt'
+  if (/\.(java|html|htm|css|js|php|h|go|)$/i.test(val)) return 'code'
+  if (/\.(zip|rar|7z|tar\.gz|tar\.bz2)$/i.test(val)) return 'zip'
+  return 'other'
+}
 
 var timerId;
 function throttle(func, delay) {
@@ -106,13 +123,13 @@ window.longtapDc = {
 async function syncAllComponents(app) {
   app = app || window.appIns
   const components = window.SYNC_COMPONENTS || []
-  for (let i = 0; i < components.length; i++) {
-    const name = components[i];
-    winName = `${name}Comp`
-    await loadScript(`./js/components/${name}.js`, winName)
+
+  await Promise.all(components.map(async (name) => {
+    const winName = `${name}Comp`;
+    await loadScript(`./js/components/${name}.js`, winName);
     console.log('syncAllComponents... ', winName);
-    window[winName] && app.component(name, window[winName])
-  }
+    window[winName] && app.component(name, window[winName]);
+  }));
 }
 
 class EventBus {
@@ -158,6 +175,34 @@ function delStorage(key) {
   localStorage.removeItem(key)
 }
 
+window.dnotifyTimer = null
+function dnotify(txt, time) {
+  clearTimeout(dnotifyTimer)
+  if (document.getElementById('dnotify')) {
+    document.getElementById('dnotify').innerHTML = txt
+    document.getElementById('dnotify').style.display = 'block';
+  } else {
+    var notEle = document.createElement('div');
+    notEle.id = 'dnotify'
+    notEle.innerHTML = txt;
+    /*notEle.style = `min-width: 380px;box-sizing: border-box;border-radius: 4px;border: 1px solid rgb(235, 238, 245);position: fixed;left: 50%;top: 20px;transform: translateX(-50%);background-color: rgb(237, 242, 252);
+overflow: hidden;padding: 12px 15px 12px 20px;display: flex;align-items: center;justify-content: center;color: rgb(103, 194, 58);font-size: 14px;line-height: 1;box-shadow: 3px 3px 9px #bbb;text-align: center;` */
+    notEle.style = `display: flex; min-width: 330px;max-width: 40%; padding: 12px 16px 12px 16px; border-radius: 8px; box-sizing: border-box; border: 1px solid #ebeef5; position: fixed; background-color: #fff;top:16px;right:16px;z-index: 9999999;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);  transition: opacity .3s,transform .3s,left .3s,right .3s,top .4s,bottom .3s;  overflow: hidden;font-size: 14px;line-height: 1.4;text-align: center;justify-content: center;color:#333;`
+    document.body.append(notEle)
+  } 
+  dnotifyTimer = setTimeout(function(){ document.getElementById('dnotify').style.display = 'none'; }, time ? time : 1500)
+}  
+
+function $copy(text) {
+  let inputElement = document.createElement('input');
+  inputElement.value = text;
+  document.body.appendChild(inputElement)
+  inputElement.select()
+  document.execCommand('copy', true);
+  inputElement.parentNode.removeChild(inputElement)
+  return true
+}
 // window.addEventListener('keydown', (ev) => {
 //     logs('Key code:', ev.keyCode, ev.key);
 //     setTimeout(() => {

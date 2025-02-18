@@ -9,6 +9,7 @@ a {text-decoration: none;} li, ol { list-style: none; }
 .clearfix{zoom:1;}
 .text-center { text-align: center; }
 .text-right { text-align: right; }
+.ipt { height: var(--input-height); line-height: var(--input-height); padding: 0 10px; color: #333;  display: inline-block; }
 button, input, select, textarea { outline: none; font-size: inherit; transition: border-color .2s cubic-bezier(.645,.045,.355,1); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: #409eff; }
 input, select { -webkit-appearance: none; background-color: #fff; border-radius: var(--input-radius); border: 1px solid #dcdfe6;  color: #333;  display: inline-block; 
@@ -21,7 +22,9 @@ select{ background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCA
 button, .btn { display: inline-block; white-space: nowrap;  cursor: pointer;  background: #fff;  border: 1px solid #dcdfe6;  color: #333;  -webkit-appearance: none;
   text-align: center;  user-select: none; height: var(--input-height); line-height: var(--input-height); padding: 0px 6px; border-radius: var(--input-radius); min-width: 23px; }
 button, .btn { background: #409eff; color: #fff; border-color: #409eff; }
+button[mini], .btn[mini] { font-size: 12px; padding: 0px 3px; }
 button[danger], button[error], .btn[danger], .btn[error] { background: #f56c6c; color: #fff; border-color: #f56c6c; }
+button[normal], .btn[normal] { background: #fff; color: #333; border-color: #dcdfe6; }
 button[success], .btn[success] { background: #67c23a; color: #fff; border-color: #67c23a; }
 button[warning], .btn[warning] { background: #e6a23c; color: #fff; border-color: #e6a23c; }
 button:hover, .btn:hover { opacity: .9; }
@@ -52,7 +55,7 @@ button+button, .btn+.btn, .btn+button, button+.btn, input+button, select+button,
     color: #666;  border-radius: 50%;  font-style: normal;  border: 1px solid #999;  }
 .screen-control .input { width: 0px; flex: 1; }
 
-.dialog-close { position: absolute; top: 0; right: 0; color: #333; padding: 6px 8px; }
+.dialog-close { position: absolute; top: 0; right: 0; font-size: 30px; padding: 10px 16px; color: #fff; z-index: 9;}
 .flex-sb { display: flex; justify-content: space-between; }
 
 /* Keyboard */
@@ -133,6 +136,28 @@ button+button, .btn+.btn, .btn+button, button+.btn, input+button, select+button,
   border: 1px solid; border-image: linear-gradient(to right, #8f41e9, #ccc, #578aef) 1; background: #fff; text-align: center; }
 .btn-item.on { border-width: 2px; background: #eee; }
 .hori .btn-item { transform: rotate(90deg); transform-origin: center; }
+
+/* FileList */
+.file-list { padding: 14px 0; }
+.files { margin-top: 12px; }
+.files li { line-height:34px; border-bottom: 1px solid #ddd; display: flex; align-items: center;padding: 6px 0; font-size: 13px;}
+.files li:before { content: '其他'; background: #999; color: #fff; min-width: 30px; padding: 0 2px; line-height: 26px; height: 26px; font-size: 13px; margin-right: 8px; text-align: center; }
+.files li.dir:before { content: '文件夹'; background: #f1c951; background: #ffbf00; }
+.files li.img:before { content: '图片'; background: #b5c327; }
+.files li.video:before { content: '视频'; background: #3369e7; }
+.files li.music:before { content: '音频'; background: #00a98f; }
+.files li.code:before { content: '代码'; background: #222; }
+.files li.zip:before { content: '压缩'; background: #8e43e7; }
+.files li.doc:before { content: 'Word'; background: #00a1f1; }
+.files li.xls:before { content: 'Exl'; background: #7cbb00; }
+.files li.ppt:before { content: 'PPT'; background: #f65314; }
+.files li.pdf:before { content: 'PDF'; background: #ea3e23; }
+.files li.txt:before { content: '文本'; background: #999; }
+.files li h1 { color: #333; text-decoration: none;flex: 1;width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size:13px; line-height: 12px; font-weight: normal; }
+.files li h2 { color: #999; font-size: 12px; margin-top: 4px; font-weight: normal;}
+.files li h2 i { color: #409eff; margin-left: 4px;}
+.files li span {color: #666; font-size:12px; margin: 0 4px; }
+.file-list .file-img { max-width: 100vw; max-height:  90vh; }
 
 @media screen and (min-width: 1200px) {
     .keyboard-panel div { font-size: 44px; }

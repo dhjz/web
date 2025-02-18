@@ -14,6 +14,7 @@
   <div id="app">
     <div id="logs"></div>
     <div id="socket-status"></div>
+    <!-- 主控页 -->
     <div v-if="tabIndex == 0">
       <div class="server-img" @click="showServer = true"><img src="./img/server.png" alt=""></div>
       <div class="btn-box">
@@ -51,16 +52,19 @@
         <button @click="open(keystr)">开Exe</button>
         <button @click="keystr = ''">清空</button>
       </div>
+      <!-- 二维码弹窗 -->
       <div style="height: 65vh;"><mouse-panel></mouse-panel></div>
       <div class="dialog" v-show="showQr" @click="showQr = false">
         <div class="qrwrap">
           <div id="qrcode-img"></div><div>{{ ip }}</div><div>打开手机浏览器或者微信扫一扫</div>
         </div>
       </div>
+      <!-- 服务器列表 -->
       <div class="dialog" v-show="showServer">
         <server-panel></server-panel>
-        <i class="dialog-close" @click="showServer = false" style="font-size: 30px; padding: 10px 16px; color: #fff;">&times;</i>
+        <i class="dialog-close" @click="showServer = false">&times;</i>
       </div>
+      <!-- 远程桌面 -->
       <div class="dialog" v-show="showPs">
         <em></em>
         <canvas id="screen-box" @click="screenClick" v-longtap="handleLongTap"></canvas>
@@ -75,18 +79,21 @@
       </div>
       <div class="dialog" v-show="showDY">
         <dou-yin></dou-yin>
-        <i class="dialog-close" @click="showDY = false" style="font-size: 30px; padding: 10px 16px;">&times;</i>
+        <i class="dialog-close" @click="showDY = false" style="color: #333;">&times;</i>
       </div>
     </div>
+    <!-- 抖音页 -->
     <div v-if="tabIndex == 1">
       <dou-yin></dou-yin>
     </div>
+    <!-- 横屏全键盘页 -->
     <div v-if="tabIndex == 2">
       <div class="tab-km">
         <keyboard></keyboard>
         <div class="mouse-wrap"><mouse-panel horizon></mouse-panel></div>
       </div>
     </div>
+    <!-- 鼠标页 -->
     <div v-if="tabIndex == 3" style="height: 86vh;">
       <div class="btn-box">
         <button style="width: 50px;" @click="sendkey('LEFT')">←-</button>
@@ -97,9 +104,15 @@
       </div>
       <mouse-panel></mouse-panel>
     </div>
+    <!-- 文件 -->
     <div v-if="tabIndex == 4">
+      <file-list></file-list>
+    </div>
+    <!-- 自定义布局页 -->
+    <div v-if="tabIndex == 5">
       <custom-btn></custom-btn>
     </div>
+    <!-- 下弹出键盘 -->
     <div id="keyboard"><keyboard></keyboard></div>
     <tab-bar @change="(val) => tabIndex = val"></tab-bar>
   </div>
@@ -114,11 +127,10 @@
   <script src="./js/index.js"></script>
   <script>
     // 异步加载组件列表, /js/components/xxx.js
-    window.SYNC_COMPONENTS = ['DouYin', 'Keyboard', 'MousePanel', 'TabBar', 'ServerPanel', 'CustomBtn']
+    window.SYNC_COMPONENTS = ['DouYin', 'Keyboard', 'MousePanel', 'TabBar', 'ServerPanel', 'FileList', 'CustomBtn']
     window.$eventBus = new EventBus() // 全局事件总线
     window.deskWidth = 0
     window.deskHeight = 0
-    window.baseHostPort = getStorage('baseHostPort') || location.host
 
     // 其他工具类:::
     function toggle(sel) {
