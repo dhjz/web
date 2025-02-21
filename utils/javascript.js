@@ -217,6 +217,26 @@ function url2Obj(url) {
   return obj
 }
 
+// # 浏览器-处理URL参数
+function tansParams(params) {
+  if (!params) return ''
+  let result = '', encURI = encodeURIComponent;
+  for (const key of Object.keys(params)) {
+    const value = params[key]
+    if (!value && value !== 0) continue;
+    if (typeof value === 'object') {
+      for (const subKey of Object.keys(value)) {
+        const subValue = value[subKey];
+        if (!subValue && subValue !== 0) continue;
+        result += `${encURI(key + '[' + subKey + ']')}=${encURI(subValue)}&`
+      }
+    } else {
+      result += `${encURI(key)}=${encURI(value)}&`
+    }
+  }
+  return result.slice(0, -1)
+}
+
 // # 浏览器-全屏
 function fullScreen(isFull, el) {
   el = el || (isFull ? document.documentElement : document)
@@ -381,8 +401,8 @@ function timeFormat(date, formatStr = 'yyyy-MM-dd HH:mm:ss') {
 
 // # 工具-解析日期
 function timeParse(str, formatStr) {
-  if (formatStr) { // 比如包含年月日
-    if (!/yyyy.*MM.*dd/.test(formatStr)) return null;
+  if (formatStr) { // 必须包含年月日
+    if (!/(?=.*yyyy)(?=.*MM)(?=.*dd).*/.test(formatStr)) return null;
     const regex = new RegExp(formatStr.replace(/yyyy/, '(\\d{4})').replace(/MM|dd/g, '(\\d{2})').replace(/HH|mm|ss/g, '(\\d{2})'));
     const matches = str.match(regex);
     if (!matches) return null;
@@ -489,6 +509,78 @@ function goPageDo(url, type) {
   if (type === 'relaunch') uni.reLaunch({ url })
   // 重定向
   if (type === 'switch' || type === 'switchtab') uni.switchTab({ url })
+}
+
+// # uni-底部分页加载
+function uniBottomPageLoad() {
+  return {
+    data: {
+      dataStatus: 'loadmore', // loadmore: 加载更多, nomore: 没有更多 , loading: 正在加载
+      dataList: [],
+      params: { page: 1, limit: 10 }
+    },
+    onReachBottom() {
+      this.getDataList()
+    },
+    methods: {
+      getDataList() {
+        if (this.dataStatus === 'loading' || this.dataStatus == 'nomore') return;
+        this.dataStatus = 'loading'
+        Api.getXXXList({ ...this.params }).then(res => {
+          if (res.success) {
+            this.dataList = this.dataList.concat((res.data || []).map(item => ({ ...item })))
+            this.params.page++;
+          }
+          this.dataStatus = res.data && res.data.length ? 'loadmore' : 'nomore'
+        }).catch(() => this.dataStatus = 'loadmore')
+      },
+    }
+  }
+}
+
+// # uni-request
+function uniRequest(getToken) {
+  const timeout = 30000
+  const baseUrl = config.baseUrl // import.meta.env.VITE_APP_BASE_API  process.env.VUE_APP_BASE_API
+
+  const request = config => {
+    config.header = config.header || {}
+    if (getToken() && !config.noToken) {
+      config.header['Authorization'] = 'Bearer ' + getToken()
+    }
+    if (config.params) {
+      config.url = ((config.url.includes('?') ? '&' : '?') + tansParams(config.params))
+    }
+    return new Promise((resolve, reject) => {
+      uni.request({
+        method: config.method || 'GET',
+        timeout: config.timeout ||  timeout,
+        url: config.url.startsWith('http') ? config.url : (baseUrl + config.url),
+        data: config.data,
+        header: config.header,
+        // dataType: 'json',
+        success(res) {
+          if (res.statusCode === 200) {
+            resolve(res.data || {})
+            // 其他项目级别返回code自行处理
+          } else {
+            uni.showToast({ title: '后端接口' + res.statusCode + '异常', icon: 'none' })
+            reject('后端接口' + res.statusCode + '异常')
+          }
+        },
+        fail(err) {
+          console.log(err)
+          uni.showToast({ title: '后端接口请求错误', icon: 'none' })
+          reject(err)
+        }
+      })
+    })
+  }
+  request.get = (url, config = {}) => request({ url, ...config })
+  request.put = (url, data, config = {}) => request({ url, method: 'PUT', data,  ...config })
+  request.post = (url, data, config = {}) => request({ url, method: 'POST', data,  ...config })
+
+  // export default request
 }
 
 // # 正则-中文

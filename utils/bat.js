@@ -1,4 +1,4 @@
-window.batJs = `
+window.batJs = /* shell */`
 ::-------------------------- run_server.bat --------------------------
 :: # 选择脚本
 @echo off
@@ -36,6 +36,7 @@ echo  "*****choosed*** %port% : %jar_file%, %jar_file_name%"
 timeout /t 2
 pause
 endlocal
+
 ::-------------------------- run_web.bat --------------------------
 :: # 打包前端代码
 @echo off
@@ -60,4 +61,18 @@ if "%choice%"=="2" (
 
 pause
 endlocal
+
+::-------------------------- run_frpc.bat --------------------------
+:: # 后台执行frpc
+@echo off 
+if "%1" == "h" goto begin 
+mshta vbscript:createobject("wscript.shell").run("%~nx0 h",0)(window.close)&&exit 
+:begin 
+::
+d:
+cd frp
+start /b frpc -c frpc.ini
+
+:: # 关闭frpc
+taskkill /im frpc.exe /t /f
 `
