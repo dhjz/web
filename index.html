@@ -77,7 +77,7 @@
       let port = $q('#port').value || ''
       let mac = $q('#mac').value || ''
       if (!ip.trim() || !mac.trim()) return alert('请先输入ip和mac地址')
-      axios.get(`./.netlify/functions/wol?ip=${ip}&mac=${mac}`).then(res => {
+      axios.get(`./.netlify/functions/wol?ip=${ip}&port=${port}&mac=${mac}`).then(res => {
         console.log(res)
         $q('#result').innerHTML = JSON.stringify(res.data)
       })

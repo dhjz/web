@@ -57,8 +57,8 @@ exports.handler = async function (event, context) {
   const { httpMethod,  queryStringParameters, headers } = event
   console.log(queryStringParameters, httpMethod, headers)
   let { ip, port, mac } = queryStringParameters
-  if (!ip) ip = await getIp('1a638183n2.51vip.biz')
-  if (!ip) ip = await getIpDefault()
+  if (!ip) ip = await getIp('home.199311.xyz')
+  // if (!ip) ip = await getIpDefault()
   if (!port) port = 11999 
   if (!mac) mac = '04421AA96526'
 
