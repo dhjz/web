@@ -37,9 +37,11 @@
   <a target="_blank" href="./ace/" class="button ftr">Ace</a>
   <a target="_blank" href="./utils/" class="button ftr">工具函数</a>
   <h2>Wake On Lan</h2>
-  <div><label>IP: </label><input type="text" id="ip" autocomplete="on"></div>
-  <div><label>PORT: </label><input type="text" id="port" value="11999"  autocomplete="autocomplete"></div>
-  <div><label>MAC: </label><input type="text" id="mac" value="04421AA96526" autocomplete="autocomplete"></div>
+  <form action=""  autocomplete="on">
+    <div><label>IP: </label><input type="text" id="dip" autocomplete="on"></div>
+    <div><label>PORT: </label><input type="text" id="dport" value="11999"  autocomplete="on"></div>
+    <div><label>MAC: </label><input type="text" id="dmac" value="04421AA96526" autocomplete="on"></div>
+  </form>
   <div><button onclick="wol()">唤醒</button></div>
   <div class="result" id="result"></div>
   <h2>文件和Base64互转</h2>
@@ -73,9 +75,9 @@
       return document.querySelector(sel)
     }
     function wol() {
-      let ip = $q('#ip').value || ''
-      let port = $q('#port').value || ''
-      let mac = $q('#mac').value || ''
+      let ip = $q('#dip').value || ''
+      let port = $q('#dport').value || ''
+      let mac = $q('#dmac').value || ''
       if (!ip.trim() || !mac.trim()) return alert('请先输入ip和mac地址')
       axios.get(`./.netlify/functions/wol?ip=${ip}&port=${port}&mac=${mac}`).then(res => {
         console.log(res)
