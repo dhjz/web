@@ -1,0 +1,222 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta http-equiv="Cache-Control" content="no-siteapp">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0" />
+<meta name="applicable-device" content="pc,mobile" />
+<meta name="format-detection" content="telephone=no" />
+<meta name="keywords" content="在线屏幕测试,坏点检测,坏点测试软件,坏点测试图片,坏点修复,显示器坏点,屏幕坏点,测试屏幕坏点,投影仪测试,DisplayX,屏幕保护" />
+<meta name="description" content="免费在线屏幕测试工具。" />
+<title>在线屏幕检测 - 显示器检测 - 显示器坏点检测工具</title>
+<script>cache_sjs="22121306";sj_jie_mian="1";</script>
+<link href="static/css/style.css" rel="stylesheet" type="text/css">
+<link href="static/css/main.css" rel="stylesheet" type="text/css">
+<script>all_zhi_xing_js_head();</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
+<script src="static/js/main.js"></script>
+</head>
+<body id="body">
+<div id="container">
+	<ul id="main">
+		<li data-title="欢迎页" data-desc="" class="slide" id="welcome">
+			<div class="wrapper">
+
+<div class="nry_bt">
+<h1>在线屏幕检测</h1>
+</div>
+
+				<a class="button start" id="start">立即开始</a>
+				<p>想知道屏幕是否有缺陷？在线给显示器做个体检吧！本站提供的检查项目包括：纯色、漏光测试、干扰测试、对焦、呼吸效应、对比度、色阶、饱和度。通过本站可以全面的测试显示器的质量和水平。</p>
+				<p><span class="title">当前分辨率：</span><span class="value" id="resolution"></span></p>
+				<p><span class="title">内容分辨率：</span><span class="value" id="bodysize"></span></p>
+				<p>分辨率信息仅供参考，一些浏览器在缩放后无法提供正确的分辨率值。</p>
+				<p>请关闭浏览器缩放功能。</p>
+
+<div class="juzhong">
+<div id="ggwz___1" class="pmk_990_show pmk_1040_show" style="height:90px;margin-top:8px;margin-bottom:8px"><script>ggdm_duqu("ggwz___1", "728x90");</script></div>
+</div>
+
+    
+				<p>本测试工具通常不会对您的显示设备有任何伤害，且不能代替专业的检测器械。通常显示设备中有高压，非专业人士请不要自行维修您的显示设备。本工具的测试接过仅供参考，对本站的任何内容以及产生的结果不承担任何保证或责任。（本站提供：<strong>在线屏幕测试</strong>、<strong>屏幕检测</strong>、<strong>屏幕检测软件</strong>、<strong>显示器检测</strong>、<strong>屏幕坏点检测工具</strong>、<strong>显示器的测试工具</strong>等服务。）</p>
+			</div>
+		</li>
+		<li data-title="纯红色" data-desc="通常LCD显示器偶尔会有暗点(永远保持黑色)，请检查每个像素。注意屏幕上的灰尘有可能会被误认为坏点。" class="slide test" id="test-solid-red"></li>
+		<li data-title="纯绿色" data-desc="通常LCD显示器偶尔会有暗点(永远保持黑色)，请检查每个像素。注意屏幕上的灰尘有可能会被误认为坏点。" class="slide test" id="test-solid-green"></li>
+		<li data-title="纯蓝色" data-desc="通常LCD显示器偶尔会有暗点(永远保持黑色)，请检查每个像素。注意屏幕上的灰尘有可能会被误认为坏点。" class="slide test" id="test-solid-blue"></li>
+		<li data-title="纯黄色" data-desc="通常LCD显示器偶尔会有坏点(永远保持某一颜色)，请检查每个像素。" class="slide test" id="test-solid-yellow"></li>
+		<li data-title="纯青色" data-desc="通常LCD显示器偶尔会有坏点(永远保持某一颜色)，请检查每个像素。" class="slide test" id="test-solid-cyan"></li>
+		<li data-title="纯洋红色" data-desc="通常LCD显示器偶尔会有坏点(永远保持某一颜色)，请检查每个像素。" class="slide test" id="test-solid-magenta"></li>
+		<li data-title="纯白色" data-desc="除了用于测试坏点外，纯白屏通常用于测试显示器的亮度是否均衡，以及是否有不明显的色块存在。" class="slide test" id="test-solid-white"></li>
+		<li data-title="纯黑色" data-desc="除了用于测试坏点外，纯黑屏还常用于检查漏光水平。" class="slide test" id="test-solid-black"></li>
+		<li data-title="水平线1" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-horizontal-line-1px"></li>
+		<li data-title="水平线2" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-horizontal-line-2px"></li>
+		<li data-title="垂直线1" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-vertical-line-1px"></li>
+		<li data-title="垂直线2" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-vertical-line-2px"></li>
+		<li data-title="正斜线1" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-cross-1px"></li>
+		<li data-title="正斜线2" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-cross-2px"></li>
+		<li data-title="点阵" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-dots-1px"></li>
+		<!--li data-title="点2" data-desc="主要测试模拟信号的干扰水平，画面稳定的显示设备更佳。" class="slide test" id="test-dots-2px"></li-->
+		<li data-title="微型图案" data-desc="通常用于测试CRT显示器以及投影仪的对焦水平，请检查每个图案是否都清晰可见。" class="slide test" id="test-pattern"></li>
+		<li data-title="闪烁方块" data-desc="通常用于测试CRT显示器的呼吸效应程度，边缘线条稳定的显示设备更佳。" class="slide test" id="test-stability"><table><tr><td></td></tr></table></li>
+		<li data-title="方形网格" data-desc="请通过显示器的OSD设置菜单，使得线条横平竖直。" class="slide test" id="test-white-grid"><div></div></li>
+		<li data-title="彩色网格" data-desc="请检查线条是否有相同的宽度，以及线条是否平整。尤其是屏幕的边缘。" class="slide test" id="test-convergence"></li>
+		<li data-title="对比度(暗)" data-desc="用于测试屏幕的对比度，一般的非专业显示器无法区分最后一行的色块边缘。" class="slide test test-contrast" id="test-contrast-white">
+			<table><tbody>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #AFAFAF">68<span class="pmk_990_inline pmk_1040_inline">.63</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(175/255)</i></td>
+					<td style="background-color: #B7B7B7">71<span class="pmk_990_inline pmk_1040_inline">.76</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(183/255)</i></td>
+					<td style="background-color: #BFBFBF">74<span class="pmk_990_inline pmk_1040_inline">.90</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(191/255)</i></td>
+					<td style="background-color: #C7C7C7">78<span class="pmk_990_inline pmk_1040_inline">.04</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(199/255)</i></td>
+					<td style="background-color: #CFCFCF">81<span class="pmk_990_inline pmk_1040_inline">.18</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(207/255)</i></td>
+					<td style="background-color: #D7D7D7">84<span class="pmk_990_inline pmk_1040_inline">.31</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(215/255)</i></td>
+					<td style="background-color: #DFDFDF">87<span class="pmk_990_inline pmk_1040_inline">.45</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(223/255)</i></td>
+					<td style="background-color: #E7E7E7">90<span class="pmk_990_inline pmk_1040_inline">.59</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(231/255)</i></td>
+					<td style="background-color: #EFEFEF">93<span class="pmk_990_inline pmk_1040_inline">.73</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(239/255)</i></td>
+					<td style="background-color: #F7F7F7">96<span class="pmk_990_inline pmk_1040_inline">.86</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(247/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #D7D7D7">84<span class="pmk_990_inline pmk_1040_inline">.31</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(215/255)</i></td>
+					<td style="background-color: #DBDBDB">85<span class="pmk_990_inline pmk_1040_inline">.88</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(219/255)</i></td>
+					<td style="background-color: #DFDFDF">87<span class="pmk_990_inline pmk_1040_inline">.45</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(223/255)</i></td>
+					<td style="background-color: #E3E3E3">89<span class="pmk_990_inline pmk_1040_inline">.02</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(227/255)</i></td>
+					<td style="background-color: #E7E7E7">90<span class="pmk_990_inline pmk_1040_inline">.59</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(231/255)</i></td>
+					<td style="background-color: #EBEBEB">92<span class="pmk_990_inline pmk_1040_inline">.16</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(235/255)</i></td>
+					<td style="background-color: #EFEFEF">93<span class="pmk_990_inline pmk_1040_inline">.73</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(239/255)</i></td>
+					<td style="background-color: #F3F3F3">95<span class="pmk_990_inline pmk_1040_inline">.29</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(243/255)</i></td>
+					<td style="background-color: #F7F7F7">96<span class="pmk_990_inline pmk_1040_inline">.86</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(247/255)</i></td>
+					<td style="background-color: #FBFBFB">98<span class="pmk_990_inline pmk_1040_inline">.43</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(251/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #EBEBEB">92<span class="pmk_990_inline pmk_1040_inline">.16</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(235/255)</i></td>
+					<td style="background-color: #EDEDED">92<span class="pmk_990_inline pmk_1040_inline">.94</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(237/255)</i></td>
+					<td style="background-color: #EFEFEF">93<span class="pmk_990_inline pmk_1040_inline">.73</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(239/255)</i></td>
+					<td style="background-color: #F1F1F1">94<span class="pmk_990_inline pmk_1040_inline">.51</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(241/255)</i></td>
+					<td style="background-color: #F3F3F3">95<span class="pmk_990_inline pmk_1040_inline">.29</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(243/255)</i></td>
+					<td style="background-color: #F5F5F5">96<span class="pmk_990_inline pmk_1040_inline">.08</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(245/255)</i></td>
+					<td style="background-color: #F7F7F7">96<span class="pmk_990_inline pmk_1040_inline">.86</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(247/255)</i></td>
+					<td style="background-color: #F9F9F9">97<span class="pmk_990_inline pmk_1040_inline">.65</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(249/255)</i></td>
+					<td style="background-color: #FBFBFB">98<span class="pmk_990_inline pmk_1040_inline">.43</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(251/255)</i></td>
+					<td style="background-color: #FDFDFD">99<span class="pmk_990_inline pmk_1040_inline">.22</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(253/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #F5F5F5">96<span class="pmk_990_inline pmk_1040_inline">.08</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(245/255)</i></td>
+					<td style="background-color: #F6F6F6">96<span class="pmk_990_inline pmk_1040_inline">.47</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(246/255)</i></td>
+					<td style="background-color: #F7F7F7">96<span class="pmk_990_inline pmk_1040_inline">.86</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(247/255)</i></td>
+					<td style="background-color: #F8F8F8">97<span class="pmk_990_inline pmk_1040_inline">.25</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(248/255)</i></td>
+					<td style="background-color: #F9F9F9">97<span class="pmk_990_inline pmk_1040_inline">.65</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(249/255)</i></td>
+					<td style="background-color: #FAFAFA">98<span class="pmk_990_inline pmk_1040_inline">.04</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(250/255)</i></td>
+					<td style="background-color: #FBFBFB">98<span class="pmk_990_inline pmk_1040_inline">.43</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(251/255)</i></td>
+					<td style="background-color: #FCFCFC">98<span class="pmk_990_inline pmk_1040_inline">.82</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(252/255)</i></td>
+					<td style="background-color: #FDFDFD">99<span class="pmk_990_inline pmk_1040_inline">.22</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(253/255)</i></td>
+					<td style="background-color: #FEFEFE">99<span class="pmk_990_inline pmk_1040_inline">.61</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(254/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+			</tbody></table>
+		</li>
+		<li data-title="对比度(亮)" data-desc="用于测试屏幕的对比度，一般的非专业显示器无法区分第一行的色块边缘。" class="slide test test-contrast" id="test-contrast-black">
+			<table><tbody>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #010101">0<span class="pmk_990_inline pmk_1040_inline">.39</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(1/255)</i></td>
+					<td style="background-color: #020202">0<span class="pmk_990_inline pmk_1040_inline">.78</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(2/255)</i></td>
+					<td style="background-color: #030303">1<span class="pmk_990_inline pmk_1040_inline">.18</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(3/255)</i></td>
+					<td style="background-color: #040404">1<span class="pmk_990_inline pmk_1040_inline">.57</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(4/255)</i></td>
+					<td style="background-color: #050505">1<span class="pmk_990_inline pmk_1040_inline">.96</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(5/255)</i></td>
+					<td style="background-color: #060606">2<span class="pmk_990_inline pmk_1040_inline">.35</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(6/255)</i></td>
+					<td style="background-color: #070707">2<span class="pmk_990_inline pmk_1040_inline">.75</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(7/255)</i></td>
+					<td style="background-color: #080808">3<span class="pmk_990_inline pmk_1040_inline">.14</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(8/255)</i></td>
+					<td style="background-color: #090909">3<span class="pmk_990_inline pmk_1040_inline">.53</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(9/255)</i></td>
+					<td style="background-color: #0A0A0A">3<span class="pmk_990_inline pmk_1040_inline">.92</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(10/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #020202">0<span class="pmk_990_inline pmk_1040_inline">.78</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(2/255)</i></td>
+					<td style="background-color: #040404">1<span class="pmk_990_inline pmk_1040_inline">.57</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(4/255)</i></td>
+					<td style="background-color: #060606">2<span class="pmk_990_inline pmk_1040_inline">.35</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(6/255)</i></td>
+					<td style="background-color: #080808">3<span class="pmk_990_inline pmk_1040_inline">.14</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(8/255)</i></td>
+					<td style="background-color: #0A0A0A">3<span class="pmk_990_inline pmk_1040_inline">.92</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(10/255)</i></td>
+					<td style="background-color: #0C0C0C">4<span class="pmk_990_inline pmk_1040_inline">.71</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(12/255)</i></td>
+					<td style="background-color: #0E0E0E">5<span class="pmk_990_inline pmk_1040_inline">.49</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(14/255)</i></td>
+					<td style="background-color: #101010">6<span class="pmk_990_inline pmk_1040_inline">.27</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(16/255)</i></td>
+					<td style="background-color: #121212">7<span class="pmk_990_inline pmk_1040_inline">.06</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(18/255)</i></td>
+					<td style="background-color: #141414">7<span class="pmk_990_inline pmk_1040_inline">.84</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(20/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #040404">1<span class="pmk_990_inline pmk_1040_inline">.57</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(4/255)</i></td>
+					<td style="background-color: #080808">3<span class="pmk_990_inline pmk_1040_inline">.14</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(8/255)</i></td>
+					<td style="background-color: #0C0C0C">4<span class="pmk_990_inline pmk_1040_inline">.71</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(12/255)</i></td>
+					<td style="background-color: #101010">6<span class="pmk_990_inline pmk_1040_inline">.27</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(16/255)</i></td>
+					<td style="background-color: #141414">7<span class="pmk_990_inline pmk_1040_inline">.84</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(20/255)</i></td>
+					<td style="background-color: #181818">9<span class="pmk_990_inline pmk_1040_inline">.41</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(24/255)</i></td>
+					<td style="background-color: #1C1C1C">10<span class="pmk_990_inline pmk_1040_inline">.98</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(28/255)</i></td>
+					<td style="background-color: #202020">12<span class="pmk_990_inline pmk_1040_inline">.55</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(32/255)</i></td>
+					<td style="background-color: #242424">14<span class="pmk_990_inline pmk_1040_inline">.12</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(36/255)</i></td>
+					<td style="background-color: #282828">15<span class="pmk_990_inline pmk_1040_inline">.69</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(40/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+				<tr class="color">
+					<td style="background-color: #080808">3<span class="pmk_990_inline pmk_1040_inline">.14</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(8/255)</i></td>
+					<td style="background-color: #101010">6<span class="pmk_990_inline pmk_1040_inline">.27</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(16/255)</i></td>
+					<td style="background-color: #181818">9<span class="pmk_990_inline pmk_1040_inline">.41</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(24/255)</i></td>
+					<td style="background-color: #202020">12<span class="pmk_990_inline pmk_1040_inline">.55</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(32/255)</i></td>
+					<td style="background-color: #282828">15<span class="pmk_990_inline pmk_1040_inline">.69</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(40/255)</i></td>
+					<td style="background-color: #303030">18<span class="pmk_990_inline pmk_1040_inline">.82</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(48/255)</i></td>
+					<td style="background-color: #383838">21<span class="pmk_990_inline pmk_1040_inline">.96</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(56/255)</i></td>
+					<td style="background-color: #404040">25<span class="pmk_990_inline pmk_1040_inline">.10</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(64/255)</i></td>
+					<td style="background-color: #484848">28<span class="pmk_990_inline pmk_1040_inline">.24</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(72/255)</i></td>
+					<td style="background-color: #505050">31<span class="pmk_990_inline pmk_1040_inline">.37</span>%<br /><i class="pmk_990_inline pmk_1040_inline">(80/255)</i></td>
+				</tr>
+				<tr class="ruler">
+					<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+				</tr>
+			</tbody></table>
+		</li>
+		<li data-title="白色渐变" data-desc="用于测试显示器的色彩平滑程度，颜色过渡平滑的显示设备更佳。" class="slide test test-gradient" id="test-gradient-white"><img src="static/picture/grey-gradient.png" /></li>
+		<li data-title="红色渐变" data-desc="用于测试显示器的色彩平滑程度，颜色过渡平滑的显示设备更佳。" class="slide test test-gradient" id="test-gradient-red"><img src="static/picture/grey-gradient.png" /></li>
+		<li data-title="绿色渐变" data-desc="用于测试显示器的色彩平滑程度，颜色过渡平滑的显示设备更佳。" class="slide test test-gradient" id="test-gradient-green"><img src="static/picture/grey-gradient.png" /></li>
+		<li data-title="蓝色渐变" data-desc="用于测试显示器的色彩平滑程度，颜色过渡平滑的显示设备更佳。" class="slide test test-gradient" id="test-gradient-blue"><img src="static/picture/grey-gradient.png" /></li>
+		<li data-title="饱和度" data-desc="用于测试屏幕的色彩饱和度，颜色过渡平滑的显示设备更佳。" class="slide test" id="test-saturation"><img src="static/picture/saturation.png" /></li>
+		<li data-title="测试结束" data-desc="如在使用的过程中遇到问题，实在很不好意思，让您受苦了！！！请联系我。谢谢！(请按Esc键退出)" class="slide" id="test-last">测试结束，请按Esc键退出。</li>
+	</ul>
+	<div id="control" class="control_hide">
+		<div class="panel top">
+			<span class="title"></span>
+			<span class="description"></span>
+			<span class="quanping"><a href="#" onclick="quanping_xianshi();return false;" id="quanping_xianshi">全屏显示</a><a href="#" onclick="quanping_tuichu();return false;" id="quanping_tuichu" style="display:none;">退出全屏</a><a href="#" onclick="quanping_tuichu();go(0);return false;">结束测试</a></span>
+		</div>
+		<div class="panel bottom">
+			<div class="wrapper" id="control_buttons"></div>
+			<div class="triangle"></div>
+		</div>
+	</div>
+	<div id="resolution_tips" style="display: none;"></div>
+</div>
+
+</body>
+</html>
