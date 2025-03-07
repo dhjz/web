@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+
+<head>
+  <title>键盘测试</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="键盘测试">
+  <link rel="stylesheet" href="static/index.css">
+</head>
+
+<body class="windows" style="padding-top: 30px;">
+  <main class="keyboard-body mb-8 mx-auto">
+    <div class="flex ps-5" id="tabs">
+      <div class="windows-button text-lg w-32 h-12 rounded-t-xl">PC</div>
+      <div class="mac-button text-lg w-32 h-12 rounded-t-xl">Mac</div>
+      <div class="apm ms-4 flex items-center text-sm bg-base-200 mb-2 h-10 ps-4 pe-2 rounded-xl">
+        <div class="flex font-mono w-32 items-center">
+          <div class="text-xs">APM:</div>
+          <div class="ms-1" id="apm-value"></div>
+          <div class="mx-1">/</div>
+          <div class="text-xs">CPS:</div>
+          <div class="ms-1" id="cps-value"></div>
+        </div><svg class="w-32 h-10 ms-4 -scale-y-1">
+          <polyline class="fill-none stroke-base-content stroke-2" id="apm-line-chart" points=""></polyline>
+        </svg>
+      </div><button class="ms-auto text-xs btn btn-ghost w-20 h-12" id="reset-button" type="button">Reset</button>
+    </div>
+    <div class="key-record-wrapper">
+      <div id="key-record-container"></div>
+    </div>
+    <div id="keyboard-wrapper">
+      <div class="keyboard-container">
+        <div class="flex keys-fzone">
+          <div class="key" id="escape"><span class="times"></span>
+            <p>ESC</p>
+          </div>
+          <div class="key ml-auto" id="f-1"><span class="times"></span>
+            <p>F1</p>
+          </div>
+          <div class="key" id="f-2"><span class="times"></span>
+            <p>F2</p>
+          </div>
+          <div class="key" id="f-3"><span class="times"></span>
+            <p>F3</p>
+          </div>
+          <div class="key" id="f-4"><span class="times"></span>
+            <p>F4</p>
+          </div>
+          <div class="key ml-auto" id="f-5"><span class="times"></span>
+            <p>F5</p>
+          </div>
+          <div class="key" id="f-6"><span class="times"></span>
+            <p>F6</p>
+          </div>
+          <div class="key" id="f-7"><span class="times"></span>
+            <p>F7</p>
+          </div>
+          <div class="key" id="f-8"><span class="times"></span>
+            <p>F8</p>
+          </div>
+          <div class="key ml-auto" id="f-9"><span class="times"></span>
+            <p>F9</p>
+          </div>
+          <div class="key" id="f-10"><span class="times"></span>
+            <p>F10</p>
+          </div>
+          <div class="key" id="f-11"><span class="times"></span>
+            <p>F11</p>
+          </div>
+          <div class="key" id="f-12"><span class="times"></span>
+            <p>F12</p>
+          </div>
+        </div>
+        <div class="flex fn windows">
+          <div class="key" id="print-screen"><span class="times"></span>
+            <p>PrtSc</p>
+          </div>
+          <div class="key" id="screen-lock"><span class="times"></span>
+            <p>ScrLk</p>
+          </div>
+          <div class="key" id="pause-break"><span class="times"></span>
+            <p>Pause</p>
+          </div>
+        </div>
+        <div class="flex fn mac">
+          <div class="key" id="f-13"><span class="times"></span>
+            <p>f13</p>
+          </div>
+          <div class="key mac" id="f-14"><span class="times"></span>
+            <p>f14</p>
+          </div>
+          <div class="key mac" id="f-15"><span class="times"></span>
+            <p>f16</p>
+          </div>
+        </div>
+        <div class="flex top-right mac">
+          <div class="key" id="f-16"><span class="times"></span>
+            <p>f16</p>
+          </div>
+          <div class="key mac" id="f-17"><span class="times"></span>
+            <p>f17</p>
+          </div>
+          <div class="key mac" id="f-18"><span class="times"></span>
+            <p>f18</p>
+          </div>
+          <div class="key mac" id="f-19"><span class="times"></span>
+            <p>f19</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap keys-chars">
+          <div class="key" id="back-quote"><span class="times"></span>
+            <p>~<br>`</p>
+          </div>
+          <div class="key" id="num-1"><span class="times"></span>
+            <p>1</p>
+          </div>
+          <div class="key" id="num-2"><span class="times"></span>
+            <p>2</p>
+          </div>
+          <div class="key" id="num-3"><span class="times"></span>
+            <p>3</p>
+          </div>
+          <div class="key" id="num-4"><span class="times"></span>
+            <p>4</p>
+          </div>
+          <div class="key" id="num-5"><span class="times"></span>
+            <p>5</p>
+          </div>
+          <div class="key" id="num-6"><span class="times"></span>
+            <p>6</p>
+          </div>
+          <div class="key" id="num-7"><span class="times"></span>
+            <p>7</p>
+          </div>
+          <div class="key" id="num-8"><span class="times"></span>
+            <p>8</p>
+          </div>
+          <div class="key" id="num-9"><span class="times"></span>
+            <p>9</p>
+          </div>
+          <div class="key" id="num-0"><span class="times"></span>
+            <p>0</p>
+          </div>
+          <div class="key" id="minus"><span class="times"></span>
+            <p>_<br>-</p>
+          </div>
+          <div class="key" id="equal"><span class="times"></span>
+            <p>+<br>=</p>
+          </div>
+          <div class="key key-w-6 grow" id="backspace"><span class="times"></span>
+            <p>backspace</p>
+          </div>
+          <div class="key key-w-5 grow" id="tab"><span class="times"></span>
+            <p>tab</p>
+          </div>
+          <div class="key" id="q"><span class="times"></span>
+            <p>Q</p>
+          </div>
+          <div class="key" id="w"><span class="times"></span>
+            <p>W</p>
+          </div>
+          <div class="key" id="e"><span class="times"></span>
+            <p>E</p>
+          </div>
+          <div class="key" id="r"><span class="times"></span>
+            <p>R</p>
+          </div>
+          <div class="key" id="t"><span class="times"></span>
+            <p>T</p>
+          </div>
+          <div class="key" id="y"><span class="times"></span>
+            <p>Y</p>
+          </div>
+          <div class="key" id="u"><span class="times"></span>
+            <p>U</p>
+          </div>
+          <div class="key" id="i"><span class="times"></span>
+            <p>I</p>
+          </div>
+          <div class="key" id="o"><span class="times"></span>
+            <p>O</p>
+          </div>
+          <div class="key" id="p"><span class="times"></span>
+            <p>P</p>
+          </div>
+          <div class="key" id="bracket-left"><span class="times"></span>
+            <p>{<br>[</p>
+          </div>
+          <div class="key" id="bracket-right"><span class="times"></span>
+            <p>}<br>]</p>
+          </div>
+          <div class="key key-w-5 grow" id="backslash"><span class="times"></span>
+            <p>|<br>\</p>
+          </div>
+          <div class="key key-w-6 grow" id="caps-lock"><span class="times"></span>
+            <p>caps lock</p>
+          </div>
+          <div class="key" id="a"><span class="times"></span>
+            <p>A</p>
+          </div>
+          <div class="key" id="s"><span class="times"></span>
+            <p>S</p>
+          </div>
+          <div class="key" id="d"><span class="times"></span>
+            <p>D</p>
+          </div>
+          <div class="key" id="f"><span class="times"></span>
+            <p>F</p>
+          </div>
+          <div class="key" id="g"><span class="times"></span>
+            <p>G</p>
+          </div>
+          <div class="key" id="h"><span class="times"></span>
+            <p>H</p>
+          </div>
+          <div class="key" id="j"><span class="times"></span>
+            <p>J</p>
+          </div>
+          <div class="key" id="k"><span class="times"></span>
+            <p>K</p>
+          </div>
+          <div class="key" id="l"><span class="times"></span>
+            <p>L</p>
+          </div>
+          <div class="key" id="semicolon"><span class="times"></span>
+            <p>:<br>;</p>
+          </div>
+          <div class="key" id="quote"><span class="times"></span>
+            <p>"<br>'</p>
+          </div>
+          <div class="key key-w-6 grow" id="enter"><span class="times"></span>
+            <p>ENTER</p>
+          </div>
+          <div class="key key-w-9 grow" id="shift"><span class="times"></span>
+            <p>SHIFT</p>
+          </div>
+          <div class="key" id="z"><span class="times"></span>
+            <p>Z</p>
+          </div>
+          <div class="key" id="x"><span class="times"></span>
+            <p>X</p>
+          </div>
+          <div class="key" id="c"><span class="times"></span>
+            <p>C</p>
+          </div>
+          <div class="key" id="v"><span class="times"></span>
+            <p>V</p>
+          </div>
+          <div class="key" id="b"><span class="times"></span>
+            <p>B</p>
+          </div>
+          <div class="key" id="n"><span class="times"></span>
+            <p>N</p>
+          </div>
+          <div class="key" id="m"><span class="times"></span>
+            <p>M</p>
+          </div>
+          <div class="key" id="comma"><span class="times"></span>
+            <p>&lt;<br>,</p>
+          </div>
+          <div class="key" id="period"><span class="times"></span>
+            <p>><br>.</p>
+          </div>
+          <div class="key" id="slash"><span class="times"></span>
+            <p>?<br>/</p>
+          </div>
+          <div class="key key-w-9 grow" id="right-shift"><span class="times"></span>
+            <p>SHIFT</p>
+          </div>
+          <div class="key key-w-5" id="control"><span class="times"></span>
+            <p>CTRL</p>
+          </div>
+          <div class="key key-w-5 windows" id="win"><span class="times"></span>
+            <p><i class="bi bi-windows"></i></p>
+          </div>
+          <div class="key key-w-5" id="alt"><span class="times"></span>
+            <p>ALT</p>
+          </div>
+          <div class="key key-w-6 mac" id="meta"><span class="times"></span>
+            <p><i class="bi bi-command"></i></p>
+          </div>
+          <div class="key grow" id="space"><span class="times"></span>
+            <p></p>
+          </div>
+          <div class="key key-w-6 mac" id="right-meta"><span class="times"></span>
+            <p><i class="bi bi-command"></i></p>
+          </div>
+          <div class="key key-w-5" id="right-alt"><span class="times"></span>
+            <p>ALT</p>
+          </div>
+          <div class="key key-w-5 windows" id="right-win"><span class="times"></span>
+            <p><i class="bi bi-windows"></i></p>
+          </div>
+          <div class="key key-w-5 windows" id="context-menu"><span class="times"></span>
+            <p><i class="bi bi-menu-button-wide"></i></p>
+          </div>
+          <div class="key key-w-5" id="right-control"><span class="times"></span>
+            <p>CTRL</p>
+          </div>
+        </div>
+        <div class="grid grid-rows-5 grid-cols-3 keys-dir">
+          <div class="key windows" id="insert"><span class="times"></span>
+            <p>ins</p>
+          </div>
+          <div class="key mac" id="help"><span class="times"></span>
+            <p>fn</p>
+          </div>
+          <div class="key" id="home"><span class="times"></span>
+            <p>Home</p>
+          </div>
+          <div class="key" id="page-up"><span class="times"></span>
+            <p>Page<br>up</p>
+          </div>
+          <div class="key" id="delete"><span class="times"></span>
+            <p>delete</p>
+          </div>
+          <div class="key" id="end"><span class="times"></span>
+            <p>End</p>
+          </div>
+          <div class="key" id="page-down"><span class="times"></span>
+            <p>Page<br>Down</p>
+          </div><span></span><span></span><span></span><span></span>
+          <div class="key" id="arrow-up"><span class="times"></span>
+            <p><i class="bi bi-arrow-up"></i></p>
+          </div><span></span>
+          <div class="key" id="arrow-left"><span class="times"></span>
+            <p><i class="bi bi-arrow-left"></i></p>
+          </div>
+          <div class="key" id="arrow-down"><span class="times"></span>
+            <p><i class="bi bi-arrow-down"></i></p>
+          </div>
+          <div class="key" id="arrow-right"><span class="times"></span>
+            <p><i class="bi bi-arrow-right"></i></p>
+          </div>
+        </div>
+        <div class="grid grid-rows-5 grid-cols-4 keys-pad">
+          <div class="key windows" id="numlock"><span class="times"></span>
+            <p>Num<br>Lock</p>
+          </div>
+          <div class="key mac" id="clear"><span class="times"></span>
+            <p>clear</p>
+          </div>
+          <div class="key" id="numpad-divide"><span class="times"></span>
+            <p>/</p>
+          </div>
+          <div class="key" id="numpad-multiply"><span class="times"></span>
+            <p>*</p>
+          </div>
+          <div class="key" id="numpad-subtract"><span class="times"></span>
+            <p>-</p>
+          </div>
+          <div class="key" id="numpad-7"><span class="times"></span>
+            <p>7</p>
+          </div>
+          <div class="key" id="numpad-8"><span class="times"></span>
+            <p>8</p>
+          </div>
+          <div class="key" id="numpad-9"><span class="times"></span>
+            <p>9</p>
+          </div>
+          <div class="key row-span-2" id="numpad-add"><span class="times"></span>
+            <p>+</p>
+          </div>
+          <div class="key" id="numpad-4"><span class="times"></span>
+            <p>4</p>
+          </div>
+          <div class="key" id="numpad-5"><span class="times"></span>
+            <p>5</p>
+          </div>
+          <div class="key" id="numpad-6"><span class="times"></span>
+            <p>6</p>
+          </div>
+          <div class="key" id="numpad-1"><span class="times"></span>
+            <p>1</p>
+          </div>
+          <div class="key" id="numpad-2"><span class="times"></span>
+            <p>2</p>
+          </div>
+          <div class="key" id="numpad-3"><span class="times"></span>
+            <p>3</p>
+          </div>
+          <div class="key row-span-2" id="numpad-enter"><span class="times"></span>
+            <p>Enter</p>
+          </div>
+          <div class="key col-span-2" id="numpad-0"><span class="times"></span>
+            <p>0</p>
+          </div>
+          <div class="key" id="numpad-decimal"><span class="times"></span>
+            <p>.</p>
+          </div>
+        </div>
+        <div class="flex justify-center keys-mouse">
+          <div class="key mouse-left mouse-btn" id="mouse-left"><span class="times"></span>
+            <p></p>
+          </div>
+          <div class="key mouse-middle mouse-btn" id="mouse-middle"><span class="times"></span>
+            <p></p>
+          </div>
+          <div class="key mouse-right mouse-btn" id="mouse-right"><span class="times"></span>
+            <p></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const isMac = /(macintosh|macintel|macppc|mac68k|macos)/i.test(navigator.userAgent);
+    if (isMac) {
+      document.body.classList.remove('windows');
+      document.body.classList.add('mac');
+    }
+  </script>
+  <script  src="static/index.js"></script>
+
+</body>
+
+</html>
