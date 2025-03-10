@@ -21,6 +21,7 @@ nohup ~/frp/frpc -c ~/frp/frpc.ini > ~/logs/frpc.log 2>&1 &
 #-------------------------- node相关配置 --------------------------
 # # node相关配置
 # https://github.com/coreybutler/nvm-windows/releases
+nvm seeting.ini  nvm目录执行
 nvm node_mirror https://npmmirror.com/mirrors/node/
 nvm npm_mirror https://npmmirror.com/mirrors/npm/
 nvm install 16.14.2

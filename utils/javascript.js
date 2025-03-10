@@ -474,6 +474,33 @@ function parseIntMy(val) {
   return parseInt(val);
 }
 
+// # 工具-全局事件总线
+class EventBus {
+  constructor() {
+    this.events = {}
+  }
+  // 注册事件
+  on(eventName, callback) {
+    if (!this.events[eventName]) {
+      this.events[eventName] = []
+    }
+    this.events[eventName].push(callback)
+  }
+  // 触发事件
+  emit(eventName, ...args) {
+    if (this.events[eventName]) {
+      this.events[eventName].forEach((callback) =>  callback(...args))
+    }
+  }
+  // 注销事件
+  off(eventName, callback) {
+    if (this.events[eventName]) {
+      this.events[eventName] = this.events[eventName].filter((cb) => cb !== callback)
+    }
+  }
+}
+window.$eventBus = new EventBus()
+
 
 // # vue-全局注册
 function vue3Global(app) {
