@@ -21,8 +21,12 @@ function download(blob, name) {
   }
 }
 
-// # 文件-下载文本
 function downloadText(text, name) {
+  download(new Blob([text], { type: 'text/plain;charset=utf-8' }), name)
+}
+
+// # 文件-下载文本
+function downloadText1(text, name) {
   const link = document.createElement('a');
   link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)
   link.download = name
@@ -32,12 +36,41 @@ function downloadText(text, name) {
   document.body.removeChild(link)
 }
 
+// # 文件-一键上传并获取文本内容
+function uploadText() {
+  return new Promise((res, rej) => {
+    document.getElementById('importInput')?.remove()
+    const inputEl = document.createElement('input')
+    inputEl.type = 'file'
+    inputEl.id = "importInput" 
+    inputEl.style = "display: none;" 
+    document.body.append(inputEl)
+    inputEl.onchange = function () {
+      const resultFile = inputEl.files[0]
+      if (resultFile) {
+        const reader = new FileReader()
+        reader.readAsText(resultFile, 'UTF-8')
+        reader.onload = () => {
+            let obj = { name: resultFile.name, data: reader.result, size: resultFile.size, type: resultFile.type }
+            document.body.removeChild(inputEl)
+            try { obj.data = JSON.parse(obj.data) } catch(e) { }
+            res(obj)
+        }
+      } else {
+        document.body.removeChild(inputEl)
+        res('')
+      }
+    }
+    inputEl.click()
+  })
+}
+
 // # 文件-一键上传并获取内容
 function uploadCont(isBase46) {
   // 拼接base64  data:image/jpeg;base64,XXXXXXXXXXXX
   return new Promise((res, rej) => {
     document.getElementById('importInput')?.remove()
-    const inputEl = document.createinputElment('input')
+    const inputEl = document.createElement('input')
     inputEl.type = 'file'
     inputEl.id = "importInput" 
     inputEl.style = "display: none;" 

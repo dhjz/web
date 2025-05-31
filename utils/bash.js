@@ -18,6 +18,8 @@ alias aaa='cd /data/project/xxx'
 nohup /opt/chfs/start.sh  > /opt/logs/chfs.log 2>&1 &
 nohup ~/frp/frpc -c ~/frp/frpc.ini > ~/logs/frpc.log 2>&1 &
 
+
+
 #-------------------------- node相关配置 --------------------------
 # # node相关配置
 # https://github.com/coreybutler/nvm-windows/releases
@@ -33,9 +35,48 @@ npm config set prefix "E:\\Program\\nodejs\\node_global"
 npm config set cache "E:\\Program\\nodejs\\node_cache"
 npm install -g http-server
 npm install -g files-upload-server
+npm install -g rimraf
 yarn config set registry https://registry.npmmirror.com -g
 yarn config set global-folder "E:\\Program\\nodejs\\yarn_global"
 yarn config set cache-folder "E:\\Program\\nodejs\\yarn_cache"
+
+#-------------------------- go相关配置 --------------------------
+# # go相关配置
+# 官方下载包, zip解压, 配置环境变量
+# 配置 PATH, 为go/bin
+# 配置 GOROOT, 为go安装路径
+# 配置 GOPATH, 在go下面建一个gopath, 配置成这个路径, 一般包含三个子目录 src、pkg 和 bin。其中，src 存放源代码，pkg 存放编译生成的库文件，bin 存放编译生成的可执行文件
+go env -w GOPROXY=https://goproxy.cn,direct
+# 打包文件
+rmdir /S /Q .\\app
+xcopy /E /Y "..\\web\dist\\*" ".\\app\\ "
+go env -w GOOS=linux
+go build -ldflags "-s -w" -o ./dist/
+go env -w GOOS=linux GOARCH=arm  GOARM=7 
+go build -ldflags "-s -w" -o ./dist/dhttpc_v7
+go env -w GOOS=windows GOARCH=amd64 GOARM=
+go build -ldflags "-s -w -H=windowsgui" -o ./dist/
+echo "build linux and windows exe success..."
+
+#-------------------------- gradle相关配置 --------------------------
+# # gradle相关配置
+# https://gradle.org/releases/    binary-only 
+# 配置 GRADLE_HOME  安装目录  E:\\Program\\Android\\gradle-6.9.3
+# 配置 GRADLE_USER_HOME  仓库目录 E:\\Program\\Android\\gradlehome
+# 配置 PATH  %GRADLE_HOME%\\bin
+
+#-------------------------- maven相关配置 --------------------------
+# # maven相关配置
+#1. http://maven.apache.org/download.cgi, 下载maven
+#2. 解压到某个盘,比如E:\\Program\\Apache\\maven
+#3. 配置 'MAVEN_HOME'，E:\\Program\\Apache\\maven
+#4. 配置 'PATH'，%MAVEN_HOME%\\bin\\;
+#5. 打开cmd, 输入'mvn -v' 可查看安装好了没
+#配置mavenrepo仓库
+#1. 在E:\\Program\\Apache\\目录下新建mavenrepo文件夹，该目录用作maven的本地库。
+#2. 打开E:\\Program\\Apache\\maven\\conf\\settings.xml文件，查找下面这行代码：并修改成刚创建的目录
+# <localRepository>/path/to/local/repo</localRepository>
+
 
 #-------------------------- 常见脚本命令 --------------------------
 # # 常见脚本命令
@@ -77,6 +118,9 @@ start /B cmd /C "E:\\Program Files (x86)\\Tencent\\WeChat\\WeChat.exe"
 "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --disable-web-security --user-data-dir=E:\\AllCache\\Chrome --allow-running-insecure-content %1
 # curl
 curl --request POST --url 'http://127.0.0.1:666' --data '{"name": "test"}' --header "Authorization: pass" --header "Content-Type: application/json"
+# putty连接服务器
+putty.exe root@127.0.0.1 -P 23 -pw a12456
+
 
 #-------------------------- sql_exprt_xxx.sh --------------------------
 # # sql导出数据CSV

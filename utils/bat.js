@@ -75,4 +75,88 @@ start /b frpc -c frpc.ini
 
 :: # 关闭frpc
 taskkill /im frpc.exe /t /f
+
+::-------------------------- go_build.bat --------------------------
+:: # go_build构建脚本
+@echo off
+setlocal enabledelayedexpansion
+
+:menu
+echo please choose:
+echo 1. build service (default)
+echo 2. build web
+echo 3. build web + service
+echo 4. make windows exe icon, ico.syso
+set /p choice="please enter your choose: "
+
+if "%choice%"=="" goto buildService
+if "%choice%"=="1" (
+  goto buildService
+)
+if "%choice%"=="2" (
+  goto buildWeb
+)
+if "%choice%"=="3" (
+  goto buildServiceWeb
+)
+if "%choice%"=="4" (
+  cd service
+  rsrc -ico="ico.ico" -o="ico.syso"
+  pause
+  exit
+)
+
+:buildWeb
+cd web
+call npm run build
+cd ../
+exit
+
+:buildService
+cd service
+rmdir /S /Q .\\app
+xcopy /E /Y "..\\web\dist\\*" ".\app\\ "
+go env -w GOOS=linux
+go build -ldflags "-s -w" -o ./dist/
+go env -w GOOS=linux GOARCH=arm  GOARM=7 
+go build -ldflags "-s -w" -o ./dist/dhttpc_v7
+go env -w GOOS=windows GOARCH=amd64 GOARM=
+go build -ldflags "-s -w -H=windowsgui" -o ./dist/
+echo "build linux and windows exe success..."
+pause
+exit
+
+:buildServiceWeb
+cd web
+call npm run build
+cd ../
+goto buildService
+
+timeout /t 1
+pause
+endlocal
+
+::-------------------------- java环境变量配置 --------------------------
+:: # java环境变量配置
+@echo off
+:: 检查是否以管理员身份运行，如果不是，重新以管理员身份运行
+openfiles >nul 2>&1 || (powershell -Command "Start-Process cmd -ArgumentList '/c, %~s0' -Verb runAs" && exit)
+
+setx JAVA_HOME "E:\\Program\\Java\\jdk-14.0.1" /M
+setx CLASSPATH ".;%JAVA_HOME%\\lib\\dt.jar;%JAVA_HOME%\\lib\\tools.jar;" /M
+setx PATH "%PATH%;%JAVA_HOME%\\bin;%JAVA_HOME%\\jre\\bin;" /M
+echo environment variables have been set...
+pause
+
+:: linux  /etc/profile 最后加上 source /ect/profile 生效
+JAVA_HOME=/usr/java/jdk1.8.0_301
+CLASSPATH=.:$JAVA_HOME/lib/tools.jar
+PATH=$JAVA_HOME/bin:$PATH
+export JAVA_HOME CLASSPATH PATH
+
+
+
+
 `
+
+
