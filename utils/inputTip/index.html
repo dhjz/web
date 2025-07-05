@@ -6,8 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
   <style>
-    *{ margin: 0; padding: 0; box-sizing: border-box;}
+    *{ margin: 0; padding: 0;}
     body{ padding: 40px;}
+    a { color: #409eff; text-decoration: none;}
     input, select, .input{ background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6; color: #333; line-height: 32px; height: 32px; padding: 0 10px; outline: none; margin-right: 10px;}
     button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
     .mini { font-size: .8em; font-style: normal; color: red; }
@@ -19,10 +20,12 @@
 </head>
 
 <body>
-  <div style="border: 1px solid #ccc; height: 80vh;">
+  <div style="border: 1px solid #ccc; min-height: 80vh; padding: 0 10px;">
     <pre>
       <code class="language-javascript" id="codes"></code>
     </pre>
+    <div><a href="inputTip.js" target="_blank" id="jsurl">inputTip.js</a></div><br>
+    <div><a href="inputTip.min.js" target="_blank" id="jsurlmin">inputTip.min.js</a></div>
   </div>
   <div style="margin: 10px;">
     <input type="text" id="input"><button onclick="addOpt(true)">增加选项</button>  <button onclick="addOpt(false)">减少选项</button>
@@ -46,6 +49,8 @@
   <script>
     document.querySelector('#codes').innerHTML = document.querySelector('#scirptDemo').innerHTML;
     Prism.highlightAll();
+    document.querySelector('#jsurl').innerHTML = document.querySelector('#jsurl').href;
+    document.querySelector('#jsurlmin').innerHTML = document.querySelector('#jsurlmin').href;
   </script>
 </body>
 
