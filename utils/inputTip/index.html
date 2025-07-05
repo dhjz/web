@@ -12,19 +12,24 @@
     button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
     .mini { font-size: .8em; font-style: normal; color: red; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
   <script src="inputTip.js"></script>
   <!-- <script src="inputTip.min.js"></script> -->
 </head>
 
 <body>
-  <div style="border: 1px solid red; height: 80vh;">sdfasdfsf</div>
+  <div style="border: 1px solid #ccc; height: 80vh;">
+    <pre>
+      <code class="language-javascript" id="codes"></code>
+    </pre>
+  </div>
   <div style="margin: 10px;">
     <input type="text" id="input"><button onclick="addOpt(true)">增加选项</button>  <button onclick="addOpt(false)">减少选项</button>
   </div>
-  <div style="border: 1px solid red; height: 80vh;" id="result">sdfasdfsf</div>
-  <script>
-  
-    // --- 使用示例 ---
+  <div style="border: 1px solid #ccc; height: 80vh;" id="result">sdfasdfsf</div>
+  <script id="scirptDemo">
+    // --- 使用示例 --- 支持自定义选项列表，支持自定义高度，支持自定义事件回调等, 支持自动判断弹出框位置。
     // 定义选项
     const myOptions = ["Apple", "Banana", "Cherry", "Date", { value: 'Elderberry', label: `Elderberry Elderberry <i class="mini">mini</i>` }, "Fig", "Grape", "Honeydew", "Kiwi"];
     // 创建 InputTip 实例
@@ -37,6 +42,10 @@
       isAdd &&inputTip.options.push(Math.random().toString(32).slice(-8));
       !isAdd && inputTip.options.pop();
     }
+  </script>
+  <script>
+    document.querySelector('#codes').innerHTML = document.querySelector('#scirptDemo').innerHTML;
+    Prism.highlightAll();
   </script>
 </body>
 

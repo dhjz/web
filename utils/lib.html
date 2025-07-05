@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>莫欺少年穷</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-size: 14px; }
+    html, body, #app { width: 100%; height: 100%; }
+    a { color: #333; text-decoration: none; }
+    .bg { position: fixed; z-index: -1; width: 100vw; height: 100vh; background: #dbdbdb linear-gradient(160deg,#4782a5 0%,#0d524b 100%) no-repeat center center;  background-size: 100% 100%;}
+    #app { display: flex; align-items: center; justify-content: center; padding: 60px;}
+    .box { max-width: 1280px;   margin: 0 auto;  padding: 4rem 1rem 2rem; width: 100%;  box-sizing: border-box; display: flex; justify-content: center;  flex-flow: row wrap; }
+    .link_item{ margin-bottom: 40px; text-align: center; position: relative;  width: 20%;}
+    .link_item a{ display: block; position: relative;}
+    .link_name{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 10px; color: #fff; }
+    .icon_wrap{ display: inline-block; width: 50px; height: 50px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; margin: 0 auto; background: #fff}
+    .icon_link_circle{ display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #fff; font-size: 14px;}
+    footer { position: fixed; bottom: 14px; width: 100%; text-align: center; left: 0; font-size: 14px; color: #ccc; }
+    @media screen and (max-width: 800px) {
+      #app { padding: 0px; }
+      .link_item{ width: 25%; }
+    }
+  </style>
+  <script src="lib.js"></script>
+</head>
+<body>
+  <div class="bg"></div>
+  <div id="app">
+    <div class="box" id="box">
+      <div class="link_item">
+        <a href="https://www.baidu.com/" target="_blank">
+          <div class="icon_wrap">
+            <div class="icon_link_circle" style="background-color: #4d98e1;"><span>百度</span></div>
+          </div>
+          <p class="link_name">百度</p>
+        </a>
+      </div>
+    </div>
+  </div>
+  <footer id="footer">人生得意须尽欢，莫使金樽空对月。</footer>
+
+  <script>
+    if (window.config) {
+      let sites = window.config.sites
+      $q('#box').innerHTML = (sites || []).map(site => `
+        <div class="link_item">
+          <a href="${site.url}" target="_blank">
+            <div class="icon_wrap">
+              <div class="icon_link_circle" style="background-color: #4d98e1;background-color: ${site.color || '#4d98e1'};">
+                <span>${site.short || site.name}</span>
+              </div>
+            </div>
+            <p class="link_name">${site.name}</p>
+          </a>
+        </div>
+      `).join('')
+      if (config.footer) $q('#footer').innerHTML = config.footer
+    }
+
+    function $q(val) {
+      return document.querySelector(val);
+    }
+    function request(url, {method, data} = {}) {
+      return new Promise((reso, rej) => {
+        var xhr = new XMLHttpRequest()
+        xhr.open(method || 'get', url)
+        xhr.send(data)
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            let data = xhr.responseText
+            try {
+              data = JSON.parse(xhr.responseText)
+            } catch (e) {
+              console.log(e)
+            }
+            reso(data)
+          }
+        }
+      })
+    }
+  </script>
+</body>
+</html>
