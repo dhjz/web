@@ -51,7 +51,9 @@
   <script id="scirptDemo">
     // 初始化实例, 支持多个实例，每个实例独立控制默认参数
     window.notify = new Notify()
+    // 初始化默认参数的实例
     window.notifyCenter = new Notify({ maxWidth: '40%', time: 2000, position: 'center', type: 'black' }) 
+    // 初始化自定义主题的实例
     window.notifyTheme = new Notify({ maxWidth: '40%', time: 1000, position: 'bottom-right', type: 'blue', theme: { name: 'blue', css: 'background: #409EFF; color: #fff;' } })
     /**
      * @param {string} text 提示文本
@@ -66,7 +68,8 @@
     function hide() {
       notify.hide()
     }
-
+    // notifyCenter.show('这是一条默认中部实例提示')
+    // notifyTheme.show('这是一条默认自定义样式实例提示')
   </script>
   <script>
     document.querySelector('#codes').innerHTML = document.querySelector('#scirptDemo').innerHTML;
