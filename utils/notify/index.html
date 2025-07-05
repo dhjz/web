@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    *{ margin: 0; padding: 0;}
+    body{ padding: 40px;}
+    a { color: #409eff; text-decoration: none;}
+    input, select, .input{ background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6; color: #333; line-height: 32px; height: 32px; padding: 0 10px; outline: none; margin-right: 10px;}
+    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
+    button[success] { background: #67C23A; }
+    button[error] { background: #F56C6C; }
+    button[warning] { background: #E6A23C; }
+    button[black] { background: rgba(48, 49, 51, 0.7); }
+    .mini { font-size: .8em; font-style: normal; color: red; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+  <script src="notify.js"></script>
+  <!-- <script src="notify.min.js"></script> -->
+</head>
+
+<body>
+  <div style="border: 1px solid #ccc; padding: 10px;">
+    <pre>
+      <code class="language-javascript" id="codes"></code>
+    </pre>
+    <div><a href="notify.js" target="_blank" id="jsurl">notify.js</a></div><br>
+    <div><a href="notify.min.js" target="_blank" id="jsurlmin">notify.min.js</a></div>
+  </div>
+  <div style="margin: 10px;">
+    <button onclick="show('这是一条提示信息')">普通提示</button>
+    <button onclick="show('这是一条永久提示信息', 0)">永久提示</button>
+    <button onclick="show('这是一条上中提示信息', 0, 'top-center')">上中提示</button>
+    <button onclick="show('这是一条正中提示信息', 0, 'center')">正中提示</button>
+    <button onclick="show('这是一条右下提示信息', 0, 'bottom-right')">右下提示</button>
+    <button onclick="show('这是一条成功提示信息', 3000, 'top-center', 'success')" success>成功提示</button>
+    <button onclick="show('这是一条错误提示信息', 3000, 'top-center', 'error')" error>错误提示</button>
+    <button onclick="show('这是一条警告提示信息', 3000, 'top-center', 'warning')" warning>警告提示</button>
+    <button onclick="show('这是一条警告提示信息', 3000, 'top-center', 'black')" black>黑色提示</button>
+    <button onclick="show('这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息这是一条长提示信息', 3000, 'top-center')">长消息提示</button>
+    <button onclick="hide()">隐藏提示</button>
+  </div>
+  <div style="margin: 10px;">
+    <button onclick="notifyCenter.show('这是一条默认中部实例提示')">默认中部实例提示</button>
+    <button onclick="notifyTheme.show('这是一条默认自定义样式实例提示')">默认自定义样式实例</button>
+  </div>
+  <script id="scirptDemo">
+    // 初始化实例, 支持多个实例，每个实例独立控制默认参数
+    window.notify = new Notify()
+    window.notifyCenter = new Notify({ maxWidth: '40%', time: 2000, position: 'center', type: 'black' }) 
+    window.notifyTheme = new Notify({ maxWidth: '40%', time: 1000, position: 'bottom-right', type: 'blue', theme: { name: 'blue', css: 'background: #409EFF; color: #fff;' } })
+    /**
+     * @param {string} text 提示文本
+     * @param {number} time 显示时间，默认3000毫秒, 传入0则不自动隐藏
+     * @param {string} position 显示位置，默认'right', 可选 'center', 'top-center', 'bottom-right'
+     * @param {string} type 提示类型，默认'info', 可选 'success', 'error', 'warning', 'black'
+    */
+    function show(text, time, position, type) {
+      notify.show(text || '这是一条提示信息', { time, position, type })
+    }
+
+    function hide() {
+      notify.hide()
+    }
+
+  </script>
+  <script>
+    document.querySelector('#codes').innerHTML = document.querySelector('#scirptDemo').innerHTML;
+    Prism.highlightAll();
+    document.querySelector('#jsurl').innerHTML = document.querySelector('#jsurl').href;
+    document.querySelector('#jsurlmin').innerHTML = document.querySelector('#jsurlmin').href;
+  </script>
+</body>
+
+</html>
