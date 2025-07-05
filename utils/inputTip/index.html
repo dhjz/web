@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    *{ margin: 0; padding: 0; box-sizing: border-box;}
+    body{ padding: 40px;}
+    input, select, .input{ background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6; color: #333; line-height: 32px; height: 32px; padding: 0 10px; outline: none; margin-right: 10px;}
+    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
+    .mini { font-size: .8em; font-style: normal; color: red; }
+  </style>
+  <script src="inputTip.js"></script>
+  <!-- <script src="inputTip.min.js"></script> -->
+</head>
+
+<body>
+  <div style="border: 1px solid red; height: 80vh;">sdfasdfsf</div>
+  <div style="margin: 10px;">
+    <input type="text" id="input"><button onclick="addOpt(true)">增加选项</button>  <button onclick="addOpt(false)">减少选项</button>
+  </div>
+  <div style="border: 1px solid red; height: 80vh;" id="result">sdfasdfsf</div>
+  <script>
+  
+    // --- 使用示例 ---
+    // 定义选项
+    const myOptions = ["Apple", "Banana", "Cherry", "Date", { value: 'Elderberry', label: `Elderberry Elderberry <i class="mini">mini</i>` }, "Fig", "Grape", "Honeydew", "Kiwi"];
+    // 创建 InputTip 实例
+    const inputTip = new InputTip('#input', myOptions, {
+      maxHeight: 200,
+      onInput: (val) => document.querySelector('#result').textContent = `输入值：${val}`,
+    });
+
+    function addOpt(isAdd) {
+      isAdd &&inputTip.options.push(Math.random().toString(32).slice(-8));
+      !isAdd && inputTip.options.pop();
+    }
+  </script>
+</body>
+
+</html>
