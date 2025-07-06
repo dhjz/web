@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title> 取色器</title>
+  <meta name='robots' content='max-image-preview:large' />
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <script src="js/jquery.min.js"></script>
+  <script src="js/clipboard.min.js"></script>
+  <script src="js/colorpicker.min.js"></script>
+</head>
+
+<body>
+
+
+  <div class="runoob-page-content">
+    <style>
+      .cp {
+        margin: 20px;
+      }
+
+      #color {
+        width: 200px;
+        height: 200px;
+        float: left;
+        margin: 20px;
+      }
+
+       #color1 {
+        width: 200px;
+        height: 200px;
+        float: left;
+        margin: 20px 40px;
+        border-radius: 50%;
+      }
+
+      #text-color {
+        float: left;
+        margin-top: 30px;
+      }
+
+      .picker-wrapper,
+      .slide-wrapper {
+        position: relative;
+        float: left;
+      }
+
+      .picker-indicator,
+      .slide-indicator {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events: none;
+      }
+
+      .picker,
+      .slide {
+        cursor: crosshair;
+        float: left;
+      }
+
+      .cp-default {
+        background-color: gray;
+        padding: 12px;
+        box-shadow: 0 0 40px #000;
+        border-radius: 15px;
+        float: left;
+      }
+
+      .cp-default .picker {
+        width: 200px;
+        height: 200px;
+      }
+
+      .cp-default .slide {
+        width: 30px;
+        height: 200px;
+      }
+
+      .cp-default .slide-wrapper {
+        margin-left: 10px;
+      }
+
+      .cp-default .picker-indicator {
+        width: 5px;
+        height: 5px;
+        border: 2px solid darkblue;
+        -moz-border-radius: 4px;
+        -o-border-radius: 4px;
+        -webkit-border-radius: 4px;
+        border-radius: 4px;
+        opacity: .5;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+        filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=50);
+        filter: alpha(opacity=50);
+        background-color: white;
+      }
+
+      .cp-default .slide-indicator {
+        width: 100%;
+        height: 10px;
+        /*  left: -4px;*/
+        opacity: .6;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=60)";
+        filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=60);
+        filter: alpha(opacity=60);
+        border: 4px solid lightblue;
+        -moz-border-radius: 4px;
+        -o-border-radius: 4px;
+        -webkit-border-radius: 4px;
+        border-radius: 4px;
+        background-color: white;
+      }
+
+      /* Normal skin */
+
+      .cp-normal {
+        padding: 10px;
+        background-color: white;
+        float: left;
+        border: 4px solid #d6d6d6;
+        box-shadow: inset 0 0 10px white;
+      }
+
+      .cp-normal .picker {
+        width: 200px;
+        height: 200px;
+      }
+
+      .cp-normal .slide {
+        width: 30px;
+        height: 200px;
+      }
+
+      .cp-normal .slide-wrapper {
+        margin-left: 10px;
+      }
+
+      .cp-normal .picker-indicator {
+        width: 5px;
+        height: 5px;
+        border: 1px solid gray;
+        opacity: .5;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+        filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=50);
+        filter: alpha(opacity=50);
+        background-color: white;
+        pointer-events: none;
+      }
+
+      .cp-normal .slide-indicator {
+        width: 100%;
+        height: 10px;
+        left: -4px;
+        opacity: .6;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=60)";
+        filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=60);
+        filter: alpha(opacity=60);
+        border: 4px solid gray;
+        background-color: white;
+        pointer-events: none;
+      }
+
+      .form-control {
+        font-weight: bold;
+      }
+    </style>
+
+    <link rel="stylesheet" href="css/app.css" media="all" />
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <form class="form-inline" role="form"><label><strong style="font-size: 18px"><i class="fa fa-cogs"></i>
+                  取色器</strong></label></form>
+          </div>
+          <div class="card-body">
+            <form role="form">
+              <div class="form-group">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div id="default" class="cp cp-default"></div>
+                  </div>
+                  <div class="col-md-6">
+                    <div id="color"></div>
+                    <div id="color1"></div>
+                  </div>
+                </div>
+                <div class="row">
+                  <table class="table table-condensed">
+                    <tr>
+                      <td colspan="3">
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">HEX</span></div><input
+                            id="hex" type="text" class="form-control" value="">
+                          <div class="input-group-append">
+                            <span class="input-group-text" id="copycode">
+                              <i class="fas fa-copy" aria-hidden="true"></i> 复制代码
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colspan="3">
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">RGB</span></div><input
+                            id="rgb_css" type="text" class="form-control" value="">
+                          <div class="input-group-append"><span class="input-group-text" id="copycode2"><i
+                                class="fas fa-copy" aria-hidden="true"></i>复制代码</span></div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">R</span></div><input
+                            id="rgb_r" type="text" class="form-control" value="">
+                        </div>
+                      </td>
+                      <td>
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">G</span></div><input
+                            id="rgb_g" type="text" class="form-control" value="">
+                        </div>
+                      </td>
+                      <td>
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">B</span></div><input
+                            id="rgb_b" type="text" class="form-control" value="">
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colspan="3">
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">HSV</span></div><input
+                            id="hsv_css" type="text" class="form-control" value="">
+                          <div class="input-group-append"><span class="input-group-text" id="copycode3"><i
+                                class="fas fa-copy" aria-hidden="true"></i>复制代码</span></div>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">H</span></div><input
+                            id="hsv_h" type="text" class="form-control" value="">
+                        </div>
+                      </td>
+                      <td>
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">S</span></div><input
+                            id="hsv_s" type="text" class="form-control" value="">
+                        </div>
+                      </td>
+                      <td>
+                        <div class="input-group">
+                          <div class="input-group-prepend"><span class="input-group-text">V</span></div><input
+                            id="hsv_v" type="text" class="form-control" value="">
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+            </form>
+
+            <!-- search-->
+            <header class="flex items-center">
+              <div class="header__logo mr05"></div>
+              <button class="mdc-icon-button" data-btn-info type="button" aria-label="project info"
+                style="display:none;">
+                <svg class="mdc-icon-button__icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+              </button>
+              <div class="header__input-wrapper flex flex-auto">
+                <div class="flex items-center">
+                  <button class="mdc-button" data-btn-color-picker type="button"
+                    aria-label="toggle color picker dialog">
+                    <span class="mdc-button__ripple"></span>
+                    <svg class="mdc-button__icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M6.92,19L5,17.08L13.06,9L15,10.94M20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L13.84,6.41L11.91,4.5L10.5,5.91L11.92,7.33L3,16.25V21H7.75L16.67,12.08L18.09,13.5L19.5,12.09L17.58,10.17L20.7,7.05C21.1,6.65 21.1,6 20.71,5.63Z" />
+                    </svg>
+                    <span class="mdc-button__label header__preview-color"></span>
+                  </button>
+                </div>
+                <label data-color-input class="mdc-text-field mr05">
+                  <span class="mdc-text-field__ripple"></span>
+                  <input id="mdc-color" class="mdc-text-field__input" aria-labelledby="text-field-color-input"
+                    value="#6200ee" required>
+                  <span class="mdc-floating-label" id="text-field-color-input">Color</span>
+                  <span class="mdc-line-ripple"></span>
+                </label>
+                <label data-percent-input class="mdc-text-field mdc-text-field--with-leading-icon">
+                  <span class="mdc-text-field__ripple"></span>
+                  <span class="mdc-text-field__icon mdc-text-field__icon--leading">
+                    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M18.5 3.5L20.5 5.5L5.5 20.5L3.5 18.5L18.5 3.5M7 4C8.66 4 10 5.34 10 7C10 8.66 8.66 10 7 10C5.34 10 4 8.66 4 7C4 5.34 5.34 4 7 4M17 14C18.66 14 20 15.34 20 17C20 18.66 18.66 20 17 20C15.34 20 14 18.66 14 17C14 15.34 15.34 14 17 14M7 6C6.45 6 6 6.45 6 7C6 7.55 6.45 8 7 8C7.55 8 8 7.55 8 7C8 6.45 7.55 6 7 6M17 16C16.45 16 16 16.45 16 17C16 17.55 16.45 18 17 18C17.55 18 18 17.55 18 17C18 16.45 17.55 16 17 16Z" />
+                    </svg>
+                  </span>
+                  <input class="mdc-text-field__input" aria-labelledby="text-field-percent-input" type="number"
+                    inputmode="decimal" value="10" min="1" max="100" step="0.1" required>
+                  <span class="mdc-floating-label" id="text-field-percent-input">Percent factor</span>
+                  <span class="mdc-line-ripple"></span>
+                </label>
+              </div>
+              <div class="header__random-btn">
+                <button class="mdc-icon-button" data-btn-random type="button"
+                  aria-label="generate tints and shades from a random color">
+                  <svg class="mdc-icon-button__icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M14.83,13.41L13.42,14.82L16.55,17.95L14.5,20H20V14.5L17.96,16.54L14.83,13.41M14.5,4L16.54,6.04L4,18.59L5.41,20L17.96,7.46L20,9.5V4M10.59,9.17L5.41,4L4,5.41L9.17,10.58L10.59,9.17Z" />
+                  </svg>
+                </button>
+              </div>
+            </header>
+
+            <main></main>
+            <script src="js/index.js"></script>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      var cpDefault = ColorPicker(document.getElementById('default'), updateInputs);
+      //var cpSmall = ColorPicker(document.getElementById('small'), updateInputs);
+      //var cpFancy = ColorPicker(document.getElementById('fancy'), updateInputs);
+
+
+      var iHex = document.getElementById('hex');
+      var iR = document.getElementById('rgb_r');
+      var iG = document.getElementById('rgb_g');
+      var iB = document.getElementById('rgb_b');
+      var iH = document.getElementById('hsv_h');
+      var iS = document.getElementById('hsv_s');
+      var iV = document.getElementById('hsv_v');
+
+      var rgbCSS = document.getElementById('rgb_css');
+      var hsvCSS = document.getElementById('hsv_css');
+
+      var color = document.getElementById('color');
+      var color1 = document.getElementById('color1');
+      //var textColor = document.getElementById('text-color');
+
+      function updateInputs(hex) {
+
+        var rgb = ColorPicker.hex2rgb(hex);
+        var hsv = ColorPicker.hex2hsv(hex);
+
+        iHex.value = hex;
+        // $("#mdc-color").val(hex);
+        iR.value = rgb.r;
+        iG.value = rgb.g;
+        iB.value = rgb.b;
+
+        iH.value = hsv.h.toFixed(2);
+        iS.value = hsv.s.toFixed(2);
+        iV.value = hsv.v.toFixed(2);
+
+        rgbCSS.value = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
+        hsvCSS.value = 'hsv(' + hsv.h.toFixed(2) + ', ' + hsv.s.toFixed(2) + ', ' + hsv.v.toFixed(2) + ')';
+
+        color.style.backgroundColor = hex;
+        color1.style.backgroundColor = hex;
+        location.hash = hex;
+        // textColor.style.color = hex;
+      }
+
+      function updateColorPickers(hex) {
+        location.hash = hex;
+        cpDefault.setHex(hex);
+
+        // $("#mdc-color").val(hex);
+        // cpSmall.setHex(hex);
+        // cpFancy.setHex(hex);
+      }
+
+      function getRgb(val) {
+        const match = val.match(/\((\d+),\s*(\d+),\s*(\d+)\)/);
+        console.log(match);
+        if (match && match.length === 4) {
+          return{ r: match[1], g: match[2], b: match[3] };
+        } else {
+          return null;
+        }
+      }
+
+      var initialHex = '#f4329c';
+      if (location.hash && location.hash.length === 7) initialHex = location.hash;
+      updateColorPickers(initialHex);
+
+
+      iHex.onchange = function () { updateColorPickers(iHex.value); };
+      rgbCSS.onchange = function () { updateColorPickers(ColorPicker.rgb2hex(getRgb(rgbCSS.value))); };
+
+      iR.onchange = function () { updateColorPickers(ColorPicker.rgb2hex({ r: iR.value, g: iG.value, b: iB.value })); }
+      iG.onchange = function () { updateColorPickers(ColorPicker.rgb2hex({ r: iR.value, g: iG.value, b: iB.value })); }
+      iB.onchange = function () { updateColorPickers(ColorPicker.rgb2hex({ r: iR.value, g: iG.value, b: iB.value })); }
+
+      iH.onchange = function () { updateColorPickers(ColorPicker.hsv2hex({ h: iH.value, s: iS.value, v: iV.value })); }
+      iS.onchange = function () { updateColorPickers(ColorPicker.hsv2hex({ h: iH.value, s: iS.value, v: iV.value })); }
+      iV.onchange = function () { updateColorPickers(ColorPicker.hsv2hex({ h: iH.value, s: iS.value, v: iV.value })); }
+      new ClipboardJS('#copycode', {
+        text: function (trigger) {
+          return $("#hex").val();
+        }
+      }).on('success', function (e) {
+        $("#copycode").text('已复制');
+        setTimeout(function () { $("#copycode").html("<i class=\"fas fa-copy\" aria-hidden=\"true\"></i> 复制代码"); }, 2000);
+        e.clearSelection();
+      }).on('error', function (e) {
+        alert('Error!');
+      });
+      new ClipboardJS('#copycode2', {
+        text: function (trigger) {
+          return $("#rgb_css").val();
+        }
+      }).on('success', function (e) {
+        $("#copycode2").text('已复制');
+        setTimeout(function () { $("#copycode2").html("<i class=\"fas fa-copy\" aria-hidden=\"true\"></i>  复制代码"); }, 2000);
+        e.clearSelection();
+      }).on('error', function (e) {
+        alert('Error!');
+      });
+      new ClipboardJS('#copycode3', {
+        text: function (trigger) {
+          return $("#hsv_css").val();
+        }
+      }).on('success', function (e) {
+        $("#copycode3").text('已复制');
+        setTimeout(function () { $("#copycode3").html("<i class=\"fas fa-copy\" aria-hidden=\"true\"></i> 复制代码"); }, 2000);
+        e.clearSelection();
+      }).on('error', function (e) {
+        alert('Error!');
+      });
+
+    </script>
+  </div>
+</body>
+
+</html>
