@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html manifest="audiomass.appcache">
+
+<head>
+    <title>在线音频编辑器 - 在线音乐剪辑 - AudioMass - Audio Editor</title>
+    <link href="img/icon-app.png" rel="shortcut icon">
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+    <meta name="description" content="免费且功能强大的在线音频/波形编辑器，直接在浏览器里打开即可使用，无需下载软件，无需安装插件！" />
+    <meta property="og:image" content="icon.jpg" />
+    <meta property="og:title" content="音频编辑器">
+    <meta property="og:description" content="免费且功能强大的在线音频/波形编辑器，直接在浏览器里打开即可使用，无需下载软件，无需安装插件！">
+    <meta name="keywords" content="在线音频编辑器, 音频编辑, AudioMass, WebAudio, WaveForm, audio editing, free audio editing, audio tool, waveform editor, sound editor, open source">
+    <link rel="apple-touch-icon" href="img/icon-app.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="音频编辑器">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <style>
+        .pk_tbc {
+            width: 100%;
+        }
+        
+        @media only screen and (max-width: 779px) {
+            .pk_mob .pk_hdr {
+                padding: 0 5px;
+            }
+            .mob_buyMember{
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script src="js/wavesurfer.js"></script>
+    <script src="js/wavesurfer.regions.js"></script>
+    <script src="js/oneup.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/keys.js"></script>
+    <script src="js/contextmenu.js"></script>
+    <script src="js/ui-fx.js"></script>
+    <script src="js/ui1.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/actions.js"></script>
+    <script src="js/drag.js"></script>
+    <script src="js/recorder.js"></script>
+    <!-- <script src="js/welcome.js"></script> -->
+    <script src="js/fx-pg-eq.js"></script>
+    <script src="js/fx-auto.js"></script>
+    <script src="js/local.js"></script>
+    <script src="js/id3.js"></script>
+    <script src="js/lzma.js"></script>
+    <!-- <script src="js/multitrack.js"></script> <script src="js/multitrack-ui.js"></script> -->
+    <script>
+        var editor = PKAudioEditor.init('app');
+        if ('serviceWorker' in navigator) {
+            try {
+                navigator.serviceWorker.register('sw.js');
+            } catch (error) {}
+        }
+    </script>
+</body>
+
+</html>
