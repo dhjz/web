@@ -7,5 +7,5 @@ window.config = {
     // { name: '数据库管理', short: '数据库', url: host + ':40002', color: '#afaaad' },
     // { name: '服务器监控', short: '监控', url: host + ':40001', color: '#e6bc00' },
   ],
-  footer: '人生得意须尽欢，莫使金樽空对月。'
+  footer: '勿忘国耻, 吾辈自强。'
 }

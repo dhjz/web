@@ -1,0 +1,47 @@
+window.config = {
+  searchs: [
+    { name: '百度', url: 'https://www.baidu.com/s?ie=utf8&oe=utf8&wd=%s', color: '#3377FF' },
+    { name: '必应', url: 'https://cn.bing.com/search?q=%s', color: '#00838F' },
+    { name: '谷歌', url: 'https://www.google.com.hk/search?hl=zh-CN&q=%s', color: '#4285F4' },
+    { name: 'GitHub', url: 'https://github.com/search?q=%s', color: '#24292E' },
+    { name: '搜狗', url: 'https://www.sogou.com/tx?ie=utf-8&query=%s', color: '#FF8A00' },
+    { name: 'Yandex', url: 'https://yandex.com/search/?text=%s', color: '#FF0000' },
+  ],
+  sites: [
+    {
+      name: '开发工具',
+      list: [
+        { name: '工具函数', short: '函数', url: './utils/index.html', color: '#6A5ACD' },
+        { name: '在线调色板', short: '调色', url: './color/index.html', color: '#F08080' },
+        { name: '代码美化', short: '代码', url: './code/index.html', color: '#8A2BE2' },
+        { name: 'CSS三角', short: '三角', url: './border/index.html', color: '#20B2AA' },
+        { name: '文本处理', short: '文本', url: './tool.html', color: '#5F9EA0' },
+        { name: 'UEditor', short: 'UEditor', url: './ueditor/index.html', color: '#FF6347' },
+        { name: 'Ace', short: 'Ace', url: './ace/index.html', color: '#4682B4' },
+        { name: 'Emoji', short: 'Emoji', url: './emoji/index.html', color: '#32CD32' },
+        { name: '符号大全', short: '符号', url: './icon.html', color: '#FFD700' },
+        { name: 'Base64转换', short: 'Base64', url: './base64.html', color: '#6a6443' },
+        { name: '工具类', short: '工具类', url: './utils/lib.html', color: '#8B4513' },
+        { name: 'HTML测试', short: 'HTML', url: 'https://t.199311.xyz/html/', color: '#DA70D6' },
+      ]
+    },
+    {
+      name: '媒体工具',
+      list: [
+        { name: '在线PS', short: 'PS', url: './ps/index.html', color: '#6495ED' },
+        { name: '音频编辑', short: '音频', url: './audio/index.html', color: '#DC143C' },
+        { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' }
+      ]
+    },
+    {
+      name: '硬件工具',
+      list: [
+        { name: '键盘测试', short: '键盘', url: './key/index.html', color: '#DAA520' },
+        { name: '屏幕测试', short: '屏幕', url: './screen/index.html', color: '#00CED1' },
+        { name: '局域网控制', short: '控制', url: './dc/index.html', color: '#FF4500' },
+        { name: '老工具', short: '老工具', url: './old.html', color: '#bbb' },
+      ]
+    }
+  ],
+  footer: '人生得意须尽欢，莫使金樽空对月。'
+}

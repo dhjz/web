@@ -1,143 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>D-Web</title>
-  <link rel="shortcut icon" type="image/x-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAhhJREFUWEftl79LHEEUx7+zHMnhzXHJzqK1jYU2ATurhPwDaYKVRLET/AVioSPZM0uKNBYhXSApUgQb/wLxuoAggoWNIZWVd3uFzoHKeS/Mrid7cs5t9m4jIU61sDPvfea9735nh+GeB7vn/Pg3ALhrD6OO1wCY8qquqWpc2m/1PGSwqdzqYacKx6oAl85zgHZ0MOX5xjVcCgqTshfKq5T+CMBZdvLnjzDaflEIoAObg5rnZS+xV/lQOWvGaNlNbkVMMgtfOlF3854amKq997+2BeDSdgGme5jioGJURy0ViACUlOfflLoXGuBS6BZqLSUGCCoTBWtXputEWivFqAi7AuhFPx4A0q+AC4vXxQGAEQAtItYtTB2Ar4pPYJgJhNr/NIu5nxdR7aQKkJfiFQFbJgvuGiD0AgCZxkn0kBlYGsjVsvVjAE8AcpVXLRo+z2Q+EPRwzdkA0UIIQSNNCC7t7wAbb9f3O1rQAhnLCZuBuLT3AfYMwA/l+WP5NTFJFJ4dFqyhU698dJdnRFqQHKAgC4NXyPwKzkSwDQIt6mdimKi987+ZDKsnADpBblW8YQw3pxmAj8rz5zq5Zc8AAgjpfGagaQJ2+zLWy7JbVn8VALN4zAtijyzM19b97U7JbxlRcg3ESZSqCP8vgG52a1irnTCWBlLKH7iGCUD7fSP0/Pjj+h4QawEDrFL0Vy3WxSRW6ISTHgB+A5bVbzCk1t2OAAAAAElFTkSuQmCC">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.9.0/axios.min.js"></script>
-  <style>
-    * {margin: 0; padding:0; box-sizing: border-box;}
-    body {padding: 10px 30px;}
-    input { background: #fff; outline: none; line-height: 26px; border: 1px solid #ccc; padding: 0 10px; display: inline-block; min-width: 280px; margin-top: 6px;}
-    button, .button { outline: none; background: none; border: 1px solid #ccc; display: inline-block; margin-left: 10px; line-height: 18px; padding: 4px 10px; cursor: pointer;}
-    button span{ color: #f33; display: block;}
-    label { width: 80px; display: inline-block; }
-    div { margin: 10px 0;}
-    h2 { margin: 26px 0 10px; background-image: -webkit-linear-gradient(left, #008DFF 0%, #30C5AF 55%, #30C5AF 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    display: inline-block;
-    padding-right: 130px;}
-    .result { white-space: pre-wrap; word-break: break-all;}
-    .ftr { float: right;}
-    .ftl { float: left;}
-    a {color: #000; text-decoration: none;}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的工具集</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="static/index.css">
+    <script src="static/vue.global.prod.js"></script>
 </head>
-<body>
-  <button onclick="location.reload()" class="ftr">刷新</button>
-  <a target="_blank" href="./key/" class="button ftr">键盘测试</a>
-  <a target="_blank" href="./screen/" class="button ftr">屏幕测试</a>
-  <a target="_blank" href="./audio/" class="button ftr">音频编辑</a>
-  <a target="_blank" href="./ps/" class="button ftr">在线ps</a>
-  <a target="_blank" href="./ico/" class="button ftr">ICO转换</a>
-  <a target="_blank" href="./dc/" class="button ftr">控制</a>
-  <a target="_blank" href="./code/" class="button ftr">代码美化</a>
-  <a target="_blank" href="./border/" class="button ftr">CSS三角</a>
-  <a target="_blank" href="./color/" class="button ftr">取色器</a>
-  <a target="_blank" href="./icon.html" class="button ftr">符号大全</a>
-  <a target="_blank" href="./tool.html" class="button ftr">文本处理</a>
-  <a target="_blank" href="./ueditor/" class="button ftr">UEditor</a>
-  <a target="_blank" href="./ace/" class="button ftr">Ace</a>
-  <a target="_blank" href="https://t.199311.xyz/html/" class="button ftr">HTML测试</a>
-  <a target="_blank" href="./emoji/" class="button ftr">Emoji</a>
-  <a target="_blank" href="./utils/lib.html" class="button ftr">工具类</a>
-  <a target="_blank" href="./utils/" class="button ftr">工具函数</a>
-  <h2>Wake On Lan</h2>
-  <form action=""  autocomplete="on">
-    <div><label>IP: </label><input type="text" id="dip" autocomplete="on"></div>
-    <div><label>PORT: </label><input type="text" id="dport" value="11999"  autocomplete="on"></div>
-    <div><label>MAC: </label><input type="text" id="dmac" value="04421AA96526" autocomplete="on"></div>
-  </form>
-  <div><button onclick="wol()">唤醒</button></div>
-  <div class="result" id="result"></div>
-  <h2>文件和Base64互转</h2>
-  <div><button onclick="window.open('./base64.html')">文件和Base64互转</button></div>
-  <div class="result" id="result1"></div>
-  <h2>测试工具</h2>
-  <div><a href="https://www.123pan.com/s/smkDVv-5g05v.html" target="_blank">https://www.123pan.com/s/smkDVv-5g05v.html</a></div>
-  <div class="result" id="result1"></div>
-  <h2>获取本机IP</h2>
-  <div><button onclick="getIp()">获取本机IP</button></div>
-  <div class="result" id="result1"></div>
-  <h2>图片转base64</h2>
-  <div><input type="file" id="fileInput"><button onclick="$copy(base64Str)">复制</button></div>
-  <div class="result" id="result3"></div>
-  <h2>获取测试数据</h2>
-  <div><label>page: </label><input type="text" id="page" value="1"></div>
-  <div><label>limit: </label><input type="text" id="limit" value="10"></div>
-  <div><label>fields: </label><input type="text" id="fields" value="name,date,number,datetime,number1,zh,boolean"></div>
-  <div><button onclick="getTest()">获取测试数据</button></div>
-  <div class="result" id="result2"></div>
-  <div style="margin-top: 100px;">
-    <ul>
-      <li>◈ Loaded function wol ./.netlify/functions/wol?ip=127.0.0.1&port=11999&mac=00E04C430BA7</li>
-      <li>◈ Loaded function test ./.netlify/functions/test?page=1&limit=10&fields=name,date,number,datetime,number1,zh,boolean</li>
-      <li>◈ Loaded function proxy ./.netlify/functions/proxy?url=http://www.baidu.com</li>
-      <li>◈ Loaded function ip ./.netlify/functions/ip</li>
-    </ul>
-  </div>
-  <script>
-    function $q(sel) {
-      return document.querySelector(sel)
-    }
-    function wol() {
-      let ip = $q('#dip').value || ''
-      let port = $q('#dport').value || ''
-      let mac = $q('#dmac').value || ''
-      if (!ip.trim() || !mac.trim()) return alert('请先输入ip和mac地址')
-      axios.get(`./.netlify/functions/wol?ip=${ip}&port=${port}&mac=${mac}`).then(res => {
-        console.log(res)
-        $q('#result').innerHTML = JSON.stringify(res.data)
-      })
+<body id="app">
+    <div class="container">
+        <header>
+            <div class="search-container">
+                <select v-model="selectedSearchEngine" class="search-select" @change="searchChange">
+                    <option v-for="search in config.searchs" :key="search.name" :value="search.url">
+                        {{ search.name }}
+                    </option>
+                </select>
+                <input type="text" v-model="searchQuery" @keyup.enter="performSearch" placeholder="输入关键字搜索..." class="search-input">
+                <button @click="performSearch" class="search-button">搜索</button>
+            </div>
+            <button @click="toggleDarkMode" class="theme-toggle">
+                <svg v-if="isDarkMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path d="M12 3a9 9 0 00-8.495 5.736c.775-.413 1.682-.647 2.604-.647 3.743 0 6.788 3.045 6.788 6.789a7.5 7.5 0 001.029-8.521c-.142-.25-.302-.484-.477-.709a8.943 8.943 0 01-1.029 3.253z"/>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v2.5a.75.75 0 01-1.5 0v-2.5a.75.75 0 01.75-.75zM7.72 3.18a.75.75 0 00-.53-.335l-2.12.36.72.699a.75.75 0 00.963.055l.646-.585a.75.75 0 00.064-.926l-.835-1.188a.75.75 0 00-1.205.315l-1.121 2.47a.75.75 0 00.565 1.052l2.336.392a.75.75 0 001.066-.786l-.331-2.315zm10.503 2.21a.75.75 0 00-.589-.519l-1.666-.277a.75.75 0 00-.78.733v1.46a.75.75 0 001.5 0v-1.244l1.335-.222a.75.75 0 00.461-1.366zM12 13.5a.75.75 0 01.75-.75h5.5a.75.75 0 010 1.5h-5.5a.75.75 0 01-.75-.75zM12 17.25a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5a.75.75 0 01-.75-.75zM10.15 5.7a.75.75 0 00-1.105.135l-1.055 1.285a.75.75 0 00.529 1.204l1.688.28a.75.75 0 00.771-.591l.375-1.962a.75.75 0 00-.771-.783zm9.954 6.764a.75.75 0 00-1.084.878l.836 1.188a.75.75 0 001.205-.315l-1.033-2.277a.75.75 0 00-.749-.549zm-8.078 2.193a.75.75 0 01.48.887l-.33 2.315a.75.75 0 00.749.783l2.12-.36a.75.75 0 00.53-.335l-1.451-1.384a.75.75 0 00-.59-.262zM9.026 11.213a.75.75 0 00-1.205.315l-1.032 2.278a.75.75 0 00.749.783l2.12-.36a.75.75 0 00.53-.335l-1.084-.878a.75.75 0 00-.749-.392zm9.845 3.348a.75.75 0 00.683 1.177l1.666.277a.75.75 0 00.78-.733v-1.46a.75.75 0 00-1.5 0v1.244l-1.335.222a.75.75 0 00-.461 1.366zm-4.157 3.073a.75.75 0 00-.282 1.112l1.055 1.285a.75.75 0 001.205.315l1.032-2.277a.75.75 0 00-.749-.783l-2.12-.36a.75.75 0 00-.53.335zm2.108-3.957a.75.75 0 00.135.926l1.033 2.277a.75.75 0 001.205-.315l-1.083-2.278a.75.75 0 00-.749-.392l-2.12-.36a.75.75 0 00-.53.335zM20.55 12a10.5 10.5 0 01-19.75 3.707c-.283-.799-.444-1.648-.444-2.523 0-5.796 4.704-10.5 10.5-10.5 4.583 0 8.474 2.954 9.943 7.033a10.47 10.47 0 01-7.52 10.214A10.5 10.5 0 0112 21c-.828 0-1.625-.095-2.394-.274a10.49 10.49 0 0110.158-14.546z"/>
+                </svg>
+            </button>
+        </header>
 
-    }
+        <main>
+            <section v-for="category in config.sites" :key="category.name" class="site-category">
+                <h2 class="category-title">{{ category.name }}</h2>
+                <div class="site-list">
+                    <a v-for="site in category.list" :key="site.url" :href="site.url" target="_blank" class="site-item" :title="site.name">
+                        <div class="site-icon" :style="{ backgroundColor: site.color }">
+                            {{ site.short }}
+                        </div>
+                        <span class="site-name">{{ site.name }}</span>
+                    </a>
+                </div>
+            </section>
+        </main>
 
-    function getIp() {
-      axios.get(`./.netlify/functions/ip`).then(res => {
-        console.log(res)
-        $q('#result1').innerHTML = JSON.stringify(res.data)
-      })
-    }
-
-    function getTest() {
-      let page = $q('#page').value || 1
-      let limit = $q('#limit').value || 10
-      let fields = $q('#fields').value || 'name,nick'
-      axios.get(`./.netlify/functions/test?page=${page}&limit=${limit}&fields=${fields}`).then(res => {
-        console.log(res)
-        $q('#result2').innerHTML = JSON.stringify(res.data, null, 2)
-      })
-    }
-
-    // 选择文件输入框
-    window.base64Str = ''
-    const fileInput = document.getElementById('fileInput');
-    fileInput.addEventListener('change', function() {
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-      reader.onloadend = function() {
-        const base64String = reader.result;
-        console.log(base64String);
-        window.base64Str = base64String
-        $q('#result3').innerHTML = base64String
-        fileInput.value = ''
-      };
-      reader.readAsDataURL(file);
-    });
-
-    function $copy(text) {
-      if (!text) return
-      let inputElement = document.createElement('input');
-      inputElement.value = text;
-      document.body.appendChild(inputElement)
-      inputElement.select()
-      document.execCommand('copy', true);
-      inputElement.parentNode.removeChild(inputElement)
-      return true
-    }
-  </script>
+        <footer>
+            <p>{{ config.footer }}</p>
+        </footer>
+    </div>
+    
+    <script src="data.js"></script>
+    <script src="static/index.js"></script>
 </body>
 </html>

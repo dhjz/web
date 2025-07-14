@@ -1,0 +1,331 @@
+@charset "UTF-8";
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+/* 全局样式 */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7f6; /* 浅灰色背景 */
+    color: #333;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 20px;
+    width: 96%;
+    min-height: 100vh;
+}
+
+/* 深色模式 */
+body.dark-mode {
+    background-color: #1a202c; /* 深色背景 */
+    color: #e2e8f0; /* 浅色文字 */
+}
+
+body.dark-mode header {
+    background-color: #2d3748;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .search-input,
+body.dark-mode .search-select,
+body.dark-mode .search-button {
+    background-color: #4a5568;
+    color: #e2e8f0;
+    border-color: #718096;
+}
+
+body.dark-mode .search-button:hover {
+    background-color: #718096;
+}
+
+body.dark-mode .site-category {
+    background-color: #2d3748;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .category-title {
+    color: #a0aec0;
+    border-color: #5a5a5a;
+}
+
+body.dark-mode .site-item {
+    /* background-color: #4a5568; */
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); */
+}
+
+body.dark-mode footer {
+    color: #a0aec0;
+}
+
+
+/* 头部样式 */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* 让搜索框占据更多空间 */
+    margin-right: 15px;
+}
+
+.search-select {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    border-color: #4CAF50; /* 焦点时边框变绿 */
+}
+
+.search-button {
+    padding: 8px 15px;
+    background-color: #4CAF50; /* 绿色搜索按钮 */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+    white-space: nowrap;
+}
+
+.search-button:hover {
+    background-color: #45a049;
+}
+
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    margin-left: 15px;
+    color: #333; /* 默认颜色 */
+    transition: color 0.3s ease;
+}
+
+.theme-toggle svg {
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+}
+
+body.dark-mode .theme-toggle {
+    color: #e2e8f0;
+}
+
+
+/* 内容区域样式 */
+main {
+    display: grid;
+    grid-template-columns: 1fr; /* 整体单列布局，每个分类独占一行 */
+    gap: 20px; /* 减少分类之间的间距 */
+}
+
+.site-category {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 10px 15px; /* 减少分类内部的 padding */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.category-title {
+    font-size: 1em; /* 减小分类标题字号 */
+    margin-top: 0;
+    margin-bottom: 10px; /* 减少标题和网站列表之间的间距 */
+    color: #333;
+    border-bottom: 1px solid #eee; /* 细线也可以稍细一点 */
+    padding-bottom: 6px;
+    transition: color 0.3s ease;
+}
+
+.site-list {
+    display: flex; /* 使用 flex 布局实现平铺 */
+    flex-wrap: wrap; /* 允许元素换行 */
+    gap: 12px; /* 减小网站项之间的间距 */
+    justify-content: flex-start; /* 从左侧开始平铺 */
+}
+
+.site-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-basis: 90px; /* 减小每个网站项的基础宽度 */
+    max-width: 74px; /* 减小最大宽度 */
+    box-sizing: border-box; /* 确保 padding 和 border 包含在宽度内 */
+}
+
+.site-item:hover {
+    transform: translateY(-3px); /* 减小悬停时的位移 */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* 减小悬停阴影 */
+}
+
+.site-icon {
+    width: 44px; /* 减小图标尺寸 */
+    height: 44px; /* 减小图标尺寸 */
+    border-radius: 50%; /* 圆形 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white; /* 文字颜色为白色 */
+    font-size: 0.7em; /* 减小图标内文字字号 */
+    margin-bottom: 6px; /* 减小图标和名称之间的间距 */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1); /* 减小图标阴影 */
+    transition: transform 0.2s ease;
+}
+
+.site-item:hover .site-icon {
+    transform: scale(1.05); /* 减小悬停时的放大效果 */
+}
+
+.site-name {
+    text-align: center;
+    font-size: 0.8em; /* 减小网站名称字号 */
+    white-space: nowrap; /* 防止名称换行 */
+    overflow: hidden;
+    text-overflow: ellipsis; /* 超出部分显示省略号 */
+    max-width: 100%; /* 限制最大宽度 */
+}
+
+/* 页脚样式 */
+footer {
+    text-align: center;
+    margin-top: 30px; /* 减少页脚和上方内容的间距 */
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    font-size: 0.85em; /* 减小页脚文字字号 */
+    color: #777;
+    transition: color 0.3s ease;
+}
+
+/* 深色模式下 .site-list 的子项样式 */
+body.dark-mode .site-list .site-item {
+    background-color: transparent;
+    box-shadow: none;
+    filter: brightness(0.8);
+}
+/* ... (其他深色模式样式保持不变) ... */
+
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    header {
+        align-items: flex-start;
+        padding: 15px;
+    }
+    .search-container {
+        /* width: 100%; */
+    }
+    .search-select {
+         /* 适应小屏幕 */
+        font-size: 0.8em;
+    }
+    .search-input {
+        flex: 1;
+        font-size: 0.9em;
+    }
+    .search-button {
+        font-size: 0.9em;
+        padding: 6px 12px;
+    }
+    .theme-toggle {
+        margin-left: 0;
+         /* 主题切换按钮靠右 */
+        padding: 2px 4px;
+    }
+
+    /* 在移动端，列表平铺仍然适用 */
+    .site-list {
+        justify-content: flex-start; /* 中间对齐 */
+        gap: 10px; /* 减小移动端间距 */
+    }
+    .site-item {
+        flex-basis: 80px; /* 减小移动端网站项基础宽度 */
+        max-width: 80px; /* 减小移动端网站项最大宽度 */
+    }
+    .site-icon {
+        width: 45px; /* 减小移动端图标尺寸 */
+        height: 45px; /* 减小移动端图标尺寸 */
+        font-size: 0.7em; /* 减小移动端图标内文字字号 */
+        margin-bottom: 5px;
+    }
+    .site-name {
+        font-size: 0.75em; /* 减小移动端网站名称字号 */
+    }
+    .category-title {
+        font-size: 1.3em; /* 减小移动端分类标题字号 */
+        margin-bottom: 10px;
+    }
+    .site-category {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .category-title {
+        font-size: 1.2em; /* 更小一些的分类标题 */
+    }
+    .site-list {
+        gap: 8px; /* 更小的间距 */
+    }
+    .site-item {
+        flex-basis: 70px; /* 更小一些的网站项 */
+        max-width: 70px;
+    }
+    .site-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 0.7em;
+    }
+    .site-name {
+        font-size: 0.7em;
+    }
+    .search-select, .search-input, .search-button {
+        padding: 5px 3px;
+        font-size: 0.7em;
+    }
+    header {
+        padding: 10px 8px;
+    }
+    footer {
+        margin-top: 20px;
+        padding-top: 10px;
+        font-size: 0.8em;
+    }
+}
