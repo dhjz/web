@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转 ICO</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <!-- CDN 引入 fabric.js -->
+    <script src="fabric.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>图片转换为 ICO</h1>
+
+        <div id="dropzone" class="dropzone">
+            <p>将 PNG, JPEG, GIF 文件拖拽到这里，或点击选择文件</p>
+            <input type="file" id="fileInput" accept=".png,.jpeg,.jpg,.gif" multiple hidden>
+        </div>
+
+        <div id="previewContainer" class="preview-container">
+            <img id="imagePreview" src="#" alt="图片预览" style="display: none;">
+        </div>
+
+        <div class="options">
+            <label>选择 ICO 图标尺寸:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="iconSize" value="16" checked> 16x16</label>
+                <label><input type="radio" name="iconSize" value="32"> 32x32</label>
+                <label><input type="radio" name="iconSize" value="48"> 48x48</label>
+                <label><input type="radio" name="iconSize" value="64"> 64x64</label>
+                <label><input type="radio" name="iconSize" value="128"> 128x128</label>
+                <label><input type="radio" name="iconSize" value="256"> 256x256</label>
+            </div>
+        </div>
+
+        <button id="convertButton" disabled>转换为 ICO 并下载</button>
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+</html>

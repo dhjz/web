@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, initial-scale=1.0"
+    />
+    <title>在线版PS</title>
+    <meta name="keywords" content="在线ps,ps网页版" />
+    <meta
+      name="description"
+      content="在线网页版PS是一款功能强大的在线图片编辑工具，完美支持PSD、XCF、Sketch等格式。无需下载软件，只需在浏览器中打开在线网页版PS，即可开始进行专业的图片编辑操作。"
+    />
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="css/style.css" />
+    <meta name="msapplication-TileColor" content="#da532c" />
+    <meta name="theme-color" content="#ffffff" />
+    <style>
+      h1 {
+        font-size: 2.5em;
+        margin: 0.7em 0;
+        letter-spacing: 0em;
+      }
+
+      strong {
+        display: inline-block;
+        font-size: 1.1em;
+        background: rgba(0, 0, 0, 0.1);
+        padding: 0.1em 0.5em;
+        margin: 0.2em 0.5em 0.2em 0;
+        border-radius: 0.3em;
+        font-weight: normal;
+        line-height: 1.7;
+      }
+      div.panelblock.mainblock ul li:nth-child(3) {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="theme0">
+    <div class="topfloat" style="display: none"></div>
+    <script src="js/ext.min.js"></script>
+    <script src="js/pimg.js"></script>
+    <script src="js/fonts.min.js"></script>
+    <script src="js/lng2.min.js"></script>
+    <script src="js/main.min.js"></script>
+    <!-- <script src="js/global.js"></script> -->
+    <script>
+      setTimeout(() => {
+        const imgElement = document.createElement('img');
+        imgElement.src = '/img/logo.png';
+        imgElement.style.cssText = 'width: 20px; height: 20px; vertical-align: middle; padding-left: 10px; padding-right: 5px; display: inline-block; overflow: hidden; ';
+        document.querySelector('.topbar').insertBefore(imgElement, document.querySelector('.topbar').firstChild);
+      }, 1000)
+    </script>
+  </body>
+</html>
