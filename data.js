@@ -13,8 +13,9 @@ window.config = {
       list: [
         { name: '工具函数', short: '函数', url: './utils/index.html', color: '#6A5ACD' },
         { name: '在线调色板', short: '调色', url: './color/index.html', color: '#F08080' },
-        { name: '代码美化', short: '代码', url: './code/index.html', color: '#8A2BE2' },
+        { name: '渐变色', short: '渐变色', url: './grad/index.html', color: '#1a7690' },
         { name: 'CSS三角', short: '三角', url: './border/index.html', color: '#20B2AA' },
+        { name: '代码美化', short: '代码', url: './code/index.html', color: '#8A2BE2' },
         { name: '文本处理', short: '文本', url: './tool.html', color: '#5F9EA0' },
         { name: 'UEditor', short: 'UEditor', url: './ueditor/index.html', color: '#FF6347' },
         { name: 'Ace', short: 'Ace', url: './ace/index.html', color: '#4682B4' },
