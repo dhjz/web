@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0,user-scalable=yes,maximum-scale=1.0">
+<title>Javascript加密混淆</title>
+<meta name="keywords" content="Javascript加密混淆,JS代码加密工具,JS混淆,JS混淆加密,JS混淆解密,JS代码混淆" />
+<meta name="description" content="Javascript加密混淆,通过JS加密后，JS代码人为识别不出来，理论上不可逆，对Js代码起到保护的作用" />
+<link rel="stylesheet" type="text/css" href="static/css/global.min.css" />
+<link rel="stylesheet" type="text/css" href="static/css/indexcodemirror.min.css" />
+<link rel="stylesheet" type="text/css" href="static/css/prettify.css"/>
+</head>
+<body class="load-indicator" >
+<div class="container t-small-margin">
+<h1 class="font-18 v-big-margin no-padding-v">Javascript加密混淆</h1>
+
+    <!--  start 各个模块代码 -->
+             <div class="obfuscate-box">
+        <ul class="nav nav-tabs">
+            <li class="active"><a data-tab href="#tabContent1">粘贴JavaScript代码</a></li>
+            <li><a data-tab href="#tabContent2">加密JavaScript文件</a></li>
+            <li><a data-tab href="#tabContent3">加密结果</a></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane active" id="tabContent1">
+                <div class="editor-box2">
+                    <!-- json编辑器 -->
+                    <div id="editor4">
+                        <textarea id="code4" placeholder="Code goes here..."></textarea>
+                        <div id="resize4">
+                            <i class="icon-bars"></i>
+                        </div>
+                    </div>
+                </div>
+                <!-- 功能 -->
+                <div class="t-huge-margin">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary" id="obfuscateJavascript" data-loading-text="加密中，请稍候...">JS混淆加密</button>
+                        <button type="button" class="btn" id="clearCode">清空</button>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane" id="tabContent2">
+                <div class="upload-js-file">
+                    <div class="jsfile-mask">拖拽JavaScript文件 或者 点击读取JavaScript文件</div>
+                    <input type="file" id="uploadJsFile" accept="text/javascript, application/javascript">
+                </div>
+            </div>
+            <div class="tab-pane" id="tabContent3">
+                <div class="code-box" id="codeBox">
+                    <pre class="prettyprint linenums Lang-java" id="cBox"></pre>
+                    <div id="resizePre">
+                        <i class="icon-bars"></i>
+                    </div>
+                </div>
+                <!-- 功能 -->
+                <div class="t-huge-margin">
+                    <div class="btn-group">
+                        <button type="button" class="btn" id="downloadTextarea" data-suffix="js">下载加密代码</button>
+                        <button type="button" class="btn" id="copyTextarea">复制加密代码</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- 校验结果 -->
+<div class="with-icon display-none" id="jsonlintBox">
+    <i class="icon-info-sign" id="jsonlintIcon"></i>
+    <pre class="content" id="jsonlintResult">请贴入要格式化的JSON代码</pre>
+</div>
+    <!-- 配置 -->
+    <div class="obfuscate-setting" id="obfuscateSetting">
+        <h4>混淆加密配置</h4>
+        <hr>
+        <div class="setting-item">
+            <p class="float-left t-mini-padding">一键配置</p>
+            <div class="setting-opation">
+                <button type="button" class="btn" id="lowObfuscate">低混淆，高性能</button>
+                <button type="button" class="btn h-big-margin" id="medObfuscate">中等混淆，最佳性能</button>
+                <button type="button" class="btn" id="highObfuscate">高度混淆，低性能</button>
+                <button type="button" class="btn float-right" id="resetObfuscate">重置</button>
+            </div>
+        </div>
+        <hr>
+        <div class="setting-item2">
+            <div class="setting-type">
+                <div class="setting-opation2">
+                    <p>基础配置</p>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="compact" checked><label
+                            for="compact">压缩成一行</label></div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="renameGlobals"><label
+                            for="renameGlobals">方法变量重命名</label></div>
+                    <hr>
+                    <div class="b-small-padding">
+                        <p>标识符名称生成器</p>
+                        <select class="form-control" id="identifierNamesGenerator">
+                            <option value="hexadecimal">16进制</option>
+                            <option value="mangled">短字符</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <div class="b-small-padding">
+                        <p>标识符前缀</p>
+                        <input type="text" name="input" class="form-control" id="identifiersPrefix" placeholder="可选">
+                    </div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <div class="checkbox-primary b-mini-margin"><input type="checkbox" name="checkbox"
+                                                                           id="controlFlowFlattening"><label
+                                for="controlFlowFlattening">防止格式化</label></div>
+                        <input type="number" name="input" class="form-control" id="controlFlowFlatteningThreshold"
+                               placeholder="格式化系数（0-1）" min="0" max="1" step="0.1" value="0.7">
+                    </div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <div class="checkbox-primary b-mini-margin"><input type="checkbox" name="checkbox"
+                                                                           id="deadCodeInjection"><label
+                                for="deadCodeInjection">花指令注入</label></div>
+                        <input type="number" name="input" class="form-control" id="deadCodeInjectionThreshold"
+                               placeholder="花指令注入率（0-1）" min="0" max="1" step="0.1" value="0.4">
+                    </div>
+                    <hr>
+                    <div class="b-small-padding">
+                        <p>目标运行环境</p>
+                        <select class="form-control" id="target">
+                            <option value="browser">浏览器</option>
+                            <option value="browser-no-eval">浏览器不输出执行</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-opation2">
+                    <p>调试保护设置</p>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="selfDefending"><label
+                            for="selfDefending">K保护</label></div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="debugProtection"><label
+                            for="debugProtection">调试保护</label></div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox"
+                                                         id="disableConsoleOutput"><label for="disableConsoleOutput">禁用控制台输出</label>
+                    </div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox"
+                                                         id="debugProtectionInterval"><label
+                            for="debugProtectionInterval">保护间隔</label></div>
+                </div>
+                <div class="setting-opation2">
+                    <p>字符串设置</p>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="stringArray" checked><label
+                            for="stringArray">字符串加密</label></div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <p>字符串编码</p>
+                        <select class="form-control" id="stringArrayEncoding">
+                            <option value="false">关闭</option>
+                            <option value="base64">Base64</option>
+                            <option value="rc4">RC4</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <p>字符串加密系数</p>
+                        <input type="number" name="input" class="form-control" id="stringArrayThreshold"
+                               placeholder="（可选）" min="0" max="1" step="0.1" value="0.8">
+                    </div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="rotateStringArray"><label
+                            for="rotateStringArray">旋转字符串</label></div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="shuffleStringArray"><label
+                            for="shuffleStringArray">重排字符串</label></div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <div class="checkbox-primary b-mini-margin"><input type="checkbox" name="checkbox"
+                                                                           id="splitStrings"><label
+                                for="splitStrings">分割字符串</label></div>
+                        <input type="number" name="input" class="form-control" id="splitStringsChunkLength"
+                               placeholder="" min="0" step="1">
+                    </div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox" id="transformObjectKeys"><label
+                            for="transformObjectKeys">变量加密</label></div>
+                    <hr>
+                    <div class="checkbox-primary"><input type="checkbox" name="checkbox"
+                                                         id="unicodeEscapeSequence"><label for="unicodeEscapeSequence">Unicode转义序列</label>
+                    </div>
+                </div>
+                <div class="setting-opation2">
+                    <p>过滤设置</p>
+                    <div>
+                        <p>锁定域名</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="" id="domainLock">
+                            <span class="input-group-addon" id="addDomain"><i class="icon icon-plus"></i></span>
+                        </div>
+                        <div class="label-box" id="domainLabelList">
+                        </div>
+                    </div>
+                    <hr>
+                    <div>
+                        <p>保留方法</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="" id="reservedNames">
+                            <span class="input-group-addon" id="addReservedNames"><i class="icon icon-plus"></i></span>
+                        </div>
+                        <div class="label-box" id="namesLabelList">
+                        </div>
+                    </div>
+                    <hr>
+                    <div>
+                        <p>保留字符串</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="" id="reservedStrings">
+                            <span class="input-group-addon" id="addReservedStrings"><i
+                                    class="icon icon-plus"></i></span>
+                        </div>
+                        <div class="label-box" id="stringsLabelList">
+                        </div>
+                    </div>
+                    <hr>
+                </div>
+                <div class="setting-opation2 no-margin-r">
+                    <p>附加设置</p>
+                    <div class="b-mini-padding">
+                        <p>源码地图</p>
+                        <select class="form-control" id="sourceMapMode">
+                            <!--                            <option value="off">关闭</option>-->
+                            <option value="inline">内嵌</option>
+                            <option value="separate">分离</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <p>源码地图地址</p>
+                        <input type="text" name="input" class="form-control" id="sourceMapBaseUrl"
+                               placeholder="">
+                    </div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <p>源码地图文件名</p>
+                        <input type="text" name="input" class="form-control" id="sourceMapFileName"
+                               placeholder="">
+                    </div>
+                    <hr>
+                    <div class="b-mini-padding">
+                        <p>标识种子ID</p>
+                        <input type="number" name="input" class="form-control" id="seed" placeholder="0" value="0">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <textarea class="display-none" id="storeEncode"></textarea>
+<input type="hidden" id="evalHidden" value="0"/>
+
+    <!-- 功能介绍 -->
+    <div class="obfuscate-ins">
+        <h4>JAVASCRIPT代码混淆工具配置说明</h4>
+        <hr>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <tbody>
+                <tr>
+                    <th class="text-nowrap">压缩成一行</th>
+                    <td>将换行符及空格等进行压缩</td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">标识符名称生成器</th>
+                    <td>
+                        <p>使用此选项来控制如何混淆标识符（变量名，函数名等）。</p>
+                        <p><span class="font-bold">十六进制</span><br/>生成使用十六进制图案随机标识符的名称（如：<span class="hl-warning">0xabc123</span>）
+                        </p>
+                        <p><span class="font-bold">短字符：</span><br/>使用短字符名称 (如: <span class="hl-warning">a, b, c</span>等等)
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">标识符前缀</th>
+                    <td>
+                        <p>此选项使所有全局标识符具有特定的前缀。</p>
+                        <p>混淆在同一页面上加载的多个文件时，请使用此选项。此选项有助于避免这些文件的全局标识符之间的冲突。为每个文件使用不同的前缀。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">方法变量重命名</th>
+                    <td>
+                        <div class="alert with-icon alert-warning">
+                            <i class="icon-warning-sign"></i>
+                            <div class="content">此选项可能会破坏您的代码。仅在知道它的功能时启用它。</div>
+                        </div>
+                        <p>使用声明启用对全局变量和函数名称的混淆。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">K保护</th>
+                    <td>
+                        <p>此选项使输出代码可抵抗格式设置和变量重命名。如果尝试在混淆后的代码上使用JavaScript美化器，则该代码将无法正常工作，从而使其难以理解和修改。</p>
+                        <p>需要<span class="font-bold">压缩成一行</span>设置。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">防止格式化</th>
+                    <td>
+                        <div class="alert with-icon alert-warning">
+                            <i class="icon-warning-sign"></i>
+                            <div class="content">此选项对性能的影响最大为运行速度降低1.5倍。</div>
+                        </div>
+                        <p>启用代码控制流平整。控制流扁平化是源代码的结构转换，它阻碍了程序的理解。</p>
+                        <div class="alert">
+                            <h4>格式化系数</h4>
+                            <hr>
+                            <p>在较大的代码库中，建议降低此值，因为大量的控制流转换会增加代码的大小并减慢其速度（从0到1）。</p>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">花指令代码注入</th>
+                    <td>
+                        <div class="alert with-icon alert-warning">
+                            <i class="icon-warning-sign"></i>
+                            <div class="content">此选项极大地增加了混淆代码的大小（最多200％）。</div>
+                        </div>
+                        <p>此功能将混淆代码的随机块（即，将不执行的代码）添加到混淆后的输出中，从而更难进行反向工程。</p>
+                        <div class="alert">
+                            <h4>花指令注入率</h4>
+                            <hr>
+                            <p>您可以使用此设置来调整该选项影响节点的概率（从0到1）。</p>
+                        </div>
+                        <p>需要<span class="font-bold">字符串加密</span>选项支持。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">字符串加密</th>
+                    <td>
+                        <p>删除字符串文字并将其放置在特殊数组中。例如，字符串“ Hello World”中的字符串var m = "Hello World";将替换为对某个函数的调用，该函数将在运行时检索其值，例如：var m = _0xb0c3('0x1');
+
+                            请参阅以下有关如何配置此功能或多或少具有弹性的选项。</p>
+                        <div class="alert">
+                            <h4>旋转字符串数组</h4>
+                            <hr>
+                            <p>将字符串数组移动一个固定且随机的位置（在代码混淆中生成）。这使得将删除的字符串的顺序与其原始位置匹配变得更加困难。 如果您的原始源代码不小，则建议使用此选项，因为辅助功能会引起注意。</p>
+                            <p>如果源代码不小，建议使用此选项。</p>
+                        </div>
+                        <div class="alert">
+                            <h4>重排字符串数组</h4>
+                            <hr>
+                            <p>随机排序字符串数组。</p>
+                        </div>
+                        <div class="alert">
+                            <h4>字符串编码</h4>
+                            <hr>
+                            <div class="alert with-icon alert-warning">
+                                <i class="icon-warning-sign"></i>
+                                <div class="content">此选项会稍微降低脚本速度。</div>
+                            </div>
+                            <p>使用Base64或RC4 编码的所有字符串文字，并插入一个特殊的函数，该函数用于在运行时对其进行解码。</p>
+                            <p>请注意，RC4选项比​​Base64选项慢大约30-35％，但是更难找回字符串。</p>
+                        </div>
+                        <div class="alert">
+                            <h4>字符串加密系数</h4>
+                            <hr>
+                            <p>您可以使用此设置来调整将字符串文字插入的可能性（从0到1）。</p>
+                            <p>此设置在大型代码库中很有用，因为反复调用该字符串加密函数会降低代码速度。</p>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">变量加密</th>
+                    <td>
+                        <p>转换混淆对象键。</p>
+                        <p>例如，将此代码var a = {enabled: true};混淆后，此代码将隐藏enabled对象键：var a = {}; a[_0x2ae0[('0x0')] = true;。</p>
+                        <p>需要使用字符串加密的参数设置</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">Unicode转义序列</th>
+                    <td>
+                        <p>转换混淆对象键。</p>
+                        <p>将所有字符串转换为它们的unicode表示形式。例如，字符串"Hello World!"将被转换为"'\x48\x65\x6c\x6c\x6f\x20\x57\x6f\x72\x6c\x64\x21"。</p>
+                        <p>此转换非常容易还原，并且将大大增加混淆的代码大小。不建议在较大的代码库中使用。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">禁用控制台输出</th>
+                    <td>
+                        <p>禁止使用console.log，console.info，console.error和console.warn，这使得调试器的使用更加困难。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">调试保护</th>
+                    <td>
+                        <div class="alert with-icon alert-warning">
+                            <i class="icon-warning-sign"></i>
+                            <div class="content">如果打开开发人员工具，则可以冻结浏览器。</div>
+                        </div>
+                        <p>使用该选项，几乎不可能使用开发人员工具的控制台选项卡（在Google Chrome和Mozilla Firefox上）。</p>
+                        <div class="alert">
+                            <h4>调试保护间隔</h4>
+                            <hr>
+                            <p>如果选中该选项，则会使用一个时间间隔在“ 控制台”选项卡上强制使用调试模式 ，从而使开发人员工具的其他功能难以使用。</p>
+                            <p>在经过混淆的源代码中会插入一个反复调用的特殊代码进行运作。</p>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">锁定域名</th>
+                    <td>
+                        <p>锁定混淆的源代码，使其仅在特定的域和/或子域上运行。对于仅复制并粘贴源代码并在其他地方运行的人来说，这真的很难。</p>
+                        <p><span class="font-bold">多个域名或者子域名</span><br />
+                        可以将代码锁定到多个域或子域。例如，要对其进行锁定以使代码仅在www.test.com上运行，请使用add www.test.com，使其可在test.com的任何子域上使用.test.com。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">保留名称</th>
+                    <td>
+                        <p>禁用混淆和标识符的生成，这些标识符与通过的RegExp(正则)模式匹配。</p>
+                        <p>例如，如果添加^bejsoncom，混淆器将确保 不会破坏以bejson开头的所有变量，函数名称和函数参数。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">保留字符串</th>
+                    <td>
+                        <p>禁用字符串文字的转换，该文字与通过的RegExp(正则)模式匹配。</p>
+                        <p>例如，如果添加^bejson *string，混淆器将确保所有以某个字符串开头的字符串 都不会在“字符串加密”中进行加密处理。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">源码地图</th>
+                    <td>
+                        <div class="alert with-icon alert-warning">
+                            <i class="icon-warning-sign"></i>
+                            <div class="content">确保不要上传嵌入了嵌入式内嵌源代码图的混淆后的源代码，因为它包含原始源代码。</div>
+                        </div>
+                        <p>源映射可以帮助您调试混淆的Java Script源代码。如果要在生产中进行调试，可以将单独的源映射文件上载到秘密位置，然后将浏览器指向该位置。</p>
+                        <p><span class="font-bold">内联源地图</span><br/>这会将源代码的源映射嵌入到混淆代码的结果中。如果只想在计算机上进行本地调试，则很有用。</span>
+                        </p>
+                        <p><span class="font-bold">单独的源地图</span><br/>
+                            这将与源映射一起生成一个单独的文件。这对于调试生产中的代码很有用，因为这使您可以将源映射上载到服务器上的秘密位置，然后指向浏览器使用它。<br/>
+                            使用“ 源地图基本URL”和“ 源地图文件名”来自定义sourceMappingURL将添加到混淆代码末尾的属性。<br/>
+                            举例来说，如果你的设置基本URL来 "http://test.com:9000"和文件名来 "tool"，你会得到：//# sourceMappingURL=http://test.com:9000/tool.js.map。附加到混淆代码的末尾。
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-nowrap">种子</th>
+                    <td>
+                        <p>默认情况下（seed = 0），每次对代码进行混淆时，都会得到一个新的结果（即：不同的变量名，插入到中的不同变量 stringArray等）。如果要获得可重复的结果，请将设置seed为特定的整数。</p>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</div>
+
+<script src="static/js/global.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="static/js/indexcodemirror.min.js" type="text/javascript" charset="utf-8"></script>
+<!--代码助手-->
+<script src="static/js/prettify.js" type="text/javascript" charset="utf-8"></script>
+
+<script src="static/js/javascript-obfuscator.js" type="text/javascript" charset="utf-8"></script>
+<script src="static/js/obfuscatorenc.js" type="text/javascript" charset="utf-8"></script>
+<script src="static/js/filesaver.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript">
+    //根据DOM元素的id构造出一个编辑器
+    var editor = CodeMirror.fromTextArea(document.getElementById("code4"), {
+        mode: "application/javascript", //设置json模式
+        lineNumbers: true, //是否显示左边换行术字
+        lineWrapping: true, //是否折叠
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+    });
+    document.querySelector('#sourceMapBaseUrl').removeAttribute('disabled')
+    document.querySelector('#sourceMapBaseUrl').value = ''
+    document.querySelector('#sourceMapFileName').removeAttribute('disabled')
+    document.querySelector('#sourceMapFileName').value = ''
+    document.querySelector('#uploadJsFile').addEventListener('change', fileChange);
+    document.querySelector('#uploadJsFile').addEventListener('dragover', fileChange);
+    window.tempFileName = ''
+    // function fileChange(e) {
+    //     if (e.target.files && e.target.files[0]) {
+    //         window.tempFileName = e.target.files[0].name
+    //     }
+    // }
+</script>
+</body></html>|

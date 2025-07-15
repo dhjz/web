@@ -9,7 +9,7 @@
     <script src="static/vue.global.prod.js"></script>
 </head>
 <body id="app">
-    <div class="container">
+    <div class="container" v-cloak>
         <header>
             <div class="search-container">
                 <select v-model="selectedSearchEngine" class="search-select" @change="searchChange">
@@ -20,34 +20,45 @@
                 <input type="text" v-model="searchQuery" @keyup.enter="performSearch" placeholder="输入关键字搜索..." class="search-input">
                 <button @click="performSearch" class="search-button">搜索</button>
             </div>
-            <button @click="toggleDarkMode" class="theme-toggle">
-                <svg v-if="isDarkMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                    <path d="M12 3a9 9 0 00-8.495 5.736c.775-.413 1.682-.647 2.604-.647 3.743 0 6.788 3.045 6.788 6.789a7.5 7.5 0 001.029-8.521c-.142-.25-.302-.484-.477-.709a8.943 8.943 0 01-1.029 3.253z"/>
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                    <path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v2.5a.75.75 0 01-1.5 0v-2.5a.75.75 0 01.75-.75zM7.72 3.18a.75.75 0 00-.53-.335l-2.12.36.72.699a.75.75 0 00.963.055l.646-.585a.75.75 0 00.064-.926l-.835-1.188a.75.75 0 00-1.205.315l-1.121 2.47a.75.75 0 00.565 1.052l2.336.392a.75.75 0 001.066-.786l-.331-2.315zm10.503 2.21a.75.75 0 00-.589-.519l-1.666-.277a.75.75 0 00-.78.733v1.46a.75.75 0 001.5 0v-1.244l1.335-.222a.75.75 0 00.461-1.366zM12 13.5a.75.75 0 01.75-.75h5.5a.75.75 0 010 1.5h-5.5a.75.75 0 01-.75-.75zM12 17.25a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5a.75.75 0 01-.75-.75zM10.15 5.7a.75.75 0 00-1.105.135l-1.055 1.285a.75.75 0 00.529 1.204l1.688.28a.75.75 0 00.771-.591l.375-1.962a.75.75 0 00-.771-.783zm9.954 6.764a.75.75 0 00-1.084.878l.836 1.188a.75.75 0 001.205-.315l-1.033-2.277a.75.75 0 00-.749-.549zm-8.078 2.193a.75.75 0 01.48.887l-.33 2.315a.75.75 0 00.749.783l2.12-.36a.75.75 0 00.53-.335l-1.451-1.384a.75.75 0 00-.59-.262zM9.026 11.213a.75.75 0 00-1.205.315l-1.032 2.278a.75.75 0 00.749.783l2.12-.36a.75.75 0 00.53-.335l-1.084-.878a.75.75 0 00-.749-.392zm9.845 3.348a.75.75 0 00.683 1.177l1.666.277a.75.75 0 00.78-.733v-1.46a.75.75 0 00-1.5 0v1.244l-1.335.222a.75.75 0 00-.461 1.366zm-4.157 3.073a.75.75 0 00-.282 1.112l1.055 1.285a.75.75 0 001.205.315l1.032-2.277a.75.75 0 00-.749-.783l-2.12-.36a.75.75 0 00-.53.335zm2.108-3.957a.75.75 0 00.135.926l1.033 2.277a.75.75 0 001.205-.315l-1.083-2.278a.75.75 0 00-.749-.392l-2.12-.36a.75.75 0 00-.53.335zM20.55 12a10.5 10.5 0 01-19.75 3.707c-.283-.799-.444-1.648-.444-2.523 0-5.796 4.704-10.5 10.5-10.5 4.583 0 8.474 2.954 9.943 7.033a10.47 10.47 0 01-7.52 10.214A10.5 10.5 0 0112 21c-.828 0-1.625-.095-2.394-.274a10.49 10.49 0 0110.158-14.546z"/>
-                </svg>
-            </button>
+            <input type="text" v-model="searchQuery2" @keyup.enter="performSearch2" placeholder="github辅助搜索, 回车确认" class="search-input search-git">
         </header>
 
         <main>
-            <section v-for="category in config.sites" :key="category.name" class="site-category">
-                <h2 class="category-title">{{ category.name }}</h2>
-                <div class="site-list">
-                    <a v-for="site in category.list" :key="site.url" :href="site.url" target="_blank" class="site-item" :title="site.name">
-                        <div class="site-icon" :style="{ backgroundColor: site.color }">
-                            {{ site.short }}
-                        </div>
-                        <span class="site-name">{{ site.name }}</span>
-                    </a>
-                </div>
-            </section>
+            <div class="main-links" v-show="linkList && linkList.length">
+                <section class="site-category">
+                    <h2 class="category-title">网站导航</h2>
+                    <div class="site-list">
+                        <a v-for="site in linkList" :key="site.id" :href="site.url" target="_blank" class="site-item" :title="site.name">
+                            <div class="site-icon" :style="{ backgroundColor: site.color }">
+                                {{ site.sname }}
+                            </div>
+                            <span class="site-name">{{ site.name }}</span>
+                        </a>
+                    </div>
+                </section>
+            </div>
+            <div class="main-sites">
+                <section v-for="category in config.sites" :key="category.name" class="site-category">
+                    <h2 class="category-title">{{ category.name }}</h2>
+                    <div class="site-list">
+                        <a v-for="site in category.list" :key="site.url" :href="site.url" target="_blank" class="site-item" :title="site.name">
+                            <div class="site-icon" :style="{ backgroundColor: site.color }">
+                                {{ site.short }}
+                            </div>
+                            <span class="site-name">{{ site.name }}</span>
+                        </a>
+                    </div>
+                </section>
+            </div>
         </main>
 
         <footer>
             <p>{{ config.footer }}</p>
         </footer>
     </div>
+    <button @click="toggleDarkMode" class="theme-toggle">
+        <span v-if="isDarkMode">🌙</span><span v-else>☀️</span>
+    </button>
     
     <script src="data.js"></script>
     <script src="static/index.js"></script>

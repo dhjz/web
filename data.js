@@ -15,9 +15,11 @@ window.config = {
         { name: '在线调色板', short: '调色', url: './color/index.html', color: '#F08080' },
         { name: '渐变色', short: '渐变色', url: './grad/index.html', color: '#1a7690' },
         { name: 'CSS三角', short: '三角', url: './border/index.html', color: '#20B2AA' },
+        { name: 'JS混淆加密', short: 'JS混淆', url: './jsmix/index.html', color: '#089d56' },
         { name: '代码美化', short: '代码', url: './code/index.html', color: '#8A2BE2' },
         { name: '文本处理', short: '文本', url: './tool.html', color: '#5F9EA0' },
         { name: 'UEditor', short: 'UEditor', url: './ueditor/index.html', color: '#FF6347' },
+        { name: '爬虫采集', short: '采集', url: './spider/index.html', color: '#65cd32' },
         { name: 'Ace', short: 'Ace', url: './ace/index.html', color: '#4682B4' },
         { name: 'Emoji', short: 'Emoji', url: './emoji/index.html', color: '#32CD32' },
         { name: '符号大全', short: '符号', url: './icon.html', color: '#FFD700' },
@@ -42,7 +44,7 @@ window.config = {
         { name: '局域网控制', short: '控制', url: './dc/index.html', color: '#FF4500' },
         { name: '老工具', short: '老工具', url: './old.html', color: '#bbb' },
       ]
-    }
+    },
   ],
   footer: '人生得意须尽欢，莫使金樽空对月。'
 }
