@@ -161,7 +161,7 @@ main {
     gap: 20px; /* 减少分类之间的间距 */
 }
 .main-links {
-    width: 540px;
+    width: 456px;
 }
 .main-sites {
     flex: 1; /* 让站点列表占据更多空间 */
@@ -258,7 +258,7 @@ body.dark-mode .site-list .site-item {
 
 
 /* 响应式调整 */
-@media (max-width: 1100px) {
+@media (max-width: 930px) {
     main {
         display: block;
     }
