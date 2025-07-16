@@ -119,7 +119,7 @@ header {
     transition: border-color 0.3s ease;
 }
 .search-git {
-    width: 40%;
+    width: 23.5%;
     flex: none;
     margin-left: 10px;
 }
@@ -129,15 +129,18 @@ header {
 }
 
 .search-button {
-    padding: 8px 15px;
+    padding: 8px 10px;
     background-color: #4CAF50; /* 绿色搜索按钮 */
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    margin-left: 10px;
+    margin-left: 8px;
     transition: background-color 0.3s ease;
     white-space: nowrap;
+}
+.search-button.danger {
+    background-color: #F56C6C !important;
 }
 
 .search-button:hover {
@@ -273,6 +276,9 @@ body.dark-mode .site-list .site-item {
     }
     .search-container {
         /* width: 100%; */
+    }
+    .search-by {
+        display: none;
     }
     .search-select {
          /* 适应小屏幕 */

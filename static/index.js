@@ -5,7 +5,6 @@ const app = {
         return {
             isDarkMode: localStorage.getItem('isDarkMode') == '1',
             searchQuery: '',
-            searchQuery2: '',
             selectedSearchEngine: localStorage.getItem('lastSearch') || config.searchs[0].url,
             config: config,
             searchItem: {},
@@ -48,7 +47,10 @@ const app = {
             window.open(url, '_blank');
         },
         performSearch2() {
-            window.open(`https://github.com/search?q=${encodeURIComponent(this.searchQuery2)}`, '_blank');
+            window.open(`https://github.com/search?q=${encodeURIComponent(this.searchQuery)}`, '_blank');
+        },
+        performSearch3() {
+            window.open(`https://cn.bing.com/search?q=${encodeURIComponent(this.searchQuery)}`, '_blank');
         }
     },
 };

@@ -25,7 +25,6 @@ window.config = {
         { name: '符号大全', short: '符号', url: './icon.html', color: '#FFD700' },
         { name: 'Base64转换', short: 'Base64', url: './base64.html', color: '#6a6443' },
         { name: '工具类', short: '工具类', url: './utils/lib.html', color: '#8B4513' },
-        { name: 'HTML测试', short: 'HTML', url: 'https://t.199311.xyz/html/', color: '#DA70D6' },
       ]
     },
     {
@@ -33,7 +32,8 @@ window.config = {
       list: [
         { name: '在线PS', short: 'PS', url: './ps/index.html', color: '#6495ED' },
         { name: '音频编辑', short: '音频', url: './audio/index.html', color: '#DC143C' },
-        { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' }
+        { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' },
+        { name: '图片压缩', short: '压缩', url: 'https://tiny.199311.xyz/', color: '#ff3385' },
       ]
     },
     {
@@ -42,7 +42,18 @@ window.config = {
         { name: '键盘测试', short: '键盘', url: './key/index.html', color: '#DAA520' },
         { name: '屏幕测试', short: '屏幕', url: './screen/index.html', color: '#00CED1' },
         { name: '局域网控制', short: '控制', url: './dc/index.html', color: '#FF4500' },
+        { name: '网速测试', short: '网速', url: 'https://net.199311.xyz/', color: '#5062f2' },
         { name: '老工具', short: '老工具', url: './old.html', color: '#bbb' },
+      ]
+    },
+    {
+      name: '个人工具',
+      list: [
+        { name: '临时文件', short: '临时', url: 'https://t.199311.xyz', color: '#DAA520' },
+        { name: 'HTML测试', short: 'HTML', url: 'https://t.199311.xyz/html/', color: '#a15f2f' },
+        { name: '图片站', short: '图片', url: 'https://img.199311.xyz/', color: '#34a196' },
+        { name: 'Test文件', short: 'Test', url: 'https://file.199311.xyz/test.json', color: '#5f5f5f' },
+        { name: '古诗学习', short: '古诗', url: 'https://study.199311.xyz/poem/', color: '#66bb6a' },
       ]
     },
   ],

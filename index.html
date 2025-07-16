@@ -19,8 +19,10 @@
                 </select>
                 <input type="text" v-model="searchQuery" @keyup.enter="performSearch" placeholder="输入关键字搜索..." class="search-input">
                 <button @click="performSearch" class="search-button">搜索</button>
+                <button @click="searchQuery = ''" class="search-button danger">清</button>
             </div>
-            <input type="text" v-model="searchQuery2" @keyup.enter="performSearch2" placeholder="github辅助搜索, 回车确认" class="search-input search-git">
+            <input type="text" v-model="searchQuery" @keyup.enter="performSearch2" placeholder="github 辅助搜索, 回车确认" class="search-input search-git">
+            <input type="text" v-model="searchQuery" @keyup.enter="performSearch3" placeholder="必应 辅助搜索, 回车确认" class="search-input search-git search-by">
         </header>
 
         <main>
