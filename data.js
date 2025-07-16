@@ -57,5 +57,5 @@ window.config = {
       ]
     },
   ],
-  footer: '人生得意须尽欢，莫使金樽空对月。'
+  footer: footers[Math.floor(Math.random() * footers.length)]
 }

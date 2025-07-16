@@ -259,7 +259,22 @@ body.dark-mode .site-list .site-item {
 }
 /* ... (其他深色模式样式保持不变) ... */
 
-
+@media (min-width: 1100px) {
+.main-links {
+    width: 484px;
+}
+.site-item {
+    max-width: 80px;
+}
+.site-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 0.8em;
+}
+.site-name {
+    font-size: 0.85em;
+}
+}
 /* 响应式调整 */
 @media (max-width: 930px) {
     main {
