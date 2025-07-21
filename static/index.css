@@ -203,8 +203,7 @@ main {
     text-decoration: none;
     color: inherit;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    flex-basis: 90px; /* 减小每个网站项的基础宽度 */
-    max-width: 74px; /* 减小最大宽度 */
+    width: 74px; /* 减小最大宽度 */
     box-sizing: border-box; /* 确保 padding 和 border 包含在宽度内 */
 }
 
@@ -264,7 +263,7 @@ body.dark-mode .site-list .site-item {
     width: 484px;
 }
 .site-item {
-    max-width: 80px;
+    width: 80px;
 }
 .site-icon {
     width: 48px;
@@ -319,8 +318,7 @@ body.dark-mode .site-list .site-item {
         gap: 8px; /* 减小移动端间距 */
     }
     .site-item {
-        flex-basis: 80px; /* 减小移动端网站项基础宽度 */
-        max-width: 80px; /* 减小移动端网站项最大宽度 */
+        width: 80px; /* 减小移动端网站项最大宽度 */
     }
     .site-icon {
         width: 45px; /* 减小移动端图标尺寸 */
@@ -352,8 +350,7 @@ body.dark-mode .site-list .site-item {
         gap: 6px; /* 更小的间距 */
     }
     .site-item {
-        flex-basis: 60px; /* 更小一些的网站项 */
-        max-width: 60px;
+        width: calc(20% - 6px);
     }
     .site-icon {
         width: 42px;
