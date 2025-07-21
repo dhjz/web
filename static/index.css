@@ -316,7 +316,7 @@ body.dark-mode .site-list .site-item {
     /* 在移动端，列表平铺仍然适用 */
     .site-list {
         justify-content: flex-start; /* 中间对齐 */
-        gap: 10px; /* 减小移动端间距 */
+        gap: 8px; /* 减小移动端间距 */
     }
     .site-item {
         flex-basis: 80px; /* 减小移动端网站项基础宽度 */
@@ -343,12 +343,13 @@ body.dark-mode .site-list .site-item {
 @media (max-width: 480px) {
     .container {
         padding: 8px;
+        width: 100%;
     }
     .category-title {
         font-size: 1.2em; /* 更小一些的分类标题 */
     }
     .site-list {
-        gap: 8px; /* 更小的间距 */
+        gap: 6px; /* 更小的间距 */
     }
     .site-item {
         flex-basis: 60px; /* 更小一些的网站项 */
