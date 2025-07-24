@@ -54,6 +54,7 @@ window.config = {
         { name: '图片站', short: '图片', url: 'https://img.199311.xyz/', color: '#34a196' },
         { name: 'Test文件', short: 'Test', url: 'https://file.199311.xyz/test.json', color: '#5f5f5f' },
         { name: '古诗学习', short: '古诗', url: 'https://study.199311.xyz/poem/', color: '#66bb6a' },
+        { name: '影音娱乐', short: '影音', url: 'https://tv.199311.xyz/', color: '#42DC85' },
       ]
     },
   ],
