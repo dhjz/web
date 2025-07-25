@@ -55,6 +55,7 @@ window.config = {
         { name: 'Test文件', short: 'Test', url: 'https://file.199311.xyz/test.json', color: '#5f5f5f' },
         { name: '古诗学习', short: '古诗', url: 'https://study.199311.xyz/poem/', color: '#66bb6a' },
         { name: '影音娱乐', short: '影音', url: 'https://tv.199311.xyz/', color: '#42DC85' },
+        { name: 'AI对话', short: 'AI', url: 'https://a.199311.xyz/', color: '#4896cd' },
       ]
     },
   ],
