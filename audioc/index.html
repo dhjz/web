@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音频格式转换</title>
+  <meta name="keywords" content="MP3转换器,音频转换器,音频转换">
+  <meta name="description" content="在线音频转换器软件.可一键实现MP3,APE,FLAC,ACC,M4A,WMA,OGG,AC3,M4R等格式的音频转换.">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="css/index.css" />
+</head>
+
+<body>
+  <div id="app" class="main-container" v-cloak>
+    <h1 class="mainIndex_title">
+      音频格式转换
+      <span>（本工具支持以下音频文件格式的转换：MP3、WAV、OGG、AAC、M4A、M4R、FLAC、WMA、OPUS、AIFF、MMF）</span>
+    </h1>
+    <div id="bbody">
+      <div id="bmain">
+        <div id="convert_work">
+          <div id="setp1">
+            <div class="bcol-12">
+              <div class="loadfile">
+                <div 
+                  id="filedropzone" 
+                  class="dragdoparea" 
+                  :class="{ dragover: isDragging }"
+                  @click="triggerFileInput" 
+                  @dragover.prevent="isDragging = true" 
+                  @dragleave.prevent="isDragging = false"
+                  @drop.prevent="handleFileDrop"
+                >
+                  <input type="file" ref="fileInput" @change="handleFileSelect" accept="audio/*" multiple hidden>
+                  <p>选择或拖拽文件</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="setp2">
+            <div class="bcol-12">
+              <div class="optionarea">
+                <div>
+                  <div class="brow">
+                    <p class="tips_audio">温馨提示：单个文件尽量小于100MB,如转换大音频文件失败，请刷新页面重新转换</p>
+                    <div class="optionitem">
+                      <span class="optionlabel">输出文件格式:</span>
+                      <div class="optioninput" id="format-opts">
+                        <label class='container' v-for="format in available.formats" :key="format">
+                          {{ format }}
+                          <input type='radio' name='format' :value='format' v-model="options.format">
+                          <span class='checkmark'></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="audio_container">
+                    <div class="brow">
+                      <div class="optionitem">
+                        <span class="optionlabel">编码器:</span>
+                        <select class="optioninput" v-model="options.encoder">
+                          <option v-for="opt in available.encoders" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="brow">
+                      <div class="optionitem">
+                        <span class="optionlabel">质量:</span>
+                        <select class="optioninput" v-model="options.bitrate">
+                           <option v-for="rate in available.bitrates" :key="rate" :value="rate">{{ rate }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="brow">
+                      <div class="optionitem">
+                        <span class="optionlabel">采样率:</span>
+                        <select class="optioninput" v-model="options.sampleRate">
+                          <option v-for="rate in available.sampleRates" :key="rate" :value="rate">{{ rate }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="brow">
+                      <div class="optionitem">
+                        <span class="optionlabel">声道:</span>
+                        <select class="optioninput" v-model="options.channels">
+                          <option v-for="ch in available.channels" :key="ch.value" :value="ch.value">{{ ch.text }}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="bcontent">
+                      <div 
+                        class="bbutton ols_exchange_btn" 
+                        :class="{ disabled: !canConvert }" 
+                        @click="startConversion"
+                      >
+                        {{ isConverting ? '转换中...' : '转换' }}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="file_container">
+                    <div class="file_container_left">
+                      <ul v-if="inputFiles && inputFiles.length > 0">
+                        <li v-for="(file, index) in inputFiles" :key="file.name + index">
+                          <span>{{ file.name }}</span>
+                          <span>{{ formatBytes(file.size) }}</span>
+                          <div>
+                            <i class="fileDelete" @click="removeFile(index)">删除</i>
+                            <span class="cursor" @click="playAudio(file)">▶️</span>
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    <div class="file_container_middle">
+                      <div class="file_container_middle_process">
+                        {{ convertMsg }}
+                      </div>
+                    </div>
+                    
+                    <div class="file_container_right">
+                      <ul  v-if="outFiles && outFiles.length > 0">
+                        <li v-for="(file, index) in outFiles" :key="file.name + index">
+                          <span>{{ file.name }}</span>
+                          <span>{{ formatBytes(file.size) }}</span>
+                          <span>
+                            <a :download="file.name" :href="file.url">下载</a>
+                            <a class="delete" @click="removeOutFile(index)">删除</a>
+                            <span class="cursor" @click="playAudio(file)">▶️</span>
+                          </span>
+                        </li>
+                      </ul>
+                      <div class="file_container_last" v-if="outFiles && outFiles.length > 1">
+                        <span class="file_zip_download" @click="downloadAllAsZip">
+                          {{ isPackaging ? '打包中...' : '打包下载' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="refresh" onclick="location.reload()">刷新</div>
+    <div class="refresh single" :class="{ on: singleFileMode }" @click="toggleSingleFileMode">保留模式</div>
+  </div>
+
+   <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.17/vue.global.min.js"></script> -->
+  <script src="js/vue.global.prod.min.js"></script>
+  <script src="js/jszip.min.js"></script>
+  <script src="js/filesaver.min.js"></script>
+  <script src="js/index.js"></script>
+</body>
+
+</html>

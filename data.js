@@ -31,7 +31,8 @@ window.config = {
       name: '媒体工具',
       list: [
         { name: '在线PS', short: 'PS', url: './ps/index.html', color: '#6495ED' },
-        { name: '音频编辑', short: '音频', url: './audio/index.html', color: '#DC143C' },
+        { name: '音频编辑', short: '音频', url: './audio/index.html', color: '#82142a' },
+        { name: '音频转换', short: '音频转', url: './audioc/index.html', color: '#DC143C' },
         { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' },
         { name: '图片压缩', short: '压缩', url: 'https://tiny.199311.xyz/', color: '#ff3385' },
       ]
