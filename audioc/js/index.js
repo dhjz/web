@@ -90,6 +90,58 @@ function audio_convert({ fileData, options, originalFileName, onProgress, onComp
   })
 }
 
+function audio_info({ fileData, originalFileName, onProgress, onComplete }) {
+  let info = {}
+  const worker = new Worker('js/auido_worker.js')
+  worker.onmessage = (e) => {
+    const { type, data } = e.data
+    switch (type) {
+      case 'stdout':
+        console.log('stdout', data)
+      case 'stderr':
+        console.log(data)
+        const durationMatch = /Duration: (.*?), /.exec(data)
+        if (durationMatch) {
+          info.duration = timeToSeconds(durationMatch[1])
+          info.bitrate = data.match(/bitrate: (\d+)\s+kb\/s/i)?.[1] || null
+        }
+        const streamMatch = data.match(/Stream #0:0.*?Audio: (.*)/); // 使用 s 标志让 . 匹配换行符
+        if (streamMatch) {
+          const streamInfo = streamMatch[1];
+          info.codec = streamInfo.match(/^(\w+)/)?.[1] || null
+          info.sampleRate = streamInfo.match(/(\d+)\s+Hz/)?.[1] || null
+          info.channels = streamInfo.match(/Hz, (\w+(?:\s*\(\w+\))?)/)?.[1] || null // 匹配 "stereo (c)" 这样的格式
+        }
+        if (data.match(/title\s*:\s*(.*)/i)) info.title = data.match(/title\s*:\s*(.*)/i)[1] || null
+        if (data.match(/artist\s*:\s*(.*)/i)) info.artist = data.match(/artist\s*:\s*(.*)/i)[1] || null
+        if (data.match(/album\s*:\s*(.*)/i)) info.album = data.match(/album\s*:\s*(.*)/i)[1] || null
+        break
+      case 'done':
+        console.log('done', data)
+        onComplete && onComplete(info)
+        worker.terminate() // 清理 worker
+        break
+    }
+  }
+
+  const inputExtension = originalFileName.split('.').pop()
+  const inputFileName = `input.${inputExtension}`
+  const outputFileName = `output.${inputExtension}`
+
+  const args = ['-i', inputFileName]
+  args.push('-vn') // 无视频
+  args.push('-f', 'null') // 只获取音频信息，不输出文件
+
+  // args.push(outputFileName)
+  args.push('-')
+
+  worker.postMessage({
+    type: 'command',
+    arguments: args,
+    files: [{ name: inputFileName, data: fileData }]
+  })
+}
+
 // 将格式化选项配置数据化，替代庞大的 switch 语句
 const formatConfig = {
   MP3: { encoders: [{ text: 'libmp3lame', value: 'libmp3lame' }], defaultEncoder: 'libmp3lame' },
@@ -167,7 +219,8 @@ var app = Vue.createApp({
         bitrate: localStorage.getItem('audio-bitrate') || '128k',
         sampleRate: '44100',
         channels: '2'
-      }
+      },
+      info: null,
     }
   },
   computed: {
@@ -220,6 +273,7 @@ var app = Vue.createApp({
         this.outFiles = []
         this.convertMsg = '待转换'
       }
+      if (files.length === 1) this.showInfo(files[0])
       this.inputFiles.push(...Array.from(files).filter((f) => f.type.startsWith('audio/')))
     },
     removeFile(index) {
@@ -227,6 +281,41 @@ var app = Vue.createApp({
     },
     removeOutFile(index) {
       this.outFiles.splice(index, 1)
+    },
+    showInfo(file) {
+      this.info = null
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // let buffer = e.target.result
+        // new window.AudioContext().decodeAudioData(buffer).then((data) => {
+        //   console.log(data);
+        //   temp.duration = (new Date(data.duration * 1000)).toISOString().substr(14, 5);
+        //   temp.sampleRate = data.sampleRate;
+        //   temp.bitrate = Math.floor(file.size * 8 / data.duration / 1000)
+        //   temp.isDouble = data.numberOfChannels === 2
+        //   this.info = temp
+        //   jsmediatags.read(file, { onSuccess: (tag) => {
+        //     console.log(tag);
+        //     if (tag.tags.album) this.info.album = tag.tags.album
+        //     if (tag.tags.artist) this.info.artist = tag.tags.artist
+        //     if (tag.tags.title) this.info.title = tag.tags.title
+        //   }})
+        // })
+        audio_info({
+          fileData: new Uint8Array(e.target.result),
+          originalFileName: file.name,
+          onComplete: (info) => {
+            console.log('audio_info', info);
+            this.info = {
+              ...info,
+              title: info.title || file.name,
+              duration: (new Date(info.duration * 1000)).toISOString().substr(14, 5),
+              size: this.formatBytes(file.size, 2)
+            }
+          }
+        })
+      };
+      reader.readAsArrayBuffer(file);
     },
     toggleSingleFileMode() {
       this.singleFileMode = !this.singleFileMode

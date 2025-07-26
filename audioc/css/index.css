@@ -545,6 +545,14 @@ select {
 .cursor {
   cursor: pointer;
 }
+.step3 span {
+  margin: 0 6px 3px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 14px;
+  display: inline-block;
+}
 
 @media screen and (max-width: 768px) {
   body {

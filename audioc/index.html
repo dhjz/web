@@ -103,7 +103,7 @@
                     <div class="file_container_left">
                       <ul v-if="inputFiles && inputFiles.length > 0">
                         <li v-for="(file, index) in inputFiles" :key="file.name + index">
-                          <span>{{ file.name }}</span>
+                          <span class="cursor" @click="showInfo(file)">{{ file.name }}</span>
                           <span>{{ formatBytes(file.size) }}</span>
                           <div>
                             <i class="fileDelete" @click="removeFile(index)">删除</i>
@@ -141,6 +141,16 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="step3" v-if="info && info.duration">
+            <span>时长: {{ info.duration }}</span>
+            <span>比特率: ~{{ info.bitrate }}kbps</span>
+            <span>采样率: {{ info.sampleRate }}</span>
+            <span>声道: {{ info.channels == 'stereo' ? '立体声' : '单声道' }}</span>
+            <span v-show="info.size">大小: {{ info.size }}</span>
+            <span v-show="info.title">歌名: {{ info.title }}</span>
+            <span v-show="info.artist">歌手: {{ info.artist }}</span>
+            <span v-show="info.album">专辑: {{ info.album }}</span>
           </div>
         </div>
       </div>

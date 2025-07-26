@@ -50,7 +50,6 @@ self.addEventListener('message', function(event) {
 		
 		//debugger;
         var buffers = [];
-        console.log(result);
         for (var i in result.outputFiles) {
             buffers.push(result.outputFiles[i]);
         }/**/
