@@ -103,7 +103,7 @@ function audio_info({ fileData, originalFileName, onProgress, onComplete }) {
         const durationMatch = /Duration: (.*?), /.exec(data)
         if (durationMatch) {
           info.duration = timeToSeconds(durationMatch[1])
-          info.bitrate = data.match(/bitrate: (\d+)\s+kb\/s/i)?.[1] || null
+          // info.bitrate = data.match(/bitrate: (\d+)\s+kb\/s/i)?.[1] || null // 有误差
         }
         const streamMatch = data.match(/Stream #0:0.*?Audio: (.*)/); // 使用 s 标志让 . 匹配换行符
         if (streamMatch) {
@@ -111,6 +111,7 @@ function audio_info({ fileData, originalFileName, onProgress, onComplete }) {
           info.codec = streamInfo.match(/^(\w+)/)?.[1] || null
           info.sampleRate = streamInfo.match(/(\d+)\s+Hz/)?.[1] || null
           info.channels = streamInfo.match(/Hz, (\w+(?:\s*\(\w+\))?)/)?.[1] || null // 匹配 "stereo (c)" 这样的格式
+          info.bitrate = streamInfo.match(/, (\d+)\s+kb\/s/i)?.[1] || null
         }
         if (data.match(/title\s*:\s*(.*)/i) && !info.title) info.title = data.match(/title\s*:\s*(.*)/i)[1] || null
         if (data.match(/artist\s*:\s*(.*)/i) && !info.artist) info.artist = data.match(/artist\s*:\s*(.*)/i)[1] || null
