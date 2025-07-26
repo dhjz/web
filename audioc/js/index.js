@@ -112,9 +112,9 @@ function audio_info({ fileData, originalFileName, onProgress, onComplete }) {
           info.sampleRate = streamInfo.match(/(\d+)\s+Hz/)?.[1] || null
           info.channels = streamInfo.match(/Hz, (\w+(?:\s*\(\w+\))?)/)?.[1] || null // 匹配 "stereo (c)" 这样的格式
         }
-        if (data.match(/title\s*:\s*(.*)/i)) info.title = data.match(/title\s*:\s*(.*)/i)[1] || null
-        if (data.match(/artist\s*:\s*(.*)/i)) info.artist = data.match(/artist\s*:\s*(.*)/i)[1] || null
-        if (data.match(/album\s*:\s*(.*)/i)) info.album = data.match(/album\s*:\s*(.*)/i)[1] || null
+        if (data.match(/title\s*:\s*(.*)/i) && !info.title) info.title = data.match(/title\s*:\s*(.*)/i)[1] || null
+        if (data.match(/artist\s*:\s*(.*)/i) && !info.artist) info.artist = data.match(/artist\s*:\s*(.*)/i)[1] || null
+        if (data.match(/album\s*:\s*(.*)/i) && !info.album) info.album = data.match(/album\s*:\s*(.*)/i)[1] || null
         break
       case 'done':
         console.log('done', data)
