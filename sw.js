@@ -113,7 +113,7 @@ self.addEventListener('fetch', event => {
           if (shouldCacheRequest(request)) {
             // 在将响应返回给页面的同时，我们将其克隆一份并存入缓存。
             // 一个响应只能被读取一次，所以需要克隆。
-            console.log('[shouldCacheRequest]', request.url);
+            console.log('[SW shouldCacheRequest]', request.url);
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
               // console.log(`[SW] Caching new resource: ${request.url}`);
@@ -126,7 +126,7 @@ self.addEventListener('fetch', event => {
       .catch(error => {
         // 当缓存和网络都失败时（例如，用户离线且资源未被缓存），
         // 可以在这里返回一个通用的离线页面。
-        console.error(`[SW] Fetch failed for ${request.url}:`, error);
+        // console.error(`[SW] Fetch failed for ${request.url}:`, error);
         // 可选：返回一个离线备用页面
         // return caches.match('/offline.html');
       })
