@@ -1,6 +1,6 @@
 
 // 请务必修改版本号（例如 'static-cache-v2'），这样 Service Worker 才会触发 activate 事件来清理旧缓存。
-const CACHE_NAME = 'static-cache-v1';
+const CACHE_NAME = 'dutil-cache-v2';
 // 在 Service Worker 安装时需要立即预缓存的资源 URL 列表。
 // 通常是应用的核心外壳（App Shell），例如主页、核心 CSS 和 JS。
 // 注意：这里的路径必须是精确的、相对于网站根目录的路径。
