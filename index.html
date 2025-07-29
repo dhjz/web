@@ -28,7 +28,7 @@
         <main>
             <div class="main-links" v-show="linkList && linkList.length">
                 <section class="site-category">
-                    <h2 class="category-title">网站导航</h2>
+                    <h2 class="category-title"><span>网站导航</span></h2>
                     <div class="site-list">
                         <a v-for="site in linkList" :key="site.id" :href="site.url" target="_blank" class="site-item" :title="site.name">
                             <div class="site-icon" :style="{ backgroundColor: site.color }">
@@ -41,7 +41,7 @@
             </div>
             <div class="main-sites">
                 <section v-for="category in config.sites" :key="category.name" class="site-category">
-                    <h2 class="category-title">{{ category.name }}</h2>
+                    <h2 class="category-title"><span>{{ category.name }}</span></h2>
                     <div class="site-list">
                         <a v-for="site in category.list" :key="site.url" :href="site.url" target="_blank" class="site-item" :title="site.name">
                             <div class="site-icon" :style="{ backgroundColor: site.color }">

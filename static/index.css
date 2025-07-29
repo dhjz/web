@@ -184,9 +184,16 @@ main {
     margin-top: 0;
     margin-bottom: 10px; /* 减少标题和网站列表之间的间距 */
     color: #333;
-    border-bottom: 1px solid #eee; /* 细线也可以稍细一点 */
+    border-bottom: 1px solid #e1e1e1; /* 细线也可以稍细一点 */
     padding-bottom: 6px;
     transition: color 0.3s ease;
+}
+.category-title span {
+    display: inline-block;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(90deg, #008DFF 0%, #26b7a1 100%, #30C5AF 100%);
 }
 
 .site-list {
