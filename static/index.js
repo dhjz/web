@@ -68,11 +68,7 @@ function getDate() {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('Service Worker registered successfully:', registration);
-      })
-      .catch(error => {
-        console.error('Service Worker registration failed:', error);
-      });
+      .then(e => console.log('[SW-TV] Service Worker success:', e))
+      .catch(e => console.log('[SW-TV] Service Worker failed:', e));
   });
 }
