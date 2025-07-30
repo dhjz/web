@@ -6,7 +6,7 @@ const app = {
             isDarkMode: localStorage.getItem('isDarkMode') == '1',
             searchQuery: '',
             selectedSearchEngine: localStorage.getItem('lastSearch') || config.searchs[0].url,
-            config: config,
+            config: window.config || JSON.parse(localStorage.getItem('dweb-config') || '{}'),
             searchItem: {},
             linkList: JSON.parse(localStorage.getItem('linkList') || '[]') || [],
         };
@@ -32,6 +32,9 @@ const app = {
                 localStorage.setItem('linkList', JSON.stringify(this.linkList))
                 console.log(data.linkList);
             })
+            if (this.config) {
+                localStorage.setItem('dweb-config', JSON.stringify(this.config))
+            }
         },
         toggleDarkMode() {
             this.isDarkMode = !this.isDarkMode;
@@ -39,7 +42,7 @@ const app = {
         },
         searchChange() {
             localStorage.setItem('lastSearch', this.selectedSearchEngine);
-            this.searchItem = config.searchs.find(item => item.url === this.selectedSearchEngine);
+            this.searchItem = this.config.searchs.find(item => item.url === this.selectedSearchEngine);
         },
         performSearch() {
             if (!this.searchQuery.trim()) return alert('请输入搜索内容！');
