@@ -24,6 +24,7 @@ window.config = {
         { name: 'Emoji', short: 'Emoji', url: './emoji/index.html', color: '#32CD32' },
         { name: '符号大全', short: '符号', url: './icon.html', color: '#FFD700' },
         { name: 'Base64转换', short: 'Base64', url: './base64.html', color: '#6a6443' },
+        { name: '字符压缩', short: '压缩', url: './pako/index.html', color: '#861683' },
         { name: '工具类', short: '工具类', url: './utils/lib.html', color: '#8B4513' },
       ]
     },

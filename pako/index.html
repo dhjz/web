@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/themes/prism.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/themes/prism.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/prism.min.js"></script>
+  <style>
+    body { line-height: 1.5; padding: 30px;}
+    input, select { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px; }
+    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    textarea { display: block; resize: vertical; padding: 4px 10px; line-height: 1.5; color: #333; border: 1px solid #dcdfe6; border-radius: var(--input-radius); width: 100%; height: 120px;}
+    .m10 { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <textarea name="" id="text">这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段</textarea>
+  <div class="m10">
+    <button>加密</button><button>还原</button><button onclick="text.value = ''">清空</button>
+    <button>存储</button><button>还原</button><button onclick="downloadText(text.value)">下载</button>
+    <span id="rate"></span>
+  </div>
+  <textarea name="" id="result"></textarea>
+  <pre>
+    <code class="language-js" id="code-zipstr"></code>
+  </pre>
+  <script id="zipstr">
+// 压缩字符串
+function zipStr(str) {
+  const compressed = pako.deflate(new TextEncoder().encode(str), { level: 9 })
+  return btoa(String.fromCharCode.apply(null, compressed));
+}
+// 解压字符串
+function unzipStr(str) {
+  return pako.inflate(Uint8Array.from(atob(str), c => c.charCodeAt(0)), { to: 'string' })
+}
+// 压缩字符串为Uint8Array
+function zipStr8(str) {
+  return pako.deflate(new TextEncoder().encode(str), { level: 9 });
+}
+// 解压Uint8Array为字符串 // arr instanceof Uint8Array === true
+function unzipStr8(arr) {
+  return pako.inflate(arr, { to: 'string' });
+}
+</script>
+  <script>
+    localforage.config({
+      driver: localforage.INDEXEDDB,
+      name: 'test-data-db',
+      storeName: 'teststore',
+    });
+    const text = document.getElementById('text')
+    const result = document.getElementById('result')
+    const button = document.querySelector('button')
+    const button2 = document.querySelectorAll('button')[1]
+    const button3 = document.querySelectorAll('button')[3]
+    const button4 = document.querySelectorAll('button')[4]
+    const rate = document.getElementById('rate')
+    button.addEventListener('click', () => {
+      const data = text.value;
+      const compressedBase64 = zipStr(data);
+      result.value = compressedBase64
+      const size = new TextEncoder().encode(data).length / 1024; // 转换为KB
+      const size1 = new TextEncoder().encode(compressedBase64).length / 1024; // 转换为KB
+      rate.innerHTML = `${data.length}个字符, 原始: ${size.toFixed(2)}kb -> ${size1.toFixed(2)}kb, 压缩率: ${(100 * compressedBase64.length / data.length).toFixed(2)}%`
+    })
+    button2.addEventListener('click', () => {
+      text.value = unzipStr(result.value)
+    })
+    button3.addEventListener('click', () => {
+      const data = zipStr8(text.value);
+      console.log('save zipstr', data, data.length);
+      localforage.setItem('zipstr', data).then(() => {
+        const size = data.length / 1024;
+        rate.innerHTML = `存储成功: ${data.length} 长度, ${size.toFixed(2)}kb`
+      }).catch(err => {
+        console.error('存储失败:', err);
+      });
+    })
+    button4.addEventListener('click', async () => {
+      const data = await localforage.getItem('zipstr')
+      console.log(typeof data, data instanceof Uint8Array);
+      console.log('load zipstr', data, data.length);
+      if (data) {
+        text.value = unzipStr8(data);
+        rate.innerHTML = `还原成功: ${data.length} 字符`
+      } else {
+        rate.innerHTML = '没有找到存储的数据'
+      }
+    })
+
+
+
+    document.getElementById('code-zipstr').textContent = document.getElementById('zipstr').textContent.trim();
+
+    // Promis.hightlightAll()
+    function downloadText(text, name = 'download.txt') {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      link.remove();
+    }
+  </script>
+</body>
+</html>
