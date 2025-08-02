@@ -29,10 +29,20 @@
     <code class="language-js" id="code-zipstr"></code>
   </pre>
   <script id="zipstr">
+// 代码展示:::
+// 分批次转换字符串, 避免太大内存溢出
+function unit8ToSBase64(arr) {
+  let result = '';
+  const chunkSize = 16384;
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    result += String.fromCharCode.apply(null, arr.slice(i, i + chunkSize));
+  }
+  return btoa(result);
+}
 // 压缩字符串
 function zipStr(str) {
   const compressed = pako.deflate(new TextEncoder().encode(str), { level: 9 })
-  return btoa(String.fromCharCode.apply(null, compressed));
+  return unit8ToSBase64(compressed);
 }
 // 解压字符串
 function unzipStr(str) {
