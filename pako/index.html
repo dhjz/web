@@ -57,6 +57,22 @@ function zipStr8(str) {
 function unzipStr8(arr) {
   return pako.inflate(arr, { to: 'string' });
 }
+// unit8互转arraybuffer
+function unit8ToBuffer(arr) {
+  // 构建二进制文件  
+  // const blob = new Blob([buffer], { type: 'application/octet-stream' }); 
+  // const url = URL.createObjectURL(blob);
+  // formData.append(name, [blob|File], filename);
+  return arr.buffer;
+}
+function bufferToUnit8(buffer) {
+  return new Uint8Array(buffer);
+}
+// unit8 转文件
+function unit8ToFile(arr, fileName, mimeType = 'application/octet-stream') {
+  const blob = new Blob([uint8Array], { type: mimeType });
+  return new File([blob], fileName, { type: mimeType });
+}
 </script>
   <script>
     localforage.config({
