@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Pako字符压缩</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/themes/prism.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/themes/prism.min.css">
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css"> -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/prism.min.js"></script>
   <style>
     body { line-height: 1.5; padding: 20px 30px 10px;}
     input, select { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px; }
-    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; margin: 0 10px 6px 0; }
     textarea { display: block; resize: vertical; padding: 4px 10px; line-height: 1.5; color: #333; border: 1px solid #dcdfe6; border-radius: var(--input-radius); width: 100%; height: 120px;}
     .m10 { margin: 10px 0; }
   </style>
@@ -20,8 +20,11 @@
 <body>
   <textarea name="" id="text">这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段这是带加密字段</textarea>
   <div class="m10">
-    <button>加密</button><button>还原</button><button onclick="text.value = ''">清空</button>
-    <button>存储二进制</button><button>还原二进制</button><button onclick="downloadText(text.value)">下载</button>
+    <button onclick="button1()">压缩</button><button onclick="button2()">还原</button>
+    <button onclick="button7()">加密压缩</button><button onclick="button8()">加密还原</button>
+    <button onclick="button3()">存储二进制</button><button onclick="button4()">还原二进制</button>
+    <button onclick="button5()">加密二进制</button><button onclick="button6()">解密二进制</button>
+    <button onclick="text.value = ''">清空</button><button onclick="downloadText(text.value)">下载</button>
     <span id="rate"></span>
   </div>
   <textarea name="" id="result"></textarea>
@@ -31,8 +34,9 @@
   <script id="zipstr">
 // 压缩JS库::: https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js 
 
-// 分批次转换字符串, 避免太大内存溢出
-function unit8ToSBase64(arr) {
+/********************** 压缩字符  **********************/
+// 分批次转换字符串, 避免太大内存溢出, 比直接转节约少量时间
+function unit8ToBase64(arr) {
   let result = '';
   const chunkSize = 16384;
   for (let i = 0; i < arr.length; i += chunkSize) {
@@ -40,12 +44,16 @@ function unit8ToSBase64(arr) {
   }
   return btoa(result);
 }
-// 压缩字符串
-function zipStr(str) {
-  const compressed = pako.deflate(new TextEncoder().encode(str), { level: 9 })
-  return unit8ToSBase64(compressed);
+function unit8To64(arr) {
+  return btoa(arr.reduce((r, byte) => r + String.fromCharCode(byte), ''))
 }
-// 解压字符串
+// 压缩字符串, Uint8Array转base64
+function zipStr(str) {
+  const arr = pako.deflate(new TextEncoder().encode(str), { level: 9 })
+  return unit8To64(arr)
+  // return unit8ToBase64(arr);
+}
+// 解压字符串, base64先转Uint8Array
 function unzipStr(str) {
   return pako.inflate(Uint8Array.from(atob(str), c => c.charCodeAt(0)), { to: 'string' })
 }
@@ -59,20 +67,55 @@ function unzipStr8(arr) {
 }
 // unit8互转arraybuffer
 function unit8ToBuffer(arr) {
-  // 构建二进制文件  
-  // const blob = new Blob([buffer], { type: 'application/octet-stream' }); 
-  // const url = URL.createObjectURL(blob);
-  // formData.append(name, [blob|File], filename);
   return arr.buffer;
 }
 function bufferToUnit8(buffer) {
   return new Uint8Array(buffer);
+}
+// unit8 转FormData
+function unit8ToFormData(arr) {
+  const formData = new FormData();
+  formData.append('file', new Blob([arr], { type: 'application/octet-stream' })); // , filename
+  return formData;
 }
 // unit8 转文件
 function unit8ToFile(arr, fileName, mimeType = 'application/octet-stream') {
   const blob = new Blob([uint8Array], { type: mimeType });
   return new File([blob], fileName, { type: mimeType });
 }
+/********************** 压缩文件  **********************/
+function zipFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const arr = pako.deflate(new Uint8Array(e.target.result));
+    // download(new Blob([arr], { type: 'application/octet-stream' }), "compressed.dat");
+  };
+  reader.readAsArrayBuffer(file);
+}
+function unzipFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const arr = pako.inflate(new Uint8Array(e.target.result));
+    // download(new Blob([arr], { type: 'application/octet-stream' }), "compressed.dat")
+  };
+  reader.readAsArrayBuffer(file);
+}
+/********************** 加密解密Unit8Array, 插入随机数索引(建议小点), 插入数量  **********************/
+function encUnit8(arr, ind = 9, len = 10) {
+  const encData = new Array(len).fill(0).map(() => Math.ceil(Math.random() * 250))
+  const result = new Uint8Array(arr.length + encData.length);
+  result.set(arr.slice(0, ind), 0);
+  result.set(encData, ind);
+  result.set(arr.slice(ind), ind + encData.length);
+  return result;
+}
+function decUnit8(arr, ind = 9, len = 10) {
+  const result = new Uint8Array(arr.length - len);
+  result.set(arr.slice(0, ind), 0);
+  result.set(arr.slice(ind + len), ind);
+  return result;
+}
+
 </script>
   <script>
     localforage.config({
@@ -82,23 +125,38 @@ function unit8ToFile(arr, fileName, mimeType = 'application/octet-stream') {
     });
     const text = document.getElementById('text')
     const result = document.getElementById('result')
-    const button = document.querySelector('button')
-    const button2 = document.querySelectorAll('button')[1]
-    const button3 = document.querySelectorAll('button')[3]
-    const button4 = document.querySelectorAll('button')[4]
     const rate = document.getElementById('rate')
-    button.addEventListener('click', () => {
+
+    function button1() {
       const data = text.value;
+      const startTime = Date.now();
       const compressedBase64 = zipStr(data);
+      const time = Date.now() - startTime;
       result.value = compressedBase64
       const size = new TextEncoder().encode(data).length / 1024; // 转换为KB
       const size1 = new TextEncoder().encode(compressedBase64).length / 1024; // 转换为KB
-      rate.innerHTML = `${data.length}个字符, 原始: ${size.toFixed(2)}kb -> ${size1.toFixed(2)}kb, 压缩率: ${(100 * compressedBase64.length / data.length).toFixed(2)}%`
-    })
-    button2.addEventListener('click', () => {
+      rate.innerHTML = `${data.length}个字符, 原始: ${size.toFixed(2)}kb -> ${size1.toFixed(2)}kb, 压缩率: ${(100 * compressedBase64.length / data.length).toFixed(2)}%, 耗时: ${time}ms`
+    }
+    function button2() {
       text.value = unzipStr(result.value)
-    })
-    button3.addEventListener('click', () => {
+    }
+    function button7() {
+      const data = text.value;
+      const startTime = Date.now();
+      let arr = zipStr8(data);
+      arr = encUnit8(arr);
+      const compressedBase64 = unit8To64(arr); // btoa(arr.reduce((r, byte) => r + String.fromCharCode(byte), ''))
+      const time = Date.now() - startTime;
+      result.value = compressedBase64
+      const size = new TextEncoder().encode(data).length / 1024; // 转换为KB
+      const size1 = new TextEncoder().encode(compressedBase64).length / 1024; // 转换为KB
+      rate.innerHTML = `${data.length}个字符, 原始: ${size.toFixed(2)}kb -> ${size1.toFixed(2)}kb, 压缩率: ${(100 * compressedBase64.length / data.length).toFixed(2)}%, 耗时: ${time}ms`
+    }
+    function button8() {
+      let arr = Uint8Array.from(atob(result.value), c => c.charCodeAt(0))
+      text.value = unzipStr8(decUnit8(arr))
+    }
+    function button3() {
       const data = zipStr8(text.value);
       console.log('save zipstr', data, data.length);
       localforage.setItem('zipstr', data).then(() => {
@@ -108,8 +166,8 @@ function unit8ToFile(arr, fileName, mimeType = 'application/octet-stream') {
       }).catch(err => {
         console.error('存储失败:', err);
       });
-    })
-    button4.addEventListener('click', async () => {
+    }
+    async function button4() {
       const data = await localforage.getItem('zipstr')
       console.log(typeof data, data instanceof Uint8Array);
       console.log('load zipstr', data, data.length);
@@ -119,9 +177,31 @@ function unit8ToFile(arr, fileName, mimeType = 'application/octet-stream') {
       } else {
         rate.innerHTML = '没有找到存储的数据'
       }
-    })
-
-
+    }
+    function button5() {
+      let data = zipStr8(text.value);
+      data = encUnit8(data)
+      console.log('save zipstr', data, data.length);
+      localforage.setItem('zipstr', data).then(() => {
+        const size = data.length / 1024;
+        const size1 = new TextEncoder().encode(text.value).length / 1024; // 转换为KB
+        rate.innerHTML = `存储成功: ${data.length} 长度, ${size1.toFixed(2)}kb -> ${size.toFixed(2)}kb,  压缩率: ${(100 * size / size1).toFixed(2)}%`
+      }).catch(err => {
+        console.error('存储失败:', err);
+      });
+    }
+    async function button6() {
+      let data = await localforage.getItem('zipstr')
+      console.log(typeof data, data instanceof Uint8Array);
+      data = decUnit8(data)
+      console.log('load zipstr', data, data.length);
+      if (data) {
+        text.value = unzipStr8(data);
+        rate.innerHTML = `还原成功: ${data.length} -> ${text.value.length} 字符`
+      } else {
+        rate.innerHTML = '没有找到存储的数据'
+      }
+    }
 
     document.getElementById('code-zipstr').textContent = document.getElementById('zipstr').textContent.trim();
 
