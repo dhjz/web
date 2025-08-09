@@ -127,6 +127,7 @@ function decUnit8(arr, ind = 9, len = 10) {
     const result = document.getElementById('result')
     const rate = document.getElementById('rate')
 
+    // 压缩
     function button1() {
       const data = text.value;
       const startTime = Date.now();
@@ -137,9 +138,11 @@ function decUnit8(arr, ind = 9, len = 10) {
       const size1 = new TextEncoder().encode(compressedBase64).length / 1024; // 转换为KB
       rate.innerHTML = `${data.length}个字符, 原始: ${size.toFixed(2)}kb -> ${size1.toFixed(2)}kb, 压缩率: ${(100 * compressedBase64.length / data.length).toFixed(2)}%, 耗时: ${time}ms`
     }
+    // 还原
     function button2() {
       text.value = unzipStr(result.value)
     }
+    // 加密压缩
     function button7() {
       const data = text.value;
       const startTime = Date.now();
@@ -152,10 +155,12 @@ function decUnit8(arr, ind = 9, len = 10) {
       const size1 = new TextEncoder().encode(compressedBase64).length / 1024; // 转换为KB
       rate.innerHTML = `${data.length}个字符, 原始: ${size.toFixed(2)}kb -> ${size1.toFixed(2)}kb, 压缩率: ${(100 * compressedBase64.length / data.length).toFixed(2)}%, 耗时: ${time}ms`
     }
+    // 加密还原
     function button8() {
       let arr = Uint8Array.from(atob(result.value), c => c.charCodeAt(0))
       text.value = unzipStr8(decUnit8(arr))
     }
+    // 存储二进制
     function button3() {
       const data = zipStr8(text.value);
       console.log('save zipstr', data, data.length);
@@ -167,6 +172,7 @@ function decUnit8(arr, ind = 9, len = 10) {
         console.error('存储失败:', err);
       });
     }
+    // 还原二进制
     async function button4() {
       const data = await localforage.getItem('zipstr')
       console.log(typeof data, data instanceof Uint8Array);
@@ -178,6 +184,7 @@ function decUnit8(arr, ind = 9, len = 10) {
         rate.innerHTML = '没有找到存储的数据'
       }
     }
+    // 加密二进制
     function button5() {
       let data = zipStr8(text.value);
       data = encUnit8(data)
@@ -190,6 +197,7 @@ function decUnit8(arr, ind = 9, len = 10) {
         console.error('存储失败:', err);
       });
     }
+    // 解密二进制
     async function button6() {
       let data = await localforage.getItem('zipstr')
       console.log(typeof data, data instanceof Uint8Array);
