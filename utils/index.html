@@ -214,6 +214,26 @@ function dragUpload() {
   })
 }
 
+// # 文件-粘贴上传
+function pasteUpload() {
+  document.addEventListener('paste', function (e) {
+    var items = e.clipboardData.items
+    if (!items) return;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        var blob = items[i].getAsFile()
+        var reader = new FileReader()
+        reader.onload = function (event) {
+          var img = new Image()
+          img.src = event.target.result;
+          document.body.appendChild(img)
+        };
+        reader.readAsDataURL(blob)
+      }
+    }
+  })
+}
+
 // # 文件-正则获取文件类型
 function getType(val) {
   if (/\.(jpeg|jpg|gif|png|svg|webp|jfif|bmp|dpg)$/i.test(val)) return 'img'
@@ -313,6 +333,12 @@ function copyEl(el) {
   getSelection().removeAllRanges()
 }
 
+// # 浏览器-复制文本(https)
+function copyText1(text) {
+  return navigator.clipboard.writeText(text)
+}
+
+
 // # 浏览器-解析URL参数
 function url2Obj(url) {
   url = url || window.location.href
@@ -368,6 +394,12 @@ function fullScreen(isFull, el) {
     var wscript = new ActiveXObject('WScript.Shell')
     wscript && wscript.SendKeys('{F11}')
   }
+}
+
+// # 浏览器-判断是否移动端
+function isMobile() {
+  const userAgent = navigator.userAgent.toLowerCase()
+  return /iphone|ipod|android|webos|blackberry|windows phone|ipad|mobile|symbian|phone|Kindle|opera mini/i.test(userAgent)
 }
 
 // # 浏览器-回到顶部或定位
@@ -440,6 +472,32 @@ function canCopy() {
   }), alert("解除限制成功啦！")
 }
 
+// # 浏览器-新页面打开代码
+function openCode(code) {
+  const dataUri = URL.createObjectURL(new Blob([code], { type: 'text/html;charset=utf-8' }));
+  window.open(dataUri);
+}
+
+function getCodeExt(ele) {
+  const extensionMap = {
+    js: 'js', javascript: 'js', ts: 'ts', typescript: 'ts', py: 'py', python: 'py', java: 'java', c: 'c', sql: 'sql', vue: 'vue', nginx: 'conf',
+    cpp: 'cpp', 'c++': 'cpp', cs: 'cs', csharp: 'cs',  go: 'go', php: 'php', ruby: 'rb', html: 'html', xml: 'xml', json: 'json',
+    css: 'css', scss: 'scss', less: 'less', yml: 'yml', yaml: 'yaml', shell: 'sh', bash: 'sh', sh: 'sh', bat: 'bat', batch: 'bat',
+  };
+  if (!ele || !ele.classList) return '';
+  let key = Object.keys(extensionMap).find(x => ele.classList.contains(x) || ele.classList.contains(`language-${x}`))
+  return key ? ('.' + extensionMap[key]) : '.txt'
+}
+function loadFromStorage () {
+  const html = localStorage.getItem('runHtml');
+  if (html) {
+    document.write(html);
+    document.close();
+  } else {
+    document.write('<h1 style="text-align: center; padding: 30px;">暂无可运行代码!</h1>');
+  }
+};
+
 // # css-滚动条
 // ::-webkit-scrollbar { width: 8px; height: 8px; }
 // ::-webkit-scrollbar-thumb {	background-color: #ddd;	border-radius: 6px; }
@@ -463,6 +521,22 @@ function debounce(fn, delay, isImmediate) {
     }, delay);
   }
 }
+
+// # 工具-加密解密数字
+export function encryptNum (num) {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let base35 = parseInt(num).toString(35); // 进制20-36自定义
+  const ind = parseInt(base35.charAt(0), 36) % 2 + 1; // 随机插入字符索引
+  base35 = base35.slice(0, ind) + chars[Math.floor(Math.random() * chars.length)] + base35.slice(ind);
+  return base35.toUpperCase();
+}
+// 解密数字
+export function decryptNum (val) {
+  const ind = parseInt(val.charAt(0), 36) % 2 + 1;
+  const decryptedStr = val.slice(0, ind) + val.slice(ind + 1);
+  return parseInt(decryptedStr, 35);
+}
+
 
 // # 工具-节流
 // 在一定时间内，只能触发一次
@@ -773,22 +847,15 @@ function dateStr(len) {
 }
 
 // # 其他-自定义notify
-window.dnotifyTimer = null
+window.dnotifyTimer = null; window.dnotifyEl = document.body.appendChild(Object.assign(document.createElement('div'), { 
+  id: 'dnotify', style: `display:none; min-width: 260px;max-width: 40%; padding: 10px; box-sizing: border-box; border: 1px solid #ebeef5; text-align: center; color:#333;
+    position: fixed; background-color: #fff; top:16px;right:16px;z-index: 9999999; font-size: 14px;line-height: 1.4; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,.1); `
+}));
 function dnotify(txt, time) {
-  clearTimeout(dnotifyTimer)
-  if (document.getElementById('dnotify')) {
-    document.getElementById('dnotify').innerHTML = txt
-    document.getElementById('dnotify').style.display = 'block';
-  } else {
-    var notEle = document.createElement('div');
-    notEle.id = 'dnotify'
-    notEle.innerHTML = txt;
-    notEle.style = `display: flex; min-width: 330px;max-width: 40%; padding: 12px 16px 12px 16px; color:#333; box-sizing: border-box; border: 1px solid #ebeef5; 
-    position: fixed; background-color: #fff; top:16px;right:16px;z-index: 9999999; box-shadow: 0 2px 12px 0 rgba(0,0,0,.1); text-align: center;justify-content: center;
-    transition: opacity .3s,transform .3s,left .3s,right .3s,top .4s,bottom .3s;  overflow: hidden;font-size: 14px;line-height: 1.4; border-radius: 8px; `
-    document.body.append(notEle)
-  } 
-  dnotifyTimer = setTimeout(function(){ document.getElementById('dnotify').style.display = 'none'; }, time ? time : 3000)
+  dnotifyEl.style.display = 'block';
+  dnotifyEl.innerHTML = txt;
+  clearTimeout(dnotifyTimer);
+  dnotifyTimer = setTimeout(() => dnotifyEl.style.display = 'none', (time || 3) * 1000);
 }
 
 function logs(val, title) {

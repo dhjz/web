@@ -1,43 +1,238 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片转 ICO</title>
-    <link rel="stylesheet" href="index.css">
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
-    <!-- CDN 引入 fabric.js -->
-    <script src="fabric.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片转 ICO 工具 (增强版)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; color: #333; display: flex; justify-content: center; 
+    align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; background: linear-gradient(135deg, #fbf1f5 0%, #e0e8f0 50%, #d4ede1 100%); }
+    .container { background-color: #fff; padding: 30px 40px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1); width: 100%; max-width: 600px; 
+      text-align: center; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    h1 { color: #2c3e50; margin-bottom: 20px; }
+    p { color: #7f8c8d; margin-bottom: 30px; }
+    #drop-zone { border: 3px dashed #bdc3c7; border-radius: 10px; padding: 60px 20px; cursor: pointer; transition: all 0.3s ease; background-color: #ecf0f1; }
+    #drop-zone:hover { border-color: #3498db; background-color: #eaf5fb; }
+    #drop-zone-text { font-size: 18px; color: #7f8c8d; }
+    #file-input { display: none; }
+    .settings { margin-top: 30px; }
+    .settings-title { font-weight: bold; color: #34495e; margin-bottom: 15px; display: block; }
+    #size-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 15px; }
+    #size-options label { display: inline-block; padding: 8px 15px; border: 1px solid #ccc; border-radius: 20px; cursor: pointer; transition: all 0.2s ease; }
+    #size-options input[type="radio"] { display: none; }
+    #size-options input[type="radio"]:checked+label { background-color: #3498db; color: white; border-color: #3498db; }
+    #preview-container { margin: 30px 0 0; display: none; flex-direction: column; gap: 20px; align-items: center; }
+    .preview-wrapper { display: flex; justify-content: space-around; width: 100%; flex-wrap: wrap; gap: 20px; }
+    .preview-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .preview-box img { max-width: 128px; max-height: 128px; border: 1px solid #ddd; border-radius: 5px;  background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; 
+      background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);}
+    .preview-title { font-weight: bold; color: #34495e; }
+    .file-size { font-size: 0.9em; color: #7f8c8d; }
+    #download-link { display: none; margin-top: 30px; background-color: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-size: 18px; font-weight: bold; transition: background-color 0.3s ease; }
+    #download-link:hover { background-color: #2ecc71; }
+    #drag-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; display: none; justify-content: center; align-items: center; pointer-events: none; }
+    #drag-overlay-content { padding: 40px 60px; border: 3px dashed white; border-radius: 15px; color: white; font-size: 24px; font-weight: bold; text-align: center; }
+    body.dragover .container { transform: scale(1.02); box-shadow: 0 12px 40px rgba(52, 152, 219, 0.4); }
+
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>图片转换为 ICO</h1>
-
-        <div id="dropzone" class="dropzone">
-            <p>将 PNG, JPEG, GIF 文件拖拽到这里，或点击选择文件</p>
-            <input type="file" id="fileInput" accept=".png,.jpeg,.jpg,.gif" multiple hidden>
-        </div>
-
-        <div id="previewContainer" class="preview-container">
-            <img id="imagePreview" src="#" alt="图片预览" style="display: none;">
-        </div>
-
-        <div class="options">
-            <label>选择 ICO 图标尺寸:</label>
-            <div class="radio-group">
-                <label><input type="radio" name="iconSize" value="16" checked> 16x16</label>
-                <label><input type="radio" name="iconSize" value="32"> 32x32</label>
-                <label><input type="radio" name="iconSize" value="48"> 48x48</label>
-                <label><input type="radio" name="iconSize" value="64"> 64x64</label>
-                <label><input type="radio" name="iconSize" value="128"> 128x128</label>
-                <label><input type="radio" name="iconSize" value="256"> 256x256</label>
-            </div>
-        </div>
-
-        <button id="convertButton" disabled>转换为 ICO 并下载</button>
-        <div id="statusMessage" class="status-message"></div>
+  <div id="drag-overlay">
+    <div id="drag-overlay-content">
+      释放鼠标即可上传图片
     </div>
+  </div>
+  <div class="container">
+    <h1>图片转 ICO 工具</h1>
+    <p>将图片拖拽到页面任意位置，或点击下方区域上传。纯本地转换，保护您的隐私。</p>
+    <div id="drop-zone">
+      <span id="drop-zone-text">点击此处选择图片</span>
+      <input type="file" id="file-input" accept="image/*">
+    </div>
+    <div class="settings">
+      <span class="settings-title">选择 ICO 尺寸:</span>
+      <div id="size-options">
+        <input type="radio" id="size16" name="ico-size" value="16"><label for="size16">16x16</label>
+        <input type="radio" id="size32" name="ico-size" value="32" checked><label for="size32">32x32</label>
+        <input type="radio" id="size48" name="ico-size" value="48"><label for="size48">48x48</label>
+        <input type="radio" id="size64" name="ico-size" value="64"><label for="size64">64x64</label>
+        <input type="radio" id="size128" name="ico-size" value="128"><label for="size128">128x128</label>
+        <input type="radio" id="size256" name="ico-size" value="256"><label for="size256">256x256</label>
+      </div>
+    </div>
+    <div id="preview-container">
+      <div class="preview-wrapper">
+        <div class="preview-box">
+          <span class="preview-title">原图预览</span>
+          <img id="original-preview" src="" alt="Original Image Preview">
+          <span class="file-size" id="original-size"></span>
+        </div>
+        <div class="preview-box">
+          <span class="preview-title">ICO 预览</span>
+          <img id="ico-preview" src="" alt="ICO Preview">
+          <span class="file-size" id="ico-size"></span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top: 14px;">
+      <a id="download-link" href="#" download="favicon.ico">下载 ICO 文件</a>
+      <a href="./old.html" target="_blank">(老版)</a>
+    </div>
+  </div>
 
-    <script src="index.js"></script>
+  <script>
+    const body = document.body;
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const sizeOptions = document.getElementById('size-options');
+    const previewContainer = document.getElementById('preview-container');
+    const originalPreview = document.getElementById('original-preview');
+    const icoPreview = document.getElementById('ico-preview');
+    const downloadLink = document.getElementById('download-link');
+    const originalSizeSpan = document.getElementById('original-size');
+    const icoSizeSpan = document.getElementById('ico-size');
+    const dragOverlay = document.getElementById('drag-overlay');
+
+    let originalImage = null;
+    let currentIcoUrl = null;
+    // 点击上传区域
+    dropZone.addEventListener('click', () => fileInput.click());
+    // 文件选择
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+    // 尺寸选择变化
+    sizeOptions.addEventListener('change', () => {
+      if (originalImage) generateIco(originalImage);
+    });
+    // 全局拖拽事件
+    body.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dragOverlay.style.display = 'flex';
+      body.classList.add('dragover');
+    });
+
+    body.addEventListener('dragleave', (e) => {
+      // 当鼠标离开窗口时才隐藏覆盖层
+      if (e.relatedTarget === null || e.relatedTarget === undefined) {
+        dragOverlay.style.display = 'none';
+        body.classList.remove('dragover');
+      }
+    });
+    body.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragOverlay.style.display = 'none';
+      body.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('请上传有效的图片文件！');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          originalImage = img;
+          originalPreview.src = img.src;
+          originalSizeSpan.textContent = `大小: ${formatFileSize(file.size)}`;
+
+          previewContainer.style.display = 'flex';
+          generateIco(img);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function generateIco(img) {
+      const size = parseInt(document.querySelector('input[name="ico-size"]:checked').value, 10);
+
+      // 释放之前创建的 Blob URL 以避免内存泄漏
+      if (currentIcoUrl) {
+        URL.revokeObjectURL(currentIcoUrl);
+      }
+
+      const { icoUrl, icoBlob } = canvasToIco(img, size);
+      currentIcoUrl = icoUrl;
+
+      icoPreview.src = icoUrl;
+      icoPreview.style.width = `${Math.min(size, 128)}px`;
+      icoPreview.style.height = `${Math.min(size, 128)}px`;
+      icoSizeSpan.textContent = `大小: ${formatFileSize(icoBlob.size)}`;
+
+      downloadLink.href = icoUrl;
+      downloadLink.style.display = 'inline-block';
+    }
+
+    /**
+     * 格式化文件大小
+     * @param {number} bytes - 文件字节数
+     * @returns {string} - 格式化后的字符串 (e.g., "12.34 KB")
+     */
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    /**
+     * 将图片绘制到Canvas并转换为ICO格式
+     * @param {HTMLImageElement} sourceImage - 源图片元素
+     * @param {number} size - ICO的尺寸 (宽和高)
+     * @returns {{icoUrl: string, icoBlob: Blob}} - 包含ICO的Blob URL和Blob对象
+     */
+    function canvasToIco(sourceImage, size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(sourceImage, 0, 0, size, size);
+
+      const pngDataUrl = canvas.toDataURL('image/png');
+      const base64Data = pngDataUrl.substring(pngDataUrl.indexOf(',') + 1);
+      const binaryString = atob(base64Data);
+      const pngData = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        pngData[i] = binaryString.charCodeAt(i);
+      }
+
+      const icoBuffer = new ArrayBuffer(22 + pngData.length);
+      const view = new DataView(icoBuffer);
+
+      // ICONDIR
+      view.setUint16(0, 0, true);
+      view.setUint16(2, 1, true);
+      view.setUint16(4, 1, true);
+
+      // ICONDIRENTRY
+      view.setUint8(6, size === 256 ? 0 : size);
+      view.setUint8(7, size === 256 ? 0 : size);
+      view.setUint8(8, 0);
+      view.setUint8(9, 0);
+      view.setUint16(10, 1, true);
+      view.setUint16(12, 32, true);
+      view.setUint32(14, pngData.length, true);
+      view.setUint32(18, 22, true);
+
+      const icoData = new Uint8Array(icoBuffer);
+      icoData.set(pngData, 22);
+
+      const icoBlob = new Blob([icoData], { type: 'image/vnd.microsoft.icon' });
+      const icoUrl = URL.createObjectURL(icoBlob);
+
+      return { icoUrl, icoBlob };
+    }
+
+  </script>
 </body>
+
 </html>
