@@ -303,7 +303,7 @@
       return audioContext;
     }
 
-    async function initStream(deviceId) {
+    async function initStream(deviceId, isInit) {
       // 释放旧资源
       stopVisualization();
       teardownNodes();
@@ -371,6 +371,10 @@
         console.error('创建采集节点失败：', err);
       }
 
+      if (isInit) {
+        setTimeout(() => stopStream(), 500)
+        return;
+      }
       startVisualization();
     }
 
@@ -766,7 +770,7 @@
       // 请求权限，以便获取设备名称
       try {
         UI.statusText.textContent = '请求麦克风权限…';
-        // await initStream(undefined);
+        await initStream(undefined, true);
         await enumerateDevices();
         // 默认选择第一项
         if (UI.deviceSelect.options.length > 0) {

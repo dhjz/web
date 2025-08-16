@@ -21,7 +21,7 @@ const URLS_TO_PRECACHE = [
 // 支持字符串和正则表达式。
 const RUNTIME_CACHE_RULES = [
   '/utils/', // 字符串：匹配以 /api/ 开头的任何请求
-  '/record/', // 字符串：匹配以 /api/ 开头的任何请求
+  // '/record/', // 字符串：匹配以 /api/ 开头的任何请求
   // /\.(?:png|jpg|jpeg|svg|gif)$/, // 正则表达式：匹配所有常见图片格式
   // /\.(?:js|css)$/ // 正则表达式：匹配所有 JS 和 CSS 文件（如果它们没有在预缓存列表中）
 ];
