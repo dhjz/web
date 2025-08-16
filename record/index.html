@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>在线录音器 · 实时波形 · 多格式导出</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --body-bg: #0b0c10;
+      --bg: #0b0c10;
+      --panel: #12131a;
+      --text: #e6e6e6;
+      --sub: #9aa0a6;
+      --accent: #4f46e5;
+      --accent-2: #F56C6C;
+      --border: #2a2f3a;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+    }
+    .light {
+    color-scheme: light;
+    --body-bg: linear-gradient(135deg, #fbf1f5 0%, #e0e8f0 50%, #d4ede1 100%);
+    --bg: #f8f9fa;
+    --panel: #ffffff;
+    --text: #1f2937;
+    --sub: #6b7280;
+    --accent: #409EFF;
+    --accent-2: #F56C6C;
+    --border: #e5e7eb;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji;
+      background: var(--body-bg); color: var(--text); transition: all .3s; min-height: 100dvh;
+    }
+    h1 { font-size: 20px; margin: 0 0 10px; display: flex; justify-content: space-between; }
+    .app {
+      max-width: 1200px; margin: 0 auto; display: grid; gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    audio { height: 32px; margin: 4px 0; }
+    .mt10 { margin-top: 10px; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 880px) {
+      .row { grid-template-columns: 1.4fr 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    select, button {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+      font-size: 14px; cursor: pointer;
+    }
+    select { min-width: 260px; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    button.secondary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+    button.ghost { background: transparent; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status { font-size: 12px; color: var(--sub); }
+    .flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .spacer { flex: 1 1 auto; }
+    .meter-wrap {
+      display: flex; gap: 12px; align-items: center; margin-top: 10px;
+    }
+    .rms-bar {
+      width: 240px; height: 10px; background: #1e2130; border-radius: 999px; overflow: hidden; border: 1px solid var(--border);
+    }
+    .rms-bar > i {
+      display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--good), var(--warn) 60%, var(--bad));
+      transition: width 80ms linear;
+    }
+    canvas {
+      width: 100%; height: 180px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 10px;
+    }
+    .tiny { font-size: 12px; color: var(--sub); }
+    .recordings { display: grid; gap: 12px; }
+    .rec-item {
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+      display: grid; gap: 8px;
+    }
+    .rec-head { display: flex; align-items: center; gap: 10px; }
+    .tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--sub); }
+    .dl-list { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dl-list a {
+      text-decoration: none; color: white; background: var(--accent); border: 1px solid var(--border);
+      padding: 8px 10px; border-radius: 8px; font-size: 13px;
+    }
+    .note { font-size: 12px; color: var(--sub); line-height: 1.5; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: #141826; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border); color: #cbd5e1; }
+  </style>
+</head>
+<body class="light">
+  <div class="app">
+    <h1>
+      <span>在线录音器</span>
+      <span onclick="toggleTheme(false)" id="theme-icon">🌙</span>
+    </h1>
+
+    <div class="card">
+      <div class="controls">
+        <select id="deviceSelect" title="录音设备">
+          <option value="">初始化中…请先授权麦克风</option>
+        </select>
+        <button id="refreshBtn" class="ghost" title="刷新设备列表">刷新设备</button>
+        <div class="spacer"></div>
+        <button id="startBtn" class="primary">开始录音 ⏺</button>
+        <button id="pauseBtn" class="ghost" disabled>暂停 ⏸</button>
+        <button id="resumeBtn" class="ghost" disabled>继续 ▶</button>
+        <button id="stopBtn" class="secondary" disabled>停止 ⏹</button>
+      </div>
+      <div class="meter-wrap">
+        <div class="rms-bar" aria-label="电平表">
+          <i id="rmsFill"></i>
+        </div>
+        <span id="dbText" class="tiny">-∞ dB</span>
+        <span class="spacer"></span>
+        <span id="srText" class="tiny">采样率：-</span>
+        <span id="timeText" class="tiny">00:00</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <div class="flex">
+          <strong>实时波形</strong>
+          <span class="spacer"></span>
+          <span class="status" id="statusText">等待麦克风授权…</span>
+        </div>
+        <div style="margin-top:10px">
+          <canvas id="wave"></canvas>
+        </div>
+        <div class="note" style="margin-top:10px">
+          提示：
+          <span class="kbd">HTTPS</span> 环境下可选择输入设备。
+          默认导出 WAV（无损）、MP3（有损），并在支持的浏览器中额外导出 WebM/Opus。
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>导出设置</strong>
+        <div class="note" style="margin-top:8px">
+          • WAV：无损，体积较大，兼容性最好。<br/>
+          • MP3：有损，体积小，通用性强（使用内置编码器）。<br/>
+          • WebM/Opus：部分浏览器原生支持，质量高、体积小。
+        </div>
+        <br>
+        <strong>MP3码率</strong>
+        <div class="mt10">
+          <select id="mp3-kbps" title="码率">
+            <!-- 64 96 128 192 256 320  -->
+            <option value="64">64Kbps</option>
+            <option value="96">96Kbps</option>
+            <option value="128" selected>128Kbps</option>
+            <option value="192">192Kbps</option>
+            <option value="256">256Kbps</option>
+            <option value="320">320Kbps</option>
+          </select>
+        </div>
+        <div class="mt10">
+          <button onclick="startTest()" class="ghost">开始测试 ▶</button>
+          <button onclick="stopTest()" class="ghost">停止测试 ⏹</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>录音文件</strong>
+      <div id="recordings" class="recordings" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- MP3 编码器（lamejs） -->
+  <script src="lame.min.js"></script>
+
+  <script>
+    // 状态
+    let audioContext = null;
+    let analyser = null;
+    let sourceNode = null;
+    let workletNode = null;
+    let scriptNode = null;
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let webmChunks = [];
+    let animId = null;
+
+    let isCapturing = false;     // 是否在采集PCM
+    let isRecording = false;     // 是否在录音
+    let isPaused = false;        // 录音是否暂停
+    let pcmChunks = [];          // Float32Array[]
+    let totalSamples = 0;        // 累计样本数
+    let startedAt = 0;           // ms
+    let elapsedOffset = 0;       // 累计暂停前用时（ms）
+
+    const UI = {
+      deviceSelect: document.getElementById('deviceSelect'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      startBtn: document.getElementById('startBtn'),
+      pauseBtn: document.getElementById('pauseBtn'),
+      resumeBtn: document.getElementById('resumeBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      statusText: document.getElementById('statusText'),
+      srText: document.getElementById('srText'),
+      timeText: document.getElementById('timeText'),
+      wave: document.getElementById('wave'),
+      rmsFill: document.getElementById('rmsFill'),
+      dbText: document.getElementById('dbText'),
+      recordings: document.getElementById('recordings'),
+    };
+
+    function toggleTheme(isInit) {
+      let theme = localStorage.getItem('record-theme') || 'light';
+      if (!isInit) {
+        theme = theme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('record-theme', theme);
+      }
+      document.body.classList.toggle('light', theme === 'light');
+      document.getElementById('theme-icon').textContent = theme === 'light' ? '☀️' : '🌙';
+    }
+
+    toggleTheme(true)
+
+    async function startTest() {
+      if (mediaStream) return;
+      console.log('开始测试...');
+      await initStream(UI.deviceSelect.value || undefined);
+    }
+    async function stopTest() {
+      console.log('停止测试...');
+      stopVisualization()
+      stopStream()
+    }
+
+
+    // 工具
+    function formatTime(ms) {
+      const s = Math.floor(ms / 1000);
+      const mm = String(Math.floor(s / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      return `${mm}:${ss}`;
+    }
+    function formatBytes(size) {
+      const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
+      let exp = 0;
+      while (size >= 1024) {
+        size /= 1024;
+        exp++;
+      }
+      return `${size.toFixed(1)}${units[exp]}`;
+    }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+    async function ensureAudioContext() {
+      if (audioContext) return audioContext;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      UI.srText.textContent = `采样率：${audioContext.sampleRate} Hz`;
+      // 预加载 Worklet（使用内联Blob，避免额外文件）
+      if (audioContext.audioWorklet) {
+        const workletCode = `
+          class PCMWorklet extends AudioWorkletProcessor {
+            constructor(){
+              super();
+              this._enabled = true;
+              this.port.onmessage = (e) => {
+                if (e.data && typeof e.data.enabled === 'boolean') {
+                  this._enabled = e.data.enabled;
+                }
+              };
+            }
+            process(inputs, outputs, parameters) {
+              if (!this._enabled) return true;
+              const input = inputs[0];
+              if (input && input[0]) {
+                // 单声道：取第0声道
+                this.port.postMessage(input[0]);
+              }
+              return true;
+            }
+          }
+          registerProcessor('pcm-worklet', PCMWorklet);
+        `;
+        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        try {
+          await audioContext.audioWorklet.addModule(url);
+        } catch (e) {
+          console.warn('AudioWorklet 加载失败，自动回退 ScriptProcessorNode。', e);
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+      return audioContext;
+    }
+
+    async function initStream(deviceId) {
+      // 释放旧资源
+      stopVisualization();
+      teardownNodes();
+
+      const constraints = {
+        audio: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+        },
+        video: false,
+      };
+      mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      const ac = await ensureAudioContext();
+      if (ac.state === 'suspended') await ac.resume();
+
+      sourceNode = ac.createMediaStreamSource(mediaStream);
+      analyser = ac.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.8;
+      sourceNode.connect(analyser);
+
+      // 采集PCM：优先 Worklet，回退 ScriptProcessor
+      try {
+        if (ac.audioWorklet) {
+          workletNode = new AudioWorkletNode(ac, 'pcm-worklet', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
+          workletNode.port.onmessage = (e) => {
+            if (!isCapturing) return;
+            // e.data is Float32Array (frame), clone to detach
+            const frame = e.data;
+            const copy = new Float32Array(frame.length);
+            copy.set(frame);
+            pcmChunks.push(copy);
+            totalSamples += copy.length;
+          };
+          sourceNode.connect(workletNode);
+          workletNode.connect(ac.destination); // 静音输出，避免回声：将音量设为0
+          // 让输出静音
+          const gain = ac.createGain();
+          gain.gain.value = 0.0;
+          workletNode.disconnect();
+          sourceNode.disconnect(workletNode);
+          sourceNode.connect(workletNode);
+          workletNode.connect(gain).connect(ac.destination);
+        } else {
+          const bufferSize = 4096;
+          scriptNode = ac.createScriptProcessor(bufferSize, 1, 1);
+          scriptNode.onaudioprocess = (e) => {
+            if (!isCapturing) return;
+            const input = e.inputBuffer.getChannelData(0);
+            const copy = new Float32Array(input.length);
+            copy.set(input);
+            pcmChunks.push(copy);
+            totalSamples += copy.length;
+          };
+          sourceNode.connect(scriptNode);
+          const gain = ac.createGain();
+          gain.gain.value = 0.0;
+          scriptNode.connect(gain).connect(ac.destination);
+        }
+      } catch (err) {
+        console.error('创建采集节点失败：', err);
+      }
+
+      startVisualization();
+    }
+
+    function teardownNodes() {
+      try { if (scriptNode) { scriptNode.disconnect(); scriptNode.onaudioprocess = null; } } catch {}
+      try { if (workletNode) { workletNode.disconnect(); } } catch {}
+      try { if (sourceNode) { sourceNode.disconnect(); } } catch {}
+      analyser = null; sourceNode = null; workletNode = null; scriptNode = null;
+    }
+
+    function stopStream() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+    }
+
+    function startVisualization() {
+      const canvas = UI.wave;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      const ctx = canvas.getContext('2d');
+      const data = new Uint8Array(analyser ? analyser.frequencyBinCount * 2 : 2048);
+
+      function draw() {
+        animId = requestAnimationFrame(draw);
+        if (!analyser) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
+        analyser.getByteTimeDomainData(data);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 背景网格
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        for (let y = 0; y <= 4; y++) {
+          const yy = (canvas.height / 4) * y;
+          ctx.beginPath();
+          ctx.moveTo(0, yy);
+          ctx.lineTo(canvas.width, yy);
+          ctx.stroke();
+        }
+
+        // 波形
+        ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+        ctx.strokeStyle = '#60a5fa';
+        ctx.beginPath();
+        const sliceWidth = canvas.width / data.length;
+        let x = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i] / 128.0 - 1.0; // [-1, 1]
+          const y = (v * canvas.height) / 2 + canvas.height / 2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        ctx.stroke();
+
+        // 计算 RMS 与 dB
+        let sumSq = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i] / 128.0 - 1.0;
+          sumSq += v * v;
+        }
+        const rms = Math.sqrt(sumSq / data.length);
+        const db = 20 * Math.log10(rms || 1e-6);
+        const pct = clamp(rms, 0, 1) * 100;
+        UI.rmsFill.style.width = `${pct}%`;
+        UI.dbText.textContent = `${db.toFixed(1)} dB`;
+
+        // 计时
+        if (isRecording && !isPaused) {
+          const now = performance.now();
+          const elapsed = now - startedAt + elapsedOffset;
+          UI.timeText.textContent = formatTime(elapsed);
+        }
+      }
+      draw();
+
+      window.addEventListener('resize', () => {
+        cancelAnimationFrame(animId);
+        startVisualization();
+      }, { passive: true });
+    }
+
+    function stopVisualization() {
+      if (animId) cancelAnimationFrame(animId);
+      animId = null;
+    }
+
+    async function enumerateDevices() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const inputs = devices.filter(d => d.kind === 'audioinput');
+        UI.deviceSelect.innerHTML = '';
+        if (inputs.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '未检测到音频输入设备';
+          UI.deviceSelect.appendChild(opt);
+          return;
+        }
+        for (const d of inputs) {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || `麦克风 ${UI.deviceSelect.length + 1}`;
+          UI.deviceSelect.appendChild(opt);
+        }
+      } catch (e) {
+        console.error('枚举设备失败：', e);
+      }
+    }
+
+    function clearBuffers() {
+      pcmChunks = [];
+      totalSamples = 0;
+      webmChunks = [];
+    }
+
+    function getFloat32PCM() {
+      // 合并多个 Float32Array
+      const out = new Float32Array(totalSamples);
+      let offset = 0;
+      for (const chunk of pcmChunks) {
+        out.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return out;
+    }
+
+    function floatTo16BitPCM(float32) {
+      const len = float32.length;
+      const out = new Int16Array(len);
+      for (let i = 0; i < len; i++) {
+        let s = Math.max(-1, Math.min(1, float32[i]));
+        out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      return out;
+    }
+
+    function encodeWAV(float32, sampleRate) {
+      const pcm16 = floatTo16BitPCM(float32);
+      const bytesPerSample = 2;
+      const blockAlign = 1 * bytesPerSample;
+      const byteRate = sampleRate * blockAlign;
+      const dataSize = pcm16.length * bytesPerSample;
+
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      function writeString(view, offset, str) {
+        for (let i = 0; i < str.length; i++) {
+          view.setUint8(offset + i, str.charCodeAt(i));
+        }
+      }
+
+      let offset = 0;
+      writeString(view, offset, 'RIFF'); offset += 4;
+      view.setUint32(offset, 36 + dataSize, true); offset += 4;
+      writeString(view, offset, 'WAVE'); offset += 4;
+      writeString(view, offset, 'fmt '); offset += 4;
+      view.setUint32(offset, 16, true); offset += 4;       // PCM 子块大小
+      view.setUint16(offset, 1, true); offset += 2;        // 编码格式 PCM
+      view.setUint16(offset, 1, true); offset += 2;        // 声道数 1
+      view.setUint32(offset, sampleRate, true); offset += 4;
+      view.setUint32(offset, byteRate, true); offset += 4;
+      view.setUint16(offset, blockAlign, true); offset += 2;
+      view.setUint16(offset, 16, true); offset += 2;       // 位深 16
+      writeString(view, offset, 'data'); offset += 4;
+      view.setUint32(offset, dataSize, true); offset += 4;
+
+      // PCM 数据
+      let idx = 44;
+      for (let i = 0; i < pcm16.length; i++, idx += 2) {
+        view.setInt16(idx, pcm16[i], true);
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    function encodeMP3(float32, sampleRate, kbps = 128) {
+      // lamejs MP3 编码，单声道
+      const pcm16 = floatTo16BitPCM(float32);
+      const encoder = new lamejs.Mp3Encoder(1, sampleRate, kbps);
+      const samplesPerFrame = 1152;
+      let mp3Data = [];
+
+      for (let i = 0; i < pcm16.length; i += samplesPerFrame) {
+        const chunk = pcm16.subarray(i, i + samplesPerFrame);
+        const mp3buf = encoder.encodeBuffer(chunk);
+        if (mp3buf && mp3buf.length > 0) mp3Data.push(new Int8Array(mp3buf));
+      }
+      const end = encoder.flush();
+      if (end.length > 0) mp3Data.push(new Int8Array(end));
+      return new Blob(mp3Data, { type: 'audio/mpeg' });
+    }
+
+    function canUseMediaRecorder() {
+      return typeof MediaRecorder !== 'undefined' && mediaStream && MediaRecorder.isTypeSupported && (
+        MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ||
+        MediaRecorder.isTypeSupported('audio/webm') ||
+        MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ||
+        MediaRecorder.isTypeSupported('audio/ogg')
+      );
+    }
+
+    async function startRecording() {
+      if (!mediaStream) {
+        await initStream(UI.deviceSelect.value || undefined);
+      }
+      clearBuffers();
+      isCapturing = true;
+      isRecording = true;
+      isPaused = false;
+      elapsedOffset = 0;
+      startedAt = performance.now();
+
+      // 开始原生 MediaRecorder（生成 webm/ogg）
+      if (canUseMediaRecorder()) {
+        const mimeType = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/ogg;codecs=opus',
+          'audio/ogg'
+        ].find(t => MediaRecorder.isTypeSupported(t));
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) webmChunks.push(e.data);
+        };
+        mediaRecorder.start(250); // 分段
+      }
+
+      UI.statusText.textContent = '录音中…';
+      UI.startBtn.disabled = true;
+      UI.pauseBtn.disabled = false;
+      UI.resumeBtn.disabled = true;
+      UI.stopBtn.disabled = false;
+      UI.deviceSelect.disabled = true;
+      UI.refreshBtn.disabled = true;
+    }
+
+    function pauseRecording() {
+      if (!isRecording || isPaused) return;
+      isPaused = true;
+      isCapturing = false;
+      if (mediaRecorder && mediaRecorder.state === 'recording' && mediaRecorder.pause) {
+        mediaRecorder.pause();
+      }
+      // 累计时间
+      elapsedOffset += performance.now() - startedAt;
+      UI.statusText.textContent = '已暂停';
+      UI.pauseBtn.disabled = true;
+      UI.resumeBtn.disabled = false;
+    }
+
+    function resumeRecording() {
+      if (!isRecording || !isPaused) return;
+      isPaused = false;
+      isCapturing = true;
+      if (mediaRecorder && mediaRecorder.state === 'paused' && mediaRecorder.resume) {
+        mediaRecorder.resume();
+      }
+      startedAt = performance.now();
+      UI.statusText.textContent = '录音中…';
+      UI.pauseBtn.disabled = false;
+      UI.resumeBtn.disabled = true;
+    }
+
+    async function stopRecording() {
+      if (!isRecording) return;
+      isRecording = false;
+      isPaused = false;
+      isCapturing = false;
+
+      // 停止 MediaRecorder
+      let webmBlob = null;
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        const done = new Promise(resolve => {
+          mediaRecorder.onstop = () => resolve();
+        });
+        mediaRecorder.stop();
+        await done;
+        webmBlob = webmChunks.length ? new Blob(webmChunks, { type: webmChunks[0].type || 'audio/webm' }) : null;
+      }
+      mediaRecorder = null;
+
+      // 生成 WAV / MP3
+      const ac = await ensureAudioContext();
+      const float32 = getFloat32PCM();
+      const wavBlob = encodeWAV(float32, ac.sampleRate);
+      const mp3Blob = encodeMP3(float32, ac.sampleRate, parseInt(document.querySelector('#mp3-kbps').value || 128));
+
+      const durationMs = performance.now() - startedAt + elapsedOffset;
+      addRecordingItem({ wavBlob, mp3Blob, webmBlob, durationMs });
+
+      UI.statusText.textContent = '已停止';
+      UI.startBtn.disabled = false;
+      UI.pauseBtn.disabled = true;
+      UI.resumeBtn.disabled = true;
+      UI.stopBtn.disabled = true;
+      UI.deviceSelect.disabled = false;
+      UI.refreshBtn.disabled = false;
+      UI.timeText.textContent = '00:00';
+      clearBuffers();
+      stopVisualization()
+      stopStream()
+    }
+
+    function addRecordingItem({ wavBlob, mp3Blob, webmBlob, durationMs }) {
+      const idx = document.querySelectorAll('.rec-item').length + 1;
+      const when = new Date();
+      const nameBase = `recording_${when.toISOString().replace(/[:.]/g, '-')}`;
+      const el = document.createElement('div');
+      el.className = 'rec-item';
+
+      const head = document.createElement('div');
+      head.className = 'rec-head';
+      head.innerHTML = `<div><strong>${nameBase}</strong></div><span class="tag">时长 ${formatTime(durationMs)}</span>
+        <span class="tag">wav ${formatBytes(wavBlob.size)}</span>
+        <span class="tag">mp3 ${formatBytes(mp3Blob.size)}</span>
+        <span class="tag">webm ${formatBytes(webmBlob.size)}</span>`
+
+      const preview = document.createElement('audio');
+      preview.controls = true;
+      preview.src = URL.createObjectURL(wavBlob);
+      preview.preload = 'metadata';
+
+      const dl = document.createElement('div');
+      dl.className = 'dl-list';
+
+      const aWav = document.createElement('a');
+      aWav.href = URL.createObjectURL(wavBlob);
+      aWav.download = `${nameBase}.wav`;
+      aWav.textContent = '下载 WAV';
+      dl.appendChild(aWav);
+
+      const aMp3 = document.createElement('a');
+      aMp3.href = URL.createObjectURL(mp3Blob);
+      aMp3.download = `${nameBase}.mp3`;
+      aMp3.textContent = '下载 MP3';
+      dl.appendChild(aMp3);
+
+      if (webmBlob) {
+        const aWebm = document.createElement('a');
+        const ext = (webmBlob.type || '').includes('ogg') ? 'ogg' : 'webm';
+        aWebm.href = URL.createObjectURL(webmBlob);
+        aWebm.download = `${nameBase}.${ext}`;
+        aWebm.textContent = `下载 ${ext.toUpperCase()}`;
+        dl.appendChild(aWebm);
+      }
+
+      const aDel = document.createElement('a');
+      aDel.href = 'javascript:void(0)';
+      aDel.textContent = '删除';
+      aDel.style.background = 'var(--accent-2)'
+      aDel.onclick = () => {
+        confirm('确定要删除该录音文件吗？') && el.remove();;
+      };
+      dl.appendChild(aDel);
+
+      el.appendChild(head);
+      el.appendChild(preview);
+      el.appendChild(dl);
+      UI.recordings.prepend(el);
+    }
+
+    // 事件
+    UI.refreshBtn.addEventListener('click', async () => {
+      await enumerateDevices();
+    });
+
+    UI.deviceSelect.addEventListener('change', async (e) => {
+      const id = e.target.value || undefined;
+      try {
+        // await initStream(id);
+        UI.statusText.textContent = '已连接：' + (UI.deviceSelect.selectedOptions[0]?.textContent || '默认设备');
+      } catch (err) {
+        console.error(err);
+        UI.statusText.textContent = '切换设备失败，请检查权限或HTTPS环境';
+      }
+    });
+
+    UI.startBtn.addEventListener('click', () => startRecording());
+    UI.pauseBtn.addEventListener('click', () => pauseRecording());
+    UI.resumeBtn.addEventListener('click', () => resumeRecording());
+    UI.stopBtn.addEventListener('click', () => stopRecording());
+
+    // 初始化
+    async function bootstrap() {
+      // 请求权限，以便获取设备名称
+      try {
+        UI.statusText.textContent = '请求麦克风权限…';
+        // await initStream(undefined);
+        await enumerateDevices();
+        // 默认选择第一项
+        if (UI.deviceSelect.options.length > 0) {
+          UI.deviceSelect.selectedIndex = 0;
+          UI.statusText.textContent = '就绪';
+        }
+      } catch (e) {
+        console.error(e);
+        UI.statusText.textContent = '无法访问麦克风：请检查浏览器权限与HTTPS环境';
+        await enumerateDevices(); // 可能仍可列出设备但无标签
+      }
+    }
+    bootstrap();
+
+    // 清理
+    window.addEventListener('beforeunload', () => {
+      stopVisualization();
+      teardownNodes();
+      stopStream();
+    });
+
+    // 键盘快捷键
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      if (e.key.toLowerCase() === 'r') {
+        if (!isRecording) startRecording();
+        else stopRecording();
+      } else if (e.key.toLowerCase() === 'p') {
+        if (isRecording && !isPaused) pauseRecording();
+        else if (isRecording && isPaused) resumeRecording();
+      }
+    });
+  </script>
+</body>
+</html>

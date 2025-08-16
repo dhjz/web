@@ -33,6 +33,7 @@ window.config = {
       name: '媒体工具',
       list: [
         { name: '在线PS', short: 'PS', url: './ps/index.html', color: '#6495ED' },
+        { name: '在线录音', short: '录音', url: './record/index.html', color: '#E50113' },
         { name: '音频编辑', short: '音频', url: './audio/index.html', color: '#82142a' },
         { name: '音频转换', short: '音频转', url: './audioc/index.html', color: '#DC143C' },
         { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' },
