@@ -46,6 +46,7 @@ window.config = {
         { name: '屏幕测试', short: '屏幕', url: './screen/index.html', color: '#00CED1' },
         { name: '局域网控制', short: '控制', url: './dc/index.html', color: '#FF4500' },
         { name: '网速测试', short: '网速', url: 'https://net.199311.xyz/', color: '#5062f2' },
+        { name: '系统监控', short: '监控', url: 'http://home.199311.xyz:40888/', color: '#409EFF' },
         { name: '老工具', short: '老工具', url: './old.html', color: '#bbb' },
       ]
     },
