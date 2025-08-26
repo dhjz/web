@@ -1,6 +1,6 @@
 
 // 请务必修改版本号（例如 'static-cache-v2'），这样 Service Worker 才会触发 activate 事件来清理旧缓存。
-const CACHE_NAME = 'dutil-cache-v5';
+const CACHE_NAME = 'dutil-cache-v6';
 // 在 Service Worker 安装时需要立即预缓存的资源 URL 列表。
 // 通常是应用的核心外壳（App Shell），例如主页、核心 CSS 和 JS。
 // 注意：这里的路径必须是精确的、相对于网站根目录的路径。
@@ -20,7 +20,7 @@ const URLS_TO_PRECACHE = [
 // 从网络获取响应并存入缓存，以便下次离线访问。
 // 支持字符串和正则表达式。
 const RUNTIME_CACHE_RULES = [
-  '/utils/', // 字符串：匹配以 /api/ 开头的任何请求
+  // '/utils/', // 字符串：匹配以 /api/ 开头的任何请求
   // '/record/', // 字符串：匹配以 /api/ 开头的任何请求
   // /\.(?:png|jpg|jpeg|svg|gif)$/, // 正则表达式：匹配所有常见图片格式
   // /\.(?:js|css)$/ // 正则表达式：匹配所有 JS 和 CSS 文件（如果它们没有在预缓存列表中）
