@@ -4,16 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>D工具函数</title>
-  <!-- <script src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/prism.min.js"></script>
-  <link href="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"> -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-batch.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script> -->
-  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"> -->
-  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vs.min.css" rel="stylesheet"> -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css" rel="stylesheet">
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-batch.min.js"></script>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <!-- <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script> -->
+  <!-- <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"> -->
+  <!-- <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism-themes/1.9.0/prism-vs.min.css" rel="stylesheet"> -->
+  <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; }
     body { font-size: 14px; background: #f6f6f6;}
@@ -86,8 +84,16 @@ function download(blob, name) {
   }
 }
 
-function downloadText(text, name) {
+function downloadText1(text, name) {
   download(new Blob([text], { type: 'text/plain;charset=utf-8' }), name)
+}
+
+function downloadText(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  const link = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(link).click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 // # 文件-下载文本
@@ -102,7 +108,7 @@ function downloadText1(text, name) {
 }
 
 // # 文件-一键上传并获取文本内容
-function uploadText() {
+function uploadText1() {
   return new Promise((res, rej) => {
     document.getElementById('importInput')?.remove()
     const inputEl = document.createElement('input')
@@ -125,6 +131,22 @@ function uploadText() {
         document.body.removeChild(inputEl)
         res('')
       }
+    }
+    inputEl.click()
+  })
+}
+
+function uploadText() {
+  return new Promise((res) => {
+    document.getElementById('impinput')?.remove()
+    const inputEl = Object.assign(document.createElement('input'), { type: 'file', id: 'impinput', style: 'display: none;' })
+    document.body.append(inputEl)
+    inputEl.onchange = function () {
+      const file = inputEl.files[0]
+      if (!file) return res(null)
+      const reader = new FileReader()
+      reader.readAsText(file, 'UTF-8')
+      reader.onload = () => res({ name: file.name, data: reader.result, size: file.size, type: file.type })
     }
     inputEl.click()
   })
@@ -200,17 +222,14 @@ function dragUpload() {
   document.addEventListener('dragover', (e) => e.preventDefault())
   document.addEventListener('drop', (e) => {
     e.preventDefault()
-    const files = e.dataTransfer.files
-    if (!files || !files.length) return;
-    let resultFile = files[0]
-    if (resultFile) {
-      const reader = new FileReader()
-      reader.readAsText(resultFile, 'UTF-8')
-      reader.onload = function (e) {
-        let cont = reader.result
-        logs(cont, 'dragUpload()')
-      }
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return;
+    const reader = new FileReader()
+    reader.onload = () => {
+      let cont = reader.result
+      logs(cont, 'dragUpload()')
     }
+    reader.readAsText(resultFile, 'UTF-8')
   })
 }
 
@@ -936,8 +955,8 @@ function logs(val, title) {
     function toggleTheme(isLocal) {
       let themeLink = document.querySelector("link[href*='min.css']");
       const isDark = isLocal === true ? localStorage.getItem('utils-theme') == 'light' : themeLink.href.includes('dark')
-      themeLink.href = isDark ? 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css'
-        : 'https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css';
+      themeLink.href = isDark ? 'https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/themes/prism.min.css'
+        : 'https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css';
       $q('#tool-theme').innerText = isDark ? '☀️' : '🌙'
       localStorage.setItem('utils-theme', isDark ? 'light' : 'dark')
     }
