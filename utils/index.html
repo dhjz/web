@@ -37,14 +37,17 @@
     <pre id="list-js">
       <code class="language-javascript" id="cont-js"></code>
     </pre>
-    <pre id="list-css">
-      <code class="language-css" id="cont-css"></code>
-    </pre>
     <pre id="list-batch">
       <code class="language-batch" id="cont-bat"></code>
     </pre>
     <pre id="list-bash">
       <code class="language-bash" id="cont-bash"></code>
+    </pre>
+    <pre id="list-nginx">
+      <code class="language-nginx" id="cont-nginx"></code>
+    </pre>
+    <pre id="list-css">
+      <code class="language-css" id="cont-css"></code>
     </pre>
   </div>
   <div class="float-tools" >
@@ -58,6 +61,7 @@
   <!-- <script src="./javascript.js"></script> -->
   <script src="./bat.js"></script>
   <script src="./bash.js"></script>
+  <script src="./nginx.js"></script>
   <script src="./css.js"></script>
 <!-- ************************************************************* jsCont ************************************************************* -->
 <script id="jsCont">
@@ -899,6 +903,8 @@ function logs(val, title) {
       $q('#cont-bat').parentNode.style.display = window.batJs ? 'block' : 'none'
       $q('#cont-bash').innerHTML = window.bashJs.trim()
       $q('#cont-bash').parentNode.style.display = window.bashJs ? 'block' : 'none'
+      $q('#cont-nginx').innerHTML = window.nginxJs.trim()
+      $q('#cont-nginx').parentNode.style.display = window.nginxJs ? 'block' : 'none'
       $q('#cont-css').innerHTML = window.cssJs.trim()
       $q('#cont-css').parentNode.style.display = window.cssJs ? 'block' : 'none'
 
@@ -910,6 +916,7 @@ function logs(val, title) {
         { title: 'JavaScript', list: [], reg: /^\s*\/\/\s*#/ },
         { title: 'Bat脚本', list: [], reg: /^\s*::\s*#/ },
         { title: 'Bash脚本', list: [], reg: /^\s*#\s*#/ },
+        { title: 'nginx配置', list: [], reg: /^\s*#\s*@/ },
         { title: 'Css样式', list: [], reg: /^\s*\/\*\*\*\s*/ },
       ]
       $qa('.token.comment').forEach(item => {
