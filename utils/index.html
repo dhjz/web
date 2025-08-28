@@ -673,6 +673,15 @@ function timeParse(str, formatStr) {
 	return new Date(str)
 }
 
+// # 工具-链式递归地获取对象嵌套属性的值
+function getChildObj(obj, chain) {
+  if (!obj || typeof obj !== 'object' || !chain || !chain.trim()) {
+    return obj;
+  }
+  const keys = chain.split('.').map(x=>x.trim()).filter(Boolean);
+  return keys.reduce((currObj, key) => currObj?.[key], obj);
+}
+
 // # 工具-Promise任意
 function anyPromise(promises) {
   if (!promises.length) throw new Error("No Promise passed");
