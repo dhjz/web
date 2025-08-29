@@ -66,6 +66,7 @@ window.config = {
         { name: '局域网传输', short: '传输', url: 'http://home.199311.xyz:40080/', color: '#4285f4' },
         { name: '家文件服务', short: 'Chfs', url: 'http://home.199311.xyz:9000/', color: '#419641 ' },
         { name: 'PostMin', short: 'Post', url: 'https://home.199311.xyz:40003/', color: '#67C23A ' },
+        { name: 'D-API', short: 'Post', url: './api/index.html', color: '#67C23A ' },
         { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
         { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
       ]
