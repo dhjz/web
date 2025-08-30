@@ -69,6 +69,7 @@ window.config = {
         { name: 'D-API', short: 'Post', url: './api/index.html', color: '#67C23A ' },
         { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
         { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
+        { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
       ]
     },
   ],
