@@ -486,7 +486,7 @@ function setStorageGz(key, val) {
   localforage.setItem(key, data).then(() => {
     const size = data.length / 1024;
     const size1 = new TextEncoder().encode(text).length / 1024; // 转换为KB
-    console.log(`存储成功: ${data.length} 长度, ${size1.toFixed(2)}kb -> ${size.toFixed(2)}kb,  压缩率: ${(100 * size / size1).toFixed(2)}%`);
+    console.log(`存储成功: ${size1.toFixed(2)}kb -> ${size.toFixed(2)}kb,  压缩率: ${(100 * size / size1).toFixed(2)}%`);
   }).catch(console.error);
 }
 
