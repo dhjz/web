@@ -464,6 +464,32 @@ function delStorage(key) {
   localStorage.removeItem(key)
 }
 
+// # 浏览器-storage-gzip封装
+// https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
+// https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
+// localforage.config({ driver: localforage.INDEXEDDB, name: 'test-db', storeName: 'test-store' });
+async function getStorageGz(key) {
+  const gzdata = await localforage.getItem(key)
+  if (!data) return null
+  let val = null
+  try {
+    val = pako.inflate(gzdata, { to: 'string' });
+    return JSON.parse(val)
+  } catch (e) {
+    return val
+  }
+}
+function setStorageGz(key, val) {
+  if (!val && val !== 0) return localforage.removeItem(key)
+  let text = JSON.stringify(val)
+  const data = pako.deflate(new TextEncoder().encode(text), { level: 9 });
+  localforage.setItem(key, data).then(() => {
+    const size = data.length / 1024;
+    const size1 = new TextEncoder().encode(text).length / 1024; // 转换为KB
+    console.log(`存储成功: ${data.length} 长度, ${size1.toFixed(2)}kb -> ${size.toFixed(2)}kb,  压缩率: ${(100 * size / size1).toFixed(2)}%`);
+  }).catch(console.error);
+}
+
 // # 浏览器-移除HTML标签
 function pureHtml(str) {
   if (!str) return ''
