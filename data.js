@@ -61,7 +61,7 @@ window.config = {
         { name: 'Test文件', short: 'Test', url: 'https://file.199311.xyz/test.json', color: '#5f5f5f' },
         { name: '古诗学习', short: '古诗', url: 'https://study.199311.xyz/poem/', color: '#66bb6a' },
         { name: '影音娱乐', short: '影音', url: 'https://tv.199311.xyz/', color: '#42DC85' },
-        { name: 'GD云音乐', short: '云音乐', url: 'https://www.199311.xyz/music', color: '#cc280b' },
+        { name: 'GD云音乐', short: '云音乐', url: 'https://tv.199311.xyz/music', color: '#cc280b' },
         { name: 'AI对话', short: 'Chat', url: 'https://chat.199311.xyz/', color: '#409eff' },
         { name: '局域网传输', short: '传输', url: 'http://home.199311.xyz:40080/', color: '#4285f4' },
         { name: '家文件服务', short: 'Chfs', url: 'http://home.199311.xyz:9000/', color: '#419641 ' },
