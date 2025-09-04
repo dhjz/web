@@ -1,0 +1,47 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>最简编辑器-带工具</title>
+  <style>
+    * {  margin: 0; padding: 0; box-sizing: border-box;  }
+    #code-editor { width: 100dvw; height: 100dvh; line-height: 1.4; }
+    .tools{ position: fixed; top: 2px; right: 8px; font-size: 14px; display: flex; gap: 6px; z-index: 9; }
+    .tools i, .tools select{ background: #fff;  border: 1px solid #dcdfe6; padding: 3px 4px; font-style: normal; cursor: pointer; }
+    #formatRef { display: none; }  .mode-json #formatRef { display: block; }
+  </style>
+</head>
+<body id="bodyRef">
+  <div id="code-editor"></div>
+  <div class="tools">
+    <select id="modeRef"></select>
+    <i>保存</i><i id="runRef">运行</i><i id="formatRef">格式化</i>
+  </div>
+
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ace.min.js"></script>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ext-language_tools.min.js"></script>
+  <script>
+    modeRef.innerHTML = ['html', 'json', 'javascript'].map(v => `<option value="${v}">${v}</option>`).join('');
+    modeRef.onchange = function () { editor.session.setMode('ace/mode/' + this.value); bodyRef.className = 'mode-' + this.value; }
+    runRef.onclick = function () { window.open(URL.createObjectURL(new Blob([editor.getValue()], { type: `text/${modeRef.value};charset=utf-8` }))) }
+    formatRef.onclick = function () { editor.setValue(JSON.stringify(JSON.parse(editor.getValue()), null, 2)) }
+    // ace.require('ace/ext/language_tools');
+    var editor = ace.edit('code-editor', {
+      theme: 'ace/theme/chrome', // 主题
+      mode: 'ace/mode/html', // 代码匹配模式
+      tabSize: 2, //标签大小
+      fontSize: 14, //设置字号
+      enableSnippets: true, // 启用代码段
+      showLineNumbers: true, // 显示行号
+      enableLiveAutocompletion: true, // 启用实时自动完成功能 （比如：智能代码提示）
+      enableBasicAutocompletion: true, // 启用基本自动完成功能
+      keyboardHandler: 'ace/keyboard/vscode',
+    });
+    // editor.setValue(this.svgCode);
+    editor.session.on('change', () => { console.log('editor change...', editor.getValue()) });
+    editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
+  </script>
+</body>
+</html>

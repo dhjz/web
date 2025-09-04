@@ -130,6 +130,15 @@ function base64ToBuffer(base64) {
   return bytes.buffer;
 }
 
+// # 文本和Base64互转
+function encode64(str) {
+  return btoa(new TextEncoder().encode(str).reduce((r, byte) => r + String.fromCharCode(byte), ''))
+}
+
+function decode64(str) {
+  return new TextDecoder().decode(Uint8Array.from(atob(str), c => c.charCodeAt(0)))
+}
+
 // # 文件-拖拽上传
 function dragUpload() {
   document.addEventListener('dragover', (e) => e.preventDefault())
