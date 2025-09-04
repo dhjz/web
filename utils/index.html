@@ -765,9 +765,9 @@ function parseIntMy(val) {
 // # 工具-全局事件总线
 class EventBus {
   constructor() { this.events = {} }
-  on(name, cb) { (this.events[name] = this.events[name] || []).push(cb) }
-  emit(name, ...args) { this.events[name] && this.events[name].forEach(cb => cb(...args)) }
-  off(name, cb) { this.events[name] && (this.events[name] = this.events[name].filter(x => x !== cb)) }
+  on(msg, cb) { (this.events[msg] = this.events[msg] || []).push(cb) }
+  emit(msg, ...args) { this.events[msg] && this.events[msg].forEach(cb => cb(...args)) }
+  off(msg, cb) { this.events[msg] && (this.events[msg] = this.events[msg].filter(x => x !== cb)) }
 }
 
 class EventBus1 {
