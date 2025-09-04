@@ -44,7 +44,7 @@
     editor.session.on('change', () => { console.log('editor change...', editor.getValue()) });
     editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
 
-    window.gitToken = localStorage.getItem('gitToken')
+    window.gitToken = substr(localStorage.getItem('gitToken') || '')
     window.gitFile = localStorage.getItem('gitFile')
     window.repoFile = (gitFile || '|').split('|')
 
@@ -52,7 +52,7 @@
       const temp = prompt('请输入GitHub Token: ', gitToken)
       if (!temp) return
       if (temp.split('|').length != 2) return alert('请输入正确格式, user/repo|file, 仓库和路径文件之间用"|"分隔')
-      localStorage.setItem('gitToken', temp.trim()); location.reload()
+      localStorage.setItem('gitToken', addstr(temp.trim())); location.reload()
     }
     fileRef.onclick = function () {
       const temp = prompt('请输入编辑文件, 格式: user/repo|file, 比如dhjz/tv|index.html: ', gitFile)
@@ -92,6 +92,14 @@
           return requestGit.put(`/repos/${repoFile[0]}/contents/${repoFile[1]}`, data)
         })
       }
+    }
+
+    function addstr(str) {
+      return str.substring(0, 16) + Math.random().toString(32).slice(-6) + str.substring(16)
+    }
+
+    function substr(str) {
+      return str.substring(0, 16) + str.substring(16 + 6)
     }
 
     function encode64(str) {
