@@ -767,10 +767,7 @@ class EventBus {
   constructor() { this.events = {} }
   on(name, cb) { (this.events[name] = this.events[name] || []).push(cb) }
   emit(name, ...args) { this.events[name] && this.events[name].forEach(cb => cb(...args)) }
-  off(name, cb) {
-    if (!this.events[name]) return;
-    this.events[name] = this.events[name].filter(x => x !== cb)
-  }
+  off(name, cb) { this.events[name] && (this.events[name] = this.events[name].filter(x => x !== cb)) }
 }
 
 class EventBus1 {
