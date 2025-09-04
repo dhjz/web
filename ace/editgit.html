@@ -51,12 +51,12 @@
     tokenRef.onclick = function () {
       const temp = prompt('请输入GitHub Token: ', gitToken)
       if (!temp) return
-      if (temp.split('|').length != 2) return alert('请输入正确格式, user/repo|file, 仓库和路径文件之间用"|"分隔')
       localStorage.setItem('gitToken', addstr(temp.trim())); location.reload()
     }
     fileRef.onclick = function () {
       const temp = prompt('请输入编辑文件, 格式: user/repo|file, 比如dhjz/tv|index.html: ', gitFile)
       if (!temp) return
+      if (temp.split('|').length != 2) return alert('请输入正确格式, user/repo|file, 仓库和路径文件之间用"|"分隔')
       localStorage.setItem('gitFile', temp); location.reload()
     }
 
