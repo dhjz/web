@@ -22,6 +22,7 @@
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ace.min.js"></script>
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ext-language_tools.min.js"></script>
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/axios/1.11.0/axios.min.js"></script>
+  <script src="js/theme-vscode-dark.js"></script>
   <script>
     modeRef.innerHTML = ['html', 'json', 'javascript'].map(v => `<option value="${v}">${v}</option>`).join('');
     function changeMode() { editor.session.setMode('ace/mode/' + modeRef.value); bodyRef.className = 'mode-' + modeRef.value; }
@@ -30,7 +31,7 @@
     formatRef.onclick = function () { editor.setValue(JSON.stringify(JSON.parse(editor.getValue()), null, 2)) }
     // ace.require('ace/ext/language_tools');
     var editor = ace.edit('code-editor', {
-      theme: 'ace/theme/chrome', // 主题
+      theme: 'ace/theme/vscode-dark', // 主题 ace/theme/chrome
       mode: 'ace/mode/html', // 代码匹配模式
       tabSize: 2, //标签大小
       fontSize: 14, //设置字号
