@@ -51,6 +51,7 @@
       <div><button type="mini_css">压缩css</button></div>
       <div><button type="mini_css1">压缩css全</button></div>
       <div><button type="blank">压缩所有空白</button></div>
+      <div><button type="blank_line">删除空行</button></div>
     </div>
     <div class="side">
       <textarea class="textarea" id="text-right" placeholder="结果数据展示, 只读, 双击复制" readonly></textarea>
@@ -116,6 +117,9 @@
       }
       if (type == 'blank') {
         setVal(getVal().replace(/\s+/g, ''))
+      }
+      if (type == 'blank_line') {
+        setVal(getVal().replace(/^\s*[\r\n]/gm, ''))
       }
       if (type == 'mini_css') {
         setVal(miniCss(getVal()))
