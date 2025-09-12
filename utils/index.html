@@ -484,20 +484,31 @@ function delStorage(key) {
   localStorage.removeItem(key)
 }
 
+// # 浏览器-storage过期时间封装
+function setStorageExp (key, val, second) {
+  localStorage.setItem(key, JSON.stringify({ val, exp: !second ? 0 : (Date.now() + second * 1000) }));
+}
+function getStorageExp (key) {
+  const itemStr = localStorage.getItem(key);
+  if (!itemStr) return null;
+  const item = JSON.parse(itemStr);
+  return Date.now() < item.exp || item.exp == 0 ? item.val : localStorage.removeItem(key);
+}
+
 // # 浏览器-storage-gzip封装
 // https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // localforage.config({ driver: localforage.INDEXEDDB, name: 'test-db', storeName: 'test-store' });
 async function getStorageGz(key) {
-  const gzdata = await localforage.getItem(key)
-  if (!data) return null
-  let val = null
-  try {
-    val = pako.inflate(gzdata, { to: 'string' });
-    return JSON.parse(val)
-  } catch (e) {
-    return val
+  const data = await localforage.getItem(key)
+  let text = null
+  if (data) {
+    try {
+      text = pako.inflate(data, { to: 'string' });
+      return JSON.parse(text)
+    } catch (e) { }
   }
+  return text
 }
 function setStorageGz(key, val) {
   if (!val && val !== 0) return localforage.removeItem(key)
@@ -975,6 +986,22 @@ function dnotify(txt, time) {
   dnotifyEl.innerHTML = txt;
   clearTimeout(dnotifyTimer);
   dnotifyTimer = setTimeout(() => dnotifyEl.style.display = 'none', (time || 3) * 1000);
+}
+
+function dnotify1(message, type = 'info', duration = 2) {
+  const bgcolor = type === 'success' ? 'rgba(76, 175, 80, 0.8)' : type === 'error' ? 'rgba(244, 67, 54, 0.8)' :
+        type === 'warning' ? 'rgba(255, 152, 0, 0.8)' : 'rgba(33, 150, 243, 0.8)'
+  const notifyEl = Object.assign(document.createElement('div'), { 
+    textContent: message,
+    style: `background: ${bgcolor}; position: fixed; top: 60px; right: 30px; padding: 14px 18px; max-width: 350px; color: white; border-radius: 10px; font-size: 14px;
+      backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); z-index: 9000; transform: translateX(400px); transition: transform 0.3s ease;`,
+  });
+  document.body.appendChild(notifyEl);
+  setTimeout(() => notifyEl.style.transform = 'translateX(0)', 100);
+  setTimeout(() => {
+    notifyEl.style.transform = 'translateX(400px)';
+    setTimeout(() => document.body.removeChild(notifyEl), 300);
+  }, duration * 1000);
 }
 
 function logs(val, title) {
