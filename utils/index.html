@@ -367,6 +367,21 @@ function copyText1(text) {
   return navigator.clipboard.writeText(text)
 }
 
+async function copyText2(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // 降级方案
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style = 'position: absolute; left: -9999px;'
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
+}
+
 
 // # 浏览器-解析URL参数
 function url2Obj(url) {
