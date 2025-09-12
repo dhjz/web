@@ -8,7 +8,7 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; color: #333; display: flex; justify-content: center; 
     align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; background: linear-gradient(135deg, #fbf1f5 0%, #e0e8f0 50%, #d4ede1 100%); }
-    .container { background-color: #fff; padding: 30px 40px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1); width: 100%; max-width: 600px; 
+    .container { background-color: #fff; padding: 16px 40px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1); width: 100%; max-width: 600px; 
       text-align: center; transition: transform 0.3s ease, box-shadow 0.3s ease; }
     h1 { color: #2c3e50; margin-bottom: 20px; }
     p { color: #7f8c8d; margin-bottom: 30px; }
@@ -29,7 +29,7 @@
       background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);}
     .preview-title { font-weight: bold; color: #34495e; }
     .file-size { font-size: 0.9em; color: #7f8c8d; }
-    #download-link { display: none; margin-top: 30px; background-color: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-size: 18px; font-weight: bold; transition: background-color 0.3s ease; }
+    #download-link { display: none; margin-top: 14px; background-color: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-size: 18px; font-weight: bold; transition: background-color 0.3s ease; }
     #download-link:hover { background-color: #2ecc71; }
     #drag-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; display: none; justify-content: center; align-items: center; pointer-events: none; }
     #drag-overlay-content { padding: 40px 60px; border: 3px dashed white; border-radius: 15px; color: white; font-size: 24px; font-weight: bold; text-align: center; }
@@ -68,6 +68,7 @@
           <span class="preview-title">原图预览</span>
           <img id="original-preview" src="" alt="Original Image Preview">
           <span class="file-size" id="original-size"></span>
+          <span class="file-size" id="original-wh"></span>
         </div>
         <div class="preview-box">
           <span class="preview-title">ICO 预览</span>
@@ -92,6 +93,7 @@
     const icoPreview = document.getElementById('ico-preview');
     const downloadLink = document.getElementById('download-link');
     const originalSizeSpan = document.getElementById('original-size');
+    const originalWhSpan = document.getElementById('original-wh');
     const icoSizeSpan = document.getElementById('ico-size');
     const dragOverlay = document.getElementById('drag-overlay');
 
@@ -142,7 +144,7 @@
           originalImage = img;
           originalPreview.src = img.src;
           originalSizeSpan.textContent = `大小: ${formatFileSize(file.size)}`;
-
+          setTimeout(() => originalWhSpan.innerText = `宽高: ${img.naturalWidth} x ${img.naturalHeight}`, 500)
           previewContainer.style.display = 'flex';
           generateIco(img);
         };
