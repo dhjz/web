@@ -611,6 +611,42 @@ function serviceWorkerJs() {
   });
 }
 
+// # ES6-Proxy代理
+function proxyData() {
+  var data = new Proxy({}, { set(target, key, val, receiver) { 
+    const ok = Reflect.set(target, key, val, receiver);
+    if (ok) {
+      if (key === 'status') {
+        statusRef.classList.toggle('on', !!val)
+      }
+    }
+    return ok;
+  }})
+}
+
+// # WebSocket-封装
+function connectWebSocket() {
+  var socket = new WebSocket(`wss://home.xyz:4000/ws`); // ${location.protocol === 'https:' ? 'wss' : 'ws'}
+  socket.onopen = function () { 
+    data.status = true; 
+  };
+  socket.onmessage = function (e) {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'response') dnotify(msg.data)
+  };
+  socket.onclose = function () {
+    data.status = false;
+    dnotify('与服务器断开连接');
+    setTimeout(connectWebSocket, 10000); // 0秒后尝试重新连接
+  };
+  socket.onerror = function (e) {
+    console.error('WebSocket错误:', e);
+    data.status = false;
+    dnotify('连接错误');
+  };
+  // 发送数据
+  // socket.send(JSON.stringify({}))
+}
 
 // # css-滚动条
 // ::-webkit-scrollbar { width: 8px; height: 8px; }
