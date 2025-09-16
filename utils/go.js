@@ -59,6 +59,31 @@ func GetParamFloat(r *http.Request, param string, defaultVal float64) float64 {
 	return defaultVal
 }
 
+// @ 是否包含并添加删除
+func AddIfNotIn[T comparable](s []T, target T) []T {
+	found := false
+	for _, v := range s {
+		if v == target {
+			found = true
+			break
+		}
+	}
+	if !found {
+		s = append(s, target)
+	}
+	return s
+}
+
+func DelIfIn[T comparable](s []T, target T) []T {
+	for i, v := range s {
+		if v == target {
+			s = append(s[:i], s[i+1:]...)
+			break
+		}
+	}
+	return s
+}
+
 // @ windows不弹出黑色命令行窗口
 //go:build windows    //go:build linux  分两个文件写才行, 不然linux没法识别syscall
 if runtime.GOOS == "windows" {
