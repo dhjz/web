@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>原始函数gzip压缩, 原始操作indexdb</title>
+</head>
+<body>
+  <script>
+
+    class Localdb {
+      name; storeName; db; version;
+      constructor(name, storeName, version) {
+        this.name = name;
+        this.storeName = storeName;
+        this.version = version;
+      }
+      async initDB() {
+        return new Promise((reso, rej) => {
+          const req = this.version ? indexedDB.open(this.name, this.version) : indexedDB.open(this.name);
+          req.onupgradeneeded = () => {
+            this.db = req.result;
+            !this.db.objectStoreNames.contains(this.storeName) && this.db.createObjectStore(this.storeName)
+          }
+          req.onsuccess = () => {
+            this.db = req.result
+            console.log(this.name, this.storeName, 'version: ', this.db.version);
+            reso()
+          }
+        })
+      }
+      async setItem(key, val) {
+        if (!this.db) await this.initDB();
+        return new Promise((reso, rej) => {
+          const req = this.db.transaction(this.storeName, 'readwrite').objectStore(this.storeName).put(val, key);
+          req.onsuccess = () => reso();
+          req.onerror = () => rej(req.error);
+        });
+      }
+      async getItem(key) {
+        if (!this.db) await this.initDB();
+        return new Promise((reso, rej) => {
+          const req = this.db.transaction(this.storeName, 'readonly').objectStore(this.storeName).get(key);
+          req.onsuccess = () => reso(req.result);
+          req.onerror = () => rej(req.error);
+        });
+      }
+    }
+
+    window.localdb = new Localdb('test-data-db', 'teststore');
+
+    localdb.setItem('test6666', 'test1111111111111').then(() => {
+      console.log('setItem success');
+      localdb.getItem('test').then(res => {
+        console.log('getItem success', res);
+      }).catch(err => {
+        console.log('getItem error', err);
+      })
+    }).catch(err => {
+      console.log('setItem error', err);
+    })
+
+    // unit8互转arraybuffer
+    function unit8ToBuffer(arr) {
+      return arr.buffer;
+    }
+    function bufferToUnit8(buffer) {
+      return new Uint8Array(buffer);
+    }
+
+    async function gzip(str) {
+      const start = Date.now();
+      let unit8 = new TextEncoder().encode(str); // , { type: 'text/plain;charset=utf-8' }
+      const compressedStream = new Blob([unit8]).stream().pipeThrough(new CompressionStream('gzip'));
+      const buffer = await new Response(compressedStream).arrayBuffer();
+      const data = new Uint8Array(buffer)
+      const size = data.length / 1024;
+      const size1 = unit8.length / 1024;
+      console.log(`压缩成功: ${data.length} 长度, ${size1.toFixed(2)}kb -> ${size.toFixed(2)}kb,  压缩率: ${(100 * size / size1).toFixed(2)}%, 耗时: ${Date.now() - start}ms`);
+      return data
+    }
+
+    async function ungzip(unit8) {
+      const start = Date.now();
+      const decompressedStream = new Blob([unit8]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const buffer = await new Response(decompressedStream).arrayBuffer();
+      const data = new TextDecoder().decode(buffer);
+      console.log(`解压成功: ${(unit8.length / 1024).toFixed(2)}kb -> ${(buffer.byteLength / 1024).toFixed(2)}kb 耗时: ${Date.now() - start}ms`);
+      return data
+    }
+
+    setTimeout(async() => {
+      let test = new Array(600).fill(0).map(x=> ({ j : testJson}))
+      await localdb.setItem('test33', await gzip(JSON.stringify(test, null, 2)))
+      const data = await localdb.getItem('test33')
+      console.log(await ungzip(data))
+    }, 500)
+
+    window.testJson = {
+      "userInfo": {
+        "userId": "user_12345",
+        "username": "test_user",
+        "email": "testuser@example.com",
+        "isActive": true,
+        "roles": ["admin", "editor"],
+        "preferences": {
+          "theme": "dark",
+          "notifications": {
+            "email": true,
+            "sms": false
+          }
+        },
+        "items": [
+          {
+            "itemId": "item_abc1",
+            "itemName": "Laptop Pro",
+            "price": 1200.50,
+            "quantity": 2,
+            "tags": ["electronics", "computer", "high-end"],
+            "details": {
+              "brand": "TechCorp",
+              "model": "LP-2023",
+              "specs": {
+                "cpu": "Intel i7",
+                "ram": "16GB",
+                "storage": "512GB SSD"
+              }
+            }
+          },
+          {
+            "itemId": "item_def2",
+            "itemName": "Mechanical Keyboard",
+            "price": 75.00,
+            "quantity": 1,
+            "tags": ["accessories", "computer", "gaming"],
+            "details": {
+              "brand": "KeyMaster",
+              "model": "KM-G500",
+              "specs": {
+                "switchType": "Blue",
+                "layout": "Full-size"
+              }
+            }
+          },
+          {
+            "itemId": "item_ghi3",
+            "itemName": "Wireless Mouse",
+            "price": 25.99,
+            "quantity": 3,
+            "tags": ["accessories", "computer", "ergonomic"],
+            "details": {
+              "brand": "ErgoMouse",
+              "model": "EM-200",
+              "specs": {
+                "connection": "2.4GHz Wireless",
+                "dpi": "1600"
+              }
+            }
+          },
+        ]
+      }
+    }
+
+  </script>
+</body>
+</html>
