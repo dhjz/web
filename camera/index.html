@@ -14,17 +14,17 @@
         .header p { opacity: 0.9; font-size: 14px; }
         .main-content { display: flex; gap: 20px; padding: 20px; }
         .preview-section { flex: 1; background: #f8f9fa; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; min-height: 400px; }
-        .control-section {width: 350px;background: #f8f9fa;border-radius: 15px;padding: 10px;}
+        .control-section { width: 350px; background: #f8f9fa; border-radius: 15px; padding: 20px; }
         .video-container { flex: 1; background: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; min-height: 300px; }
-        video { max-width: 100%; max-height: 100%; border-radius: 10px; }
+        video { max-width: 100%; max-height: 100%; border-radius: 10px; object-fit: contain; }
         .no-camera { color: #666; text-align: center; padding: 40px; }
         .video-info { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-family: monospace; }
-        .control-group {margin-bottom: 10px;}
+        .control-group { margin-bottom: 10px; }
         .control-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px; }
         select { width: 100%; padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: all 0.3s; }
         select:hover { border-color: #667eea; }
         select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
-        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         .btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
@@ -43,7 +43,7 @@
         .format-btn { flex: 1; padding: 8px; border: 2px solid #e0e0e0; background: white; border-radius: 6px; cursor: pointer; transition: all 0.3s; font-size: 13px; }
         .format-btn.active { border-color: #667eea; background: #667eea; color: white; }
         .history-section { padding: 20px; background: #f8f9fa; }
-        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .history-header h2 { font-size: 20px; color: #333; }
         .clear-btn { padding: 8px 16px; background: #ff5252; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.3s; }
         .clear-btn:hover { background: #ff1744; }
@@ -56,8 +56,8 @@
         .detail-row { display: flex; justify-content: space-between; align-items: center; }
         .detail-label { font-weight: 500; }
         .detail-value { font-family: monospace; }
-        .history-actions { position: absolute; top: 5px; right: 5px; display: flex; gap: 4px; }
-        .action-btn { width: 26px; height: 26px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; font-size: 14px; }
+        .history-actions { position: absolute; top: 5px; right: 5px; display: flex; gap: 5px; }
+        .action-btn { width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; font-size: 14px; }
         .action-btn:hover { background: white; transform: scale(1.1); }
         .empty-history { text-align: center; padding: 40px; color: #999; }
         .status-message { padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; display: none; }
@@ -66,7 +66,7 @@
         .permission-modal, .preview-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .permission-content { background: white; padding: 30px; border-radius: 15px; max-width: 400px; text-align: center; }
         .permission-content h3 { margin-bottom: 15px; color: #333; }
-        .permission-content p { margin-bottom: 20px; color: #666; }
+        .permission-content p { margin-bottom: 10px; color: #666; }
         .permission-btn { padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
         .preview-content { background: white; border-radius: 15px; max-width: 90%; max-height: 90%; position: relative; }
         .preview-header { padding: 15px 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
@@ -75,7 +75,7 @@
         .preview-close:hover { background: #e0e0e0; }
         .preview-body { padding: 20px; display: flex; justify-content: center; align-items: center; }
         .preview-body img, .preview-body video { max-width: 100%; max-height: 70vh; border-radius: 8px; }
-        .stats-panel {background: white;border-radius: 8px;padding: 8px;margin-bottom: 10px;border: 1px solid #e0e0e0;}
+        .stats-panel { background: white; border-radius: 8px; padding: 8px; margin-bottom: 10px; border: 1px solid #e0e0e0; }
         .stats-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .stat-item { display: flex; flex-direction: column; }
@@ -87,6 +87,7 @@
         .recording-stat { display: flex; justify-content: space-between; font-size: 12px; }
         .recording-stat-label { color: #666; }
         .recording-stat-value { font-weight: 500; font-family: monospace; color: #e65100; }
+        .mobile-warning { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 13px; color: #856404; }
         
         @media (max-width: 768px) {
             .main-content { flex-direction: column; padding: 10px; }
@@ -114,7 +115,14 @@
             <div class="main-content">
                 <div class="preview-section">
                     <div class="video-container">
-                        <video v-if="stream" ref="videoElement" autoplay playsinline @loadedmetadata="onVideoLoaded"></video>
+                        <video v-if="stream" 
+                               ref="videoElement" 
+                               autoplay 
+                               playsinline
+                               muted
+                               @loadedmetadata="onVideoLoaded"
+                               @play="onVideoPlay"
+                               @error="onVideoError"></video>
                         <div v-else class="no-camera">
                             <p>📹 请选择摄像头并点击开始</p>
                         </div>
@@ -125,6 +133,10 @@
                 </div>
                 
                 <div class="control-section">
+                    <div class="mobile-warning" v-if="isMobile">
+                        📱 移动端提示：请确保在HTTPS环境下使用，并允许摄像头权限
+                    </div>
+                    
                     <div class="status-message" :class="statusType" v-if="statusMessage">{{ statusMessage }}</div>
                     
                     <div class="stats-panel" v-if="stream">
@@ -230,7 +242,7 @@
                 </div>
                 
                 <div v-else class="history-grid">
-                    <div v-for="(item, index) in history" :key="index" class="history-item">
+                    <div v-for="(item, index) in history" :key="index" class="history-item" @click="openPreview(item)">
                         <img v-if="item.type === 'image'" :src="item.url" :alt="item.name" @load="onImageLoad($event, index)">
                         <video v-else :src="item.url" muted @loadedmetadata="onVideoLoad($event, index)"></video>
                         <div class="history-info">
@@ -252,8 +264,7 @@
                             </div>
                         </div>
                         <div class="history-actions" @click.stop>
-                            <button class="action-btn" @click="openPreview(item)" title="预览">▶</button>
-                            <button class="action-btn" @click="downloadItem(item)" title="下载">⇩</button>
+                            <button class="action-btn" @click="downloadItem(item)" title="下载">⬇</button>
                             <button class="action-btn" @click="deleteItem(index)" title="删除">🗑</button>
                         </div>
                     </div>
@@ -279,7 +290,7 @@
                 </div>
                 <div class="preview-body">
                     <img v-if="previewItem.type === 'image'" :src="previewItem.url" :alt="previewItem.name">
-                    <video v-else :src="previewItem.url" controls autoplay></video>
+                    <video v-else :src="previewItem.url" controls autoplay playsinline></video>
                 </div>
             </div>
         </div>
@@ -297,11 +308,19 @@
                     currentRecordingSize: '0 B', recordingFrameCount: 0, recordingBitrate: '0 kbps',
                     history: [], imageFormat: 'png', statusMessage: '', statusType: 'success',
                     showPermissionModal: false, permissionGranted: false, previewItem: null,
-                    videoInfo: { width: 0, height: 0, fps: 0, aspectRatio: '' }, lastSnapshotInfo: '无'
+                    videoInfo: { width: 0, height: 0, fps: 0, aspectRatio: '' }, lastSnapshotInfo: '无',
+                    isMobile: false
                 }
             },
-            mounted() { this.checkInitialPermission(); },
+            mounted() { 
+                this.detectMobile();
+                this.checkInitialPermission(); 
+            },
             methods: {
+                detectMobile() {
+                    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                },
+                
                 async checkInitialPermission() {
                     try {
                         const result = await navigator.permissions.query({ name: 'camera' });
@@ -312,13 +331,27 @@
                 
                 async requestMediaPermission() {
                     try {
-                        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        // 移动端使用更宽松的约束
+                        const constraints = this.isMobile ? {
+                            video: { 
+                                facingMode: 'environment',
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
+                            },
+                            audio: true
+                        } : {
+                            video: true,
+                            audio: true
+                        };
+                        
+                        const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
                         tempStream.getTracks().forEach(track => track.stop());
                         this.permissionGranted = true;
                         this.showPermissionModal = false;
                         await this.getDevices();
                         this.showStatus('权限获取成功', 'success');
-                    } catch {
+                    } catch (error) {
+                        console.error('权限获取失败:', error);
                         this.showStatus('权限获取失败，请检查浏览器设置', 'error');
                         this.showPermissionModal = false;
                     }
@@ -342,15 +375,41 @@
                 
                 async startCamera() {
                     try {
-                        const constraints = {
-                            video: { deviceId: this.selectedDevice ? { exact: this.selectedDevice } : undefined },
-                            audio: this.selectedAudioDevice ? { deviceId: this.selectedAudioDevice ? { exact: this.selectedAudioDevice } : undefined } : false
-                        };
+                        // 移动端优化约束
+                        let constraints;
+                        if (this.isMobile) {
+                            constraints = {
+                                video: {
+                                    deviceId: this.selectedDevice ? { exact: this.selectedDevice } : { facingMode: 'environment' },
+                                    width: { ideal: 1280, max: 1920 },
+                                    height: { ideal: 720, max: 1080 }
+                                },
+                                audio: this.selectedAudioDevice ? { deviceId: this.selectedAudioDevice } : true
+                            };
+                        } else {
+                            constraints = {
+                                video: { deviceId: this.selectedDevice ? { exact: this.selectedDevice } : undefined },
+                                audio: this.selectedAudioDevice ? { deviceId: this.selectedAudioDevice ? { exact: this.selectedAudioDevice } : undefined } : false
+                            };
+                        }
+                        
                         this.stream = await navigator.mediaDevices.getUserMedia(constraints);
                         await this.$nextTick();
+                        
                         const videoElement = this.$refs.videoElement;
                         if (videoElement) {
+                            // 设置视频元素属性
                             videoElement.srcObject = this.stream;
+                            videoElement.muted = true;
+                            
+                            // 移动端手动播放
+                            if (this.isMobile) {
+                                videoElement.play().catch(error => {
+                                    console.error('视频播放失败:', error);
+                                    this.showStatus('视频播放失败，请重试', 'error');
+                                });
+                            }
+                            
                             this.showStatus('摄像头已启动', 'success');
                         } else {
                             this.showStatus('视频元素未找到', 'error');
@@ -360,6 +419,16 @@
                         console.error('摄像头启动错误:', error);
                         this.showStatus('无法访问摄像头: ' + error.message, 'error');
                     }
+                },
+                
+                onVideoPlay() {
+                    console.log('视频开始播放');
+                    this.showStatus('视频预览已开始', 'success');
+                },
+                
+                onVideoError(event) {
+                    console.error('视频错误:', event);
+                    this.showStatus('视频加载错误，请重试', 'error');
                 },
                 
                 stopCamera() {
@@ -477,7 +546,6 @@
                     this.mediaRecorder.ondataavailable = (event) => {
                         if (event.data.size > 0) {
                             this.recordedChunks.push(event.data);
-                            // 立即更新大小显示
                             this.updateRecordingSize();
                         }
                     };
@@ -489,13 +557,13 @@
                         const extension = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
                         const name = `录制_${timestamp.replace(/[/:]/g, '-')}.${extension}`;
                         const fileSize = this.formatFileSize(blob.size);
-                        const duration = this.recordingTime; // 使用录制时间作为时长
+                        const duration = this.recordingTime;
                         this.history.unshift({ type: 'video', url, blob, name, time: timestamp, fileSize, duration, size: blob.size });
                         this.saveHistory();
                         this.showStatus('录制完成', 'success');
                     };
                     
-                    this.mediaRecorder.start(100); // 每100ms触发一次dataavailable
+                    this.mediaRecorder.start(100);
                     this.isRecording = true;
                     this.startRecordingTimer();
                     this.startRecordingSizeMonitor();
@@ -531,9 +599,7 @@
                     if (this.recordingTimer) {
                         clearInterval(this.recordingTimer);
                         this.recordingTimer = null;
-                        setTimeout(() => {
-                            this.recordingTime = '00:00';
-                        }, 500);
+                        this.recordingTime = '00:00';
                     }
                 },
                 
