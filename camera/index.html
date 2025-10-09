@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>摄像头控制台</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 10px; }
+        .container { max-width: 1400px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 5px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+        .main-content { display: flex; gap: 20px; padding: 20px; }
+        .preview-section { flex: 1; background: #f8f9fa; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; min-height: 400px; }
+        .control-section {width: 350px;background: #f8f9fa;border-radius: 15px;padding: 10px;}
+        .video-container { flex: 1; background: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; min-height: 300px; }
+        video { max-width: 100%; max-height: 100%; border-radius: 10px; }
+        .no-camera { color: #666; text-align: center; padding: 40px; }
+        .video-info { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-family: monospace; }
+        .control-group {margin-bottom: 10px;}
+        .control-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px; }
+        select { width: 100%; padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: all 0.3s; }
+        select:hover { border-color: #667eea; }
+        select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(17, 153, 142, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(235, 51, 73, 0.4); }
+        .btn-warning { background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); color: white; }
+        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(242, 153, 74, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .recording-indicator { display: none; align-items: center; gap: 10px; padding: 10px; background: #ffebee; border-radius: 8px; margin-bottom: 15px; }
+        .recording-indicator.active { display: flex; }
+        .recording-dot { width: 12px; height: 12px; background: #f44336; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .format-selector { display: flex; gap: 10px; margin-bottom: 15px; }
+        .format-btn { flex: 1; padding: 8px; border: 2px solid #e0e0e0; background: white; border-radius: 6px; cursor: pointer; transition: all 0.3s; font-size: 13px; }
+        .format-btn.active { border-color: #667eea; background: #667eea; color: white; }
+        .history-section { padding: 20px; background: #f8f9fa; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .history-header h2 { font-size: 20px; color: #333; }
+        .clear-btn { padding: 8px 16px; background: #ff5252; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.3s; }
+        .clear-btn:hover { background: #ff1744; }
+        .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        .history-item { position: relative; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); transition: all 0.3s; cursor: pointer; }
+        .history-item:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15); }
+        .history-item img, .history-item video { width: 100%; height: 120px; object-fit: cover; }
+        .history-info { padding: 10px; font-size: 12px; color: #666; }
+        .history-details { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; font-size: 11px; color: #999; }
+        .detail-row { display: flex; justify-content: space-between; align-items: center; }
+        .detail-label { font-weight: 500; }
+        .detail-value { font-family: monospace; }
+        .history-actions { position: absolute; top: 5px; right: 5px; display: flex; gap: 4px; }
+        .action-btn { width: 26px; height: 26px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; font-size: 14px; }
+        .action-btn:hover { background: white; transform: scale(1.1); }
+        .empty-history { text-align: center; padding: 40px; color: #999; }
+        .status-message { padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; display: none; }
+        .status-message.success { background: #e8f5e9; color: #2e7d32; display: block; }
+        .status-message.error { background: #ffebee; color: #c62828; display: block; }
+        .permission-modal, .preview-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .permission-content { background: white; padding: 30px; border-radius: 15px; max-width: 400px; text-align: center; }
+        .permission-content h3 { margin-bottom: 15px; color: #333; }
+        .permission-content p { margin-bottom: 20px; color: #666; }
+        .permission-btn { padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        .preview-content { background: white; border-radius: 15px; max-width: 90%; max-height: 90%; position: relative; }
+        .preview-header { padding: 15px 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
+        .preview-title { font-size: 16px; font-weight: 600; color: #333; }
+        .preview-close { width: 30px; height: 30px; border-radius: 50%; background: #f5f5f5; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .preview-close:hover { background: #e0e0e0; }
+        .preview-body { padding: 20px; display: flex; justify-content: center; align-items: center; }
+        .preview-body img, .preview-body video { max-width: 100%; max-height: 70vh; border-radius: 8px; }
+        .stats-panel {background: white;border-radius: 8px;padding: 8px;margin-bottom: 10px;border: 1px solid #e0e0e0;}
+        .stats-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-label { font-size: 11px; color: #666; margin-bottom: 2px; }
+        .stat-value { font-size: 13px; font-weight: 500; color: #333; font-family: monospace; }
+        .recording-stats { background: #fff3e0; border: 1px solid #ffcc02; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .recording-stats-title { font-size: 13px; font-weight: 600; color: #e65100; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        .recording-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .recording-stat { display: flex; justify-content: space-between; font-size: 12px; }
+        .recording-stat-label { color: #666; }
+        .recording-stat-value { font-weight: 500; font-family: monospace; color: #e65100; }
+        
+        @media (max-width: 768px) {
+            .main-content { flex-direction: column; padding: 10px; }
+            .control-section { width: 100%; }
+            .preview-section { min-height: 250px; }
+            .video-container { min-height: 200px; }
+            .header h1 { font-size: 24px; }
+            .history-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+            .history-item img, .history-item video { height: 80px; }
+            .history-info { padding: 5px; font-size: 11px; }
+            .action-btn { width: 25px; height: 25px; font-size: 12px; }
+            .button-group { grid-template-columns: 1fr; }
+            .video-info { font-size: 10px; padding: 5px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>📷 摄像头控制台</h1>
+                <p>实时预览、截图、录制一站式解决方案</p>
+            </div>
+            
+            <div class="main-content">
+                <div class="preview-section">
+                    <div class="video-container">
+                        <video v-if="stream" ref="videoElement" autoplay playsinline @loadedmetadata="onVideoLoaded"></video>
+                        <div v-else class="no-camera">
+                            <p>📹 请选择摄像头并点击开始</p>
+                        </div>
+                        <div v-if="stream && videoInfo.width" class="video-info">
+                            {{ videoInfo.width }}×{{ videoInfo.height }} @ {{ videoInfo.fps }}fps
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <div class="status-message" :class="statusType" v-if="statusMessage">{{ statusMessage }}</div>
+                    
+                    <div class="stats-panel" v-if="stream">
+                        <div class="stats-title">📊 视频信息</div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">分辨率</span>
+                                <span class="stat-value">{{ videoInfo.width }}×{{ videoInfo.height }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">帧率</span>
+                                <span class="stat-value">{{ videoInfo.fps }} fps</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">宽高比</span>
+                                <span class="stat-value">{{ videoInfo.aspectRatio }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">最后截图</span>
+                                <span class="stat-value">{{ lastSnapshotInfo }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="recording-stats" v-if="isRecording">
+                        <div class="recording-stats-title">
+                            <span class="recording-dot"></span>
+                            <span>录制统计</span>
+                        </div>
+                        <div class="recording-stats-grid">
+                            <div class="recording-stat">
+                                <span class="recording-stat-label">时长:</span>
+                                <span class="recording-stat-value">{{ recordingTime }}</span>
+                            </div>
+                            <div class="recording-stat">
+                                <span class="recording-stat-label">大小:</span>
+                                <span class="recording-stat-value">{{ currentRecordingSize }}</span>
+                            </div>
+                            <div class="recording-stat">
+                                <span class="recording-stat-label">帧数:</span>
+                                <span class="recording-stat-value">{{ recordingFrameCount }}</span>
+                            </div>
+                            <div class="recording-stat">
+                                <span class="recording-stat-label">码率:</span>
+                                <span class="recording-stat-value">{{ recordingBitrate }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>选择摄像头</label>
+                        <select v-model="selectedDevice" @change="switchCamera">
+                            <option value="">请选择摄像头</option>
+                            <option v-for="device in devices" :key="device.deviceId" :value="device.deviceId">
+                                {{ device.label || `摄像头 ${device.deviceId.slice(0, 5)}...` }}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>选择麦克风</label>
+                        <select v-model="selectedAudioDevice">
+                            <option value="">不使用麦克风</option>
+                            <option v-for="device in audioDevices" :key="device.deviceId" :value="device.deviceId">
+                                {{ device.label || `麦克风 ${device.deviceId.slice(0, 5)}...` }}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>截图格式</label>
+                        <div class="format-selector">
+                            <button class="format-btn" :class="{active: imageFormat === 'png'}" @click="imageFormat = 'png'">PNG</button>
+                            <button class="format-btn" :class="{active: imageFormat === 'jpg'}" @click="imageFormat = 'jpg'">JPG</button>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" @click="requestPermissionAndStart" :disabled="stream">
+                            <span>🎥</span> 开始预览
+                        </button>
+                        <button class="btn btn-danger" @click="stopCamera" :disabled="!stream">
+                            <span>⏹</span> 停止预览
+                        </button>
+                        <button class="btn btn-success" @click="takeSnapshot" :disabled="!stream">
+                            <span>📸</span> 截图
+                        </button>
+                        <button class="btn btn-warning" @click="toggleRecording" :disabled="!stream">
+                            <span>{{ isRecording ? '⏹' : '🔴' }}</span> {{ isRecording ? '停止录制' : '开始录制' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="history-section">
+                <div class="history-header">
+                    <h2>📁 历史记录</h2>
+                    <button class="clear-btn" @click="clearHistory" v-if="history.length > 0">清空记录</button>
+                </div>
+                
+                <div v-if="history.length === 0" class="empty-history">
+                    <p>暂无历史记录</p>
+                </div>
+                
+                <div v-else class="history-grid">
+                    <div v-for="(item, index) in history" :key="index" class="history-item">
+                        <img v-if="item.type === 'image'" :src="item.url" :alt="item.name" @load="onImageLoad($event, index)">
+                        <video v-else :src="item.url" muted @loadedmetadata="onVideoLoad($event, index)"></video>
+                        <div class="history-info">
+                            <p>{{ item.name }}</p>
+                            <p>{{ item.time }}</p>
+                            <div class="history-details">
+                                <div class="detail-row" v-if="item.dimensions">
+                                    <span class="detail-label">尺寸:</span>
+                                    <span class="detail-value">{{ item.dimensions }}</span>
+                                </div>
+                                <div class="detail-row" v-if="item.fileSize">
+                                    <span class="detail-label">大小:</span>
+                                    <span class="detail-value">{{ item.fileSize }}</span>
+                                </div>
+                                <div class="detail-row" v-if="item.type === 'video'">
+                                    <span class="detail-label">时长:</span>
+                                    <span class="detail-value">{{ item.duration || '00:00' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="history-actions" @click.stop>
+                            <button class="action-btn" @click="openPreview(item)" title="预览">▶</button>
+                            <button class="action-btn" @click="downloadItem(item)" title="下载">⇩</button>
+                            <button class="action-btn" @click="deleteItem(index)" title="删除">🗑</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 权限请求模态框 -->
+        <div class="permission-modal" v-if="showPermissionModal">
+            <div class="permission-content">
+                <h3>📹 需要媒体权限</h3>
+                <p>请允许访问您的摄像头和麦克风，以便使用完整功能</p>
+                <button class="permission-btn" @click="requestMediaPermission">授权访问</button>
+            </div>
+        </div>
+        
+        <!-- 预览模态框 -->
+        <div class="preview-modal" v-if="previewItem" @click="closePreview">
+            <div class="preview-content" @click.stop>
+                <div class="preview-header">
+                    <div class="preview-title">{{ previewItem.name }}</div>
+                    <button class="preview-close" @click="closePreview">×</button>
+                </div>
+                <div class="preview-body">
+                    <img v-if="previewItem.type === 'image'" :src="previewItem.url" :alt="previewItem.name">
+                    <video v-else :src="previewItem.url" controls autoplay></video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    devices: [], audioDevices: [], selectedDevice: '', selectedAudioDevice: '', stream: null,
+                    mediaRecorder: null, recordedChunks: [], isRecording: false, recordingTime: '00:00',
+                    recordingTimer: null, recordingStartTime: 0, recordingSizeTimer: null,
+                    currentRecordingSize: '0 B', recordingFrameCount: 0, recordingBitrate: '0 kbps',
+                    history: [], imageFormat: 'png', statusMessage: '', statusType: 'success',
+                    showPermissionModal: false, permissionGranted: false, previewItem: null,
+                    videoInfo: { width: 0, height: 0, fps: 0, aspectRatio: '' }, lastSnapshotInfo: '无'
+                }
+            },
+            mounted() { this.checkInitialPermission(); },
+            methods: {
+                async checkInitialPermission() {
+                    try {
+                        const result = await navigator.permissions.query({ name: 'camera' });
+                        if (result.state === 'granted') await this.getDevices();
+                        else this.showPermissionModal = true;
+                    } catch { this.showPermissionModal = true; }
+                },
+                
+                async requestMediaPermission() {
+                    try {
+                        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                        tempStream.getTracks().forEach(track => track.stop());
+                        this.permissionGranted = true;
+                        this.showPermissionModal = false;
+                        await this.getDevices();
+                        this.showStatus('权限获取成功', 'success');
+                    } catch {
+                        this.showStatus('权限获取失败，请检查浏览器设置', 'error');
+                        this.showPermissionModal = false;
+                    }
+                },
+                
+                async getDevices() {
+                    try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        this.devices = devices.filter(d => d.kind === 'videoinput');
+                        this.audioDevices = devices.filter(d => d.kind === 'audioinput');
+                        if (this.devices.length > 0 && !this.selectedDevice) this.selectedDevice = this.devices[0].deviceId;
+                        if (this.audioDevices.length > 0 && !this.selectedAudioDevice) this.selectedAudioDevice = this.audioDevices[0].deviceId;
+                    } catch { this.showStatus('获取设备列表失败', 'error'); }
+                },
+                
+                async requestPermissionAndStart() {
+                    if (!this.permissionGranted) await this.requestMediaPermission();
+                    if (this.selectedDevice) this.startCamera();
+                    else this.showStatus('请选择摄像头', 'error');
+                },
+                
+                async startCamera() {
+                    try {
+                        const constraints = {
+                            video: { deviceId: this.selectedDevice ? { exact: this.selectedDevice } : undefined },
+                            audio: this.selectedAudioDevice ? { deviceId: this.selectedAudioDevice ? { exact: this.selectedAudioDevice } : undefined } : false
+                        };
+                        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        await this.$nextTick();
+                        const videoElement = this.$refs.videoElement;
+                        if (videoElement) {
+                            videoElement.srcObject = this.stream;
+                            this.showStatus('摄像头已启动', 'success');
+                        } else {
+                            this.showStatus('视频元素未找到', 'error');
+                            this.stopCamera();
+                        }
+                    } catch (error) {
+                        console.error('摄像头启动错误:', error);
+                        this.showStatus('无法访问摄像头: ' + error.message, 'error');
+                    }
+                },
+                
+                stopCamera() {
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(track => track.stop());
+                        this.stream = null;
+                        const videoElement = this.$refs.videoElement;
+                        if (videoElement) videoElement.srcObject = null;
+                        if (this.isRecording) this.stopRecording();
+                        this.videoInfo = { width: 0, height: 0, fps: 0, aspectRatio: '' };
+                        this.lastSnapshotInfo = '无';
+                        this.showStatus('摄像头已停止', 'success');
+                    }
+                },
+                
+                onVideoLoaded(event) {
+                    const video = event.target;
+                    this.videoInfo.width = video.videoWidth;
+                    this.videoInfo.height = video.videoHeight;
+                    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+                    const divisor = gcd(this.videoInfo.width, this.videoInfo.height);
+                    this.videoInfo.aspectRatio = `${this.videoInfo.width / divisor}:${this.videoInfo.height / divisor}`;
+                    this.calculateFPS();
+                },
+                
+                calculateFPS() {
+                    let lastTime = performance.now(), frames = 0;
+                    const measureFPS = () => {
+                        if (!this.stream) return;
+                        frames++;
+                        const currentTime = performance.now();
+                        if (currentTime >= lastTime + 1000) {
+                            this.videoInfo.fps = Math.round((frames * 1000) / (currentTime - lastTime));
+                            frames = 0;
+                            lastTime = currentTime;
+                        }
+                        requestAnimationFrame(measureFPS);
+                    };
+                    requestAnimationFrame(measureFPS);
+                },
+                
+                async switchCamera() {
+                    if (this.stream) {
+                        this.stopCamera();
+                        await this.$nextTick();
+                        if (this.selectedDevice) this.startCamera();
+                    }
+                },
+                
+                takeSnapshot() {
+                    const videoElement = this.$refs.videoElement;
+                    if (!videoElement) { this.showStatus('视频元素未找到', 'error'); return; }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoElement.videoWidth || 640;
+                    canvas.height = videoElement.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoElement, 0, 0);
+                    const format = this.imageFormat === 'jpg' ? 'image/jpeg' : 'image/png';
+                    canvas.toBlob(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const timestamp = new Date().toLocaleString('zh-CN');
+                        const name = `截图_${timestamp.replace(/[/:]/g, '-')}.${this.imageFormat}`;
+                        const fileSize = this.formatFileSize(blob.size);
+                        const dimensions = `${canvas.width}×${canvas.height}`;
+                        this.lastSnapshotInfo = `${dimensions} / ${fileSize}`;
+                        this.history.unshift({ type: 'image', url, blob, name, time: timestamp, dimensions, fileSize, size: blob.size });
+                        this.saveHistory();
+                        this.showStatus('截图成功', 'success');
+                    }, format, 0.9);
+                },
+                
+                onImageLoad(event, index) {
+                    const img = event.target;
+                    const item = this.history[index];
+                    if (item && item.type === 'image') item.dimensions = `${img.naturalWidth}×${img.naturalHeight}`;
+                },
+                
+                onVideoLoad(event, index) {
+                    const video = event.target;
+                    const item = this.history[index];
+                    if (item && item.type === 'video') item.dimensions = `${video.videoWidth}×${video.videoHeight}`;
+                },
+                
+                formatFileSize(bytes) {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                },
+                
+                formatBitrate(bitsPerSecond) {
+                    if (bitsPerSecond === 0 || !isFinite(bitsPerSecond)) return '0 kbps';
+                    const k = 1000, sizes = ['bps', 'kbps', 'Mbps', 'Gbps'];
+                    const i = Math.floor(Math.log(bitsPerSecond) / Math.log(k));
+                    return parseFloat((bitsPerSecond / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                },
+                
+                toggleRecording() {
+                    if (this.isRecording) this.stopRecording();
+                    else this.startRecording();
+                },
+                
+                startRecording() {
+                    if (!this.stream) { this.showStatus('请先启动摄像头', 'error'); return; }
+                    this.recordedChunks = [];
+                    this.recordingStartTime = Date.now();
+                    this.recordingFrameCount = 0;
+                    let options = { mimeType: 'video/webm;codecs=vp9' };
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm' };
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/mp4' };
+                    try {
+                        this.mediaRecorder = new MediaRecorder(this.stream, options);
+                    } catch { this.showStatus('录制失败，浏览器不支持', 'error'); return; }
+                    
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                            // 立即更新大小显示
+                            this.updateRecordingSize();
+                        }
+                    };
+                    
+                    this.mediaRecorder.onstop = () => {
+                        const blob = new Blob(this.recordedChunks, { type: options.mimeType });
+                        const url = URL.createObjectURL(blob);
+                        const timestamp = new Date().toLocaleString('zh-CN');
+                        const extension = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
+                        const name = `录制_${timestamp.replace(/[/:]/g, '-')}.${extension}`;
+                        const fileSize = this.formatFileSize(blob.size);
+                        const duration = this.recordingTime; // 使用录制时间作为时长
+                        this.history.unshift({ type: 'video', url, blob, name, time: timestamp, fileSize, duration, size: blob.size });
+                        this.saveHistory();
+                        this.showStatus('录制完成', 'success');
+                    };
+                    
+                    this.mediaRecorder.start(100); // 每100ms触发一次dataavailable
+                    this.isRecording = true;
+                    this.startRecordingTimer();
+                    this.startRecordingSizeMonitor();
+                    this.showStatus('开始录制', 'success');
+                },
+                
+                updateRecordingSize() {
+                    let totalSize = 0;
+                    this.recordedChunks.forEach(chunk => { totalSize += chunk.size; });
+                    this.currentRecordingSize = this.formatFileSize(totalSize);
+                },
+                
+                stopRecording() {
+                    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                        this.mediaRecorder.stop();
+                        this.isRecording = false;
+                        this.stopRecordingTimer();
+                        this.stopRecordingSizeMonitor();
+                    }
+                },
+                
+                startRecordingTimer() {
+                    let seconds = 0;
+                    this.recordingTimer = setInterval(() => {
+                        seconds++;
+                        const mins = Math.floor(seconds / 60);
+                        const secs = seconds % 60;
+                        this.recordingTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    }, 1000);
+                },
+                
+                stopRecordingTimer() {
+                    if (this.recordingTimer) {
+                        clearInterval(this.recordingTimer);
+                        this.recordingTimer = null;
+                        setTimeout(() => {
+                            this.recordingTime = '00:00';
+                        }, 500);
+                    }
+                },
+                
+                startRecordingSizeMonitor() {
+                    this.recordingSizeTimer = setInterval(() => {
+                        this.updateRecordingSize();
+                        this.recordingFrameCount = Math.floor((Date.now() - this.recordingStartTime) / 1000 * this.videoInfo.fps);
+                        const elapsedSeconds = (Date.now() - this.recordingStartTime) / 1000;
+                        if (elapsedSeconds > 0) {
+                            let totalSize = 0;
+                            this.recordedChunks.forEach(chunk => { totalSize += chunk.size; });
+                            if (totalSize > 0) {
+                                const bitrateBits = (totalSize * 8) / elapsedSeconds;
+                                this.recordingBitrate = this.formatBitrate(bitrateBits);
+                            }
+                        }
+                    }, 200);
+                },
+                
+                stopRecordingSizeMonitor() {
+                    if (this.recordingSizeTimer) {
+                        clearInterval(this.recordingSizeTimer);
+                        this.recordingSizeTimer = null;
+                        this.currentRecordingSize = '0 B';
+                        this.recordingFrameCount = 0;
+                        this.recordingBitrate = '0 kbps';
+                    }
+                },
+                
+                openPreview(item) { this.previewItem = item; },
+                
+                closePreview() { this.previewItem = null; },
+                
+                downloadItem(item) {
+                    const a = document.createElement('a');
+                    a.href = item.url;
+                    a.download = item.name;
+                    a.click();
+                },
+                
+                deleteItem(index) {
+                    URL.revokeObjectURL(this.history[index].url);
+                    this.history.splice(index, 1);
+                    this.saveHistory();
+                },
+                
+                clearHistory() {
+                    this.history.forEach(item => URL.revokeObjectURL(item.url));
+                    this.history = [];
+                    this.saveHistory();
+                },
+                
+                saveHistory() {
+                    const metadata = this.history.map(item => ({
+                        type: item.type, name: item.name, time: item.time, dimensions: item.dimensions,
+                        fileSize: item.fileSize, duration: item.duration
+                    }));
+                    localStorage.setItem('cameraHistory', JSON.stringify(metadata));
+                },
+                
+                showStatus(message, type) {
+                    this.statusMessage = message;
+                    this.statusType = type;
+                    setTimeout(() => { this.statusMessage = ''; }, 3000);
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
