@@ -30,6 +30,26 @@ window.config = {
       ]
     },
     {
+      name: '个人工具',
+      list: [
+        { name: '临时文件', short: '临时', url: 'https://t.199311.xyz', color: '#DAA520' },
+        { name: 'HTML测试', short: 'HTML', url: 'https://t.199311.xyz/html/', color: '#a15f2f' },
+        { name: '图片站', short: '图片', url: 'https://img.199311.xyz/', color: '#34a196' },
+        { name: 'Test文件', short: 'Test', url: 'https://file.199311.xyz/test.json', color: '#5f5f5f' },
+        { name: '古诗学习', short: '古诗', url: 'https://study.199311.xyz/poem/', color: '#66bb6a' },
+        { name: '影音娱乐', short: '影音', url: 'https://tv.199311.xyz/', color: '#42DC85' },
+        { name: 'GD云音乐', short: '云音乐', url: 'https://tv.199311.xyz/music/', color: '#cc280b' },
+        { name: 'AI对话', short: 'Chat', url: 'https://chat.199311.xyz/', color: '#409eff' },
+        { name: '局域网传输', short: '传输', url: 'http://home.199311.xyz:40080/', color: '#4285f4' },
+        { name: '家文件服务', short: 'Chfs', url: 'http://home.199311.xyz:9000/', color: '#419641 ' },
+        { name: 'PostMin', short: 'Post', url: 'https://home.199311.xyz:40003/', color: '#67C23A ' },
+        { name: 'D-API', short: 'Post', url: './api/index.html', color: '#67C23A ' },
+        { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
+        { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
+        { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
+      ]
+    },
+    {
       name: '媒体工具',
       list: [
         { name: '在线PS', short: 'PS', url: './ps/index.html', color: '#6495ED' },
@@ -50,26 +70,6 @@ window.config = {
         { name: '网速测试', short: '网速', url: 'https://net.199311.xyz/', color: '#5062f2' },
         { name: '系统监控', short: '监控', url: 'http://home.199311.xyz:40888/', color: '#409EFF' },
         { name: '老工具', short: '老工具', url: './old.html', color: '#bbb' },
-      ]
-    },
-    {
-      name: '个人工具',
-      list: [
-        { name: '临时文件', short: '临时', url: 'https://t.199311.xyz', color: '#DAA520' },
-        { name: 'HTML测试', short: 'HTML', url: 'https://t.199311.xyz/html/', color: '#a15f2f' },
-        { name: '图片站', short: '图片', url: 'https://img.199311.xyz/', color: '#34a196' },
-        { name: 'Test文件', short: 'Test', url: 'https://file.199311.xyz/test.json', color: '#5f5f5f' },
-        { name: '古诗学习', short: '古诗', url: 'https://study.199311.xyz/poem/', color: '#66bb6a' },
-        { name: '影音娱乐', short: '影音', url: 'https://tv.199311.xyz/', color: '#42DC85' },
-        { name: 'GD云音乐', short: '云音乐', url: 'https://tv.199311.xyz/music/', color: '#cc280b' },
-        { name: 'AI对话', short: 'Chat', url: 'https://chat.199311.xyz/', color: '#409eff' },
-        { name: '局域网传输', short: '传输', url: 'http://home.199311.xyz:40080/', color: '#4285f4' },
-        { name: '家文件服务', short: 'Chfs', url: 'http://home.199311.xyz:9000/', color: '#419641 ' },
-        { name: 'PostMin', short: 'Post', url: 'https://home.199311.xyz:40003/', color: '#67C23A ' },
-        { name: 'D-API', short: 'Post', url: './api/index.html', color: '#67C23A ' },
-        { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
-        { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
-        { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
       ]
     },
   ],
