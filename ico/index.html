@@ -46,7 +46,7 @@
   </div>
   <div class="container">
     <h1>图片转 ICO 工具</h1>
-    <p>将图片拖拽到页面任意位置，或点击下方区域上传。纯本地转换，保护您的隐私。</p>
+    <p>将图片拖拽到页面任意位置，或点击下方区域上传，或粘贴文件。纯本地转换。</p>
     <div id="drop-zone">
       <span id="drop-zone-text">点击此处选择图片</span>
       <input type="file" id="file-input" accept="image/*">
@@ -131,6 +131,16 @@
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     });
+
+    document.addEventListener('paste', function (e) {
+      var items = e.clipboardData.items
+      if (!items) return;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          handleFile(items[i].getAsFile())
+        }
+      }
+    })
 
     function handleFile(file) {
       if (!file.type.startsWith('image/')) {
