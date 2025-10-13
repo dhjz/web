@@ -103,7 +103,7 @@ if "%choice%"=="4" (
   :: 安装 rsrc:  go install github.com/akavel/rsrc@latest
   :: 只在windows上生成图标 ico_windows_amd64.syso 或者ico_windows.syso 
   cd service
-  rsrc -ico="ico.ico" -o="ico_windows_amd64.syso"
+  rsrc -ico="ico.ico" -o="ico_windows.syso"
   pause
   exit
 )
