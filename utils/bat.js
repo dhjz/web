@@ -100,6 +100,7 @@ if "%choice%"=="3" (
   goto buildServiceWeb
 )
 if "%choice%"=="4" (
+  :: 安装 rsrc:  go install github.com/akavel/rsrc@latest
   cd service
   rsrc -ico="ico.ico" -o="ico.syso"
   pause
