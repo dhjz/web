@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 在线预览器</title>
+    
+    <!-- Prism.js 代码高亮 -->
+    <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/themes/prism-tomorrow.min.css" rel="stylesheet" id="prism-theme">
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/prism.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-java.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-javascript.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-python.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-css.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-sql.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-bash.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-json.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/components/prism-markdown.min.js"></script>
+    
+    <!-- Marked.js Markdown解析器 -->
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/marked/16.1.2/lib/marked.umd.min.js"></script>
+    
+    <!-- DOMPurify 安全过滤 -->
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/dompurify/3.2.7/purify.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {  --toc-width: 300px; --bg-primary: #ffffff; --bg-secondary: #f8f9fa; --bg-header: #2c3e50; --text-primary: #2c3e50; --text-secondary: #6c757d; --border-color: #dee2e6; --accent-color: #3498db; --shadow: 0 2px 10px rgba(0,0,0,0.1); --code-bg: #f6f8fa; --toc-bg: #f8f9fa; }
+        [data-theme="dark"] { --bg-primary: #1a1a1a; --bg-secondary: #2d2d2d; --bg-header: #0d1117; --text-primary: #e6e6e6; --text-secondary: #8b949e; --border-color: #30363d; --accent-color: #58a6ff; --shadow: 0 2px 10px rgba(0,0,0,0.3); --code-bg: #161b22; --toc-bg: #2d2d2d; }
+        [data-theme="github"] { --bg-primary: #ffffff; --bg-secondary: #f6f8fa; --bg-header: #24292e; --text-primary: #24292e; --text-secondary: #586069; --border-color: #e1e4e8; --accent-color: #0366d6; --shadow: 0 2px 10px rgba(0,0,0,0.1); --code-bg: #f6f8fa; --toc-bg: #f6f8fa; }
+        [data-theme="vscode"] { --bg-primary: #1e1e1e; --bg-secondary: #252526; --bg-header: #333333; --text-primary: #cccccc; --text-secondary: #969696; --border-color: #3e3e42; --accent-color: #007acc; --shadow: 0 2px 10px rgba(0,0,0,0.3); --code-bg: #1e1e1e; --toc-bg: #252526; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-primary); color: var(--text-primary); transition: all 0.3s ease; min-height: 100vh; display: flex; flex-direction: column; }
+        header { background-color: var(--bg-header); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: bold; }
+        .logo svg { width: 32px; height: 32px; }
+        .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-secondary { background-color: transparent; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
+        .theme-selector { display: flex; gap: 0.5rem; align-items: center; }
+        .theme-selector select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; }
+        main { flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; padding: 2rem; position: relative; }
+        .drop-zone { border: 3px dashed var(--border-color); border-radius: 12px; padding: 3rem; text-align: center; transition: all 0.3s ease; background-color: var(--bg-secondary); margin-bottom: 2rem; }
+        .drop-zone.dragover { border-color: var(--accent-color); background-color: var(--accent-color); opacity: 0.1; }
+        .drop-zone-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+        .drop-zone-text { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 1rem; }
+        .content-wrapper { display: none; animation: fadeIn 0.5s ease; }
+        .content-wrapper.active { display: flex; gap: 2rem; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+        }
+        .content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+        .file-info { display: flex; align-items: center; gap: 1rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .sidebar { flex-shrink: 0; width: var(--toc-width); display: flex; flex-direction: column; }
+        .toc-container { background-color: var(--toc-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow); padding: 1rem; overflow-y: auto; max-height: calc(100vh - 200px); position: sticky; top: 100px; }
+        .toc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .toc-title { font-weight: 600; color: var(--text-primary); font-size: 0.9rem; }
+        .toc-controls { display: flex; gap: 0.5rem; align-items: center; }
+        .toc-toggle { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.25rem; border-radius: 4px; transition: all 0.3s ease; }
+        .toc-toggle:hover { background-color: var(--bg-secondary); color: var(--text-primary); }
+        .toc-level-selector { display: flex; align-items: center; gap: 0.25rem; }
+        .toc-level-selector label { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+        .toc-level-selector select { padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.75rem; }
+        .toc-content { display: block; }
+        .toc-container.collapsed .toc-content { display: none; }
+        .toc-list { list-style: none; padding: 0; margin: 0; }
+        .toc-item { margin: 0.25rem 0; }
+        .toc-link { display: block; padding: 0.25rem 0.5rem; color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; border-radius: 4px; transition: all 0.3s ease; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .toc-link:hover { background-color: var(--bg-secondary); color: var(--accent-color); }
+        .toc-link.active { background-color: var(--accent-color); color: white; }
+        .toc-level-1 { padding-left: 0.5rem; }
+        .toc-level-2 { padding-left: 1.5rem; }
+        .toc-level-3 { padding-left: 2.5rem; }
+        .toc-level-4 { padding-left: 3.5rem; }
+        .toc-level-5 { padding-left: 4.5rem; }
+        .toc-level-6 { padding-left: 5.5rem; }
+        .main-content { flex: 1; min-width: 0; }
+        .markdown-body { background-color: var(--bg-primary); padding: 0 1rem 1rem; border-radius: 8px; line-height: 1.6; overflow-x: auto; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 { margin-top: 1.5rem; margin-bottom: 1rem; font-weight: 600; line-height: 1.25; scroll-margin-top: 100px; }
+        .markdown-body h1 { font-size: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        .markdown-body h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        .markdown-body h3 { font-size: 1.25rem; }
+        .markdown-body h4 { font-size: 1rem; }
+        .markdown-body h5 { font-size: 0.875rem; }
+        .markdown-body h6 { font-size: 0.85rem; }
+        .markdown-body p { margin-bottom: 1rem; }
+        .markdown-body a { color: var(--accent-color); text-decoration: none; }
+        .markdown-body a:hover { text-decoration: underline; }
+        .markdown-body ul, .markdown-body ol { margin-bottom: 1rem; padding-left: 2rem; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body blockquote { margin: 1rem 0; padding: 0 1rem; color: var(--text-secondary); border-left: 4px solid var(--border-color); }
+        .markdown-body table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+        .markdown-body th, .markdown-body td { border: 1px solid var(--border-color); padding: 0.5rem; text-align: left; }
+        .markdown-body th { background-color: var(--bg-secondary); font-weight: 600; }
+        .markdown-body code { background-color: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 3px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.9em; }
+        .markdown-body pre { background-color: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; }
+        .markdown-body pre code { background: none; padding: 0; }
+        .markdown-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 1rem 0; }
+        .markdown-body hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }
+        .tooltip { position: fixed; background-color: var(--bg-header); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 1000; }
+        .tooltip.show { opacity: 1; }
+        @media (max-width: 1200px) { .sidebar { width: 220px; }
+        }
+        @media (max-width: 768px) { .content-wrapper.active { flex-direction: column; }
+        .sidebar { width: 100%; }
+        .toc-container { max-height: 300px; position: static; }
+        header { padding: 1rem; }
+        .header-content { flex-direction: column; align-items: stretch; }
+        .controls { justify-content: center; }
+        main { padding: 1rem; }
+        .markdown-body { padding: 1rem; }
+        }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); }
+        }
+        .back-to-top { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background-color: var(--accent-color); color: white; border: none; border-radius: 50%; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: all 0.3s ease; z-index: 90; }
+        .back-to-top:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+        .back-to-top.show { display: flex; }
+        ::-webkit-scrollbar{ width: 10px; height: 10px;}
+        ::-webkit-scrollbar-thumb{ background-color: #ddd; border-radius: 6px;}
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z"></path>
+                    <path d="M2 17L12 22L22 17"></path>
+                    <path d="M2 12L12 17L22 12"></path>
+                </svg>
+                <span>Markdown 预览器</span>
+            </div>
+            <div class="controls">
+                <input type="file" id="fileInput" accept=".md,.markdown" style="display: none;">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V15"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    打开文件
+                </button>
+                <button class="btn btn-secondary" onclick="resetContent()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="1 4 1 10 7 10"></polyline>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                    </svg>
+                    重置
+                </button>
+                <div class="theme-selector">
+                    <label for="themeSelect" style="color: white;">主题:</label>
+                    <select id="themeSelect" onchange="changeTheme(this.value)">
+                        <option value="light">浅色</option>
+                        <option value="dark">深色</option>
+                        <option value="github">GitHub</option>
+                        <option value="vscode">VS Code</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-icon">📄</div>
+            <div class="drop-zone-text">拖拽 Markdown 文件到这里</div>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                或点击选择文件
+            </button>
+        </div>
+
+        <div class="content-wrapper" id="contentWrapper">
+            <div class="sidebar">
+                <div class="content-header">
+                    <div class="file-info">
+                        <span id="fileName">未命名文件</span>
+                        <span id="fileSize">0 KB</span>
+                        <span id="lastModified" style="display: none;">--</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="resetContent()">
+                        关闭
+                    </button>
+                </div>
+                
+                <!-- 目录容器 -->
+                <div class="toc-container" id="tocContainer">
+                    <div class="toc-header">
+                        <span class="toc-title">目录</span>
+                        <div class="toc-controls">
+                            <div class="toc-level-selector">
+                                <label for="tocLevelSelect">层级:</label>
+                                <select id="tocLevelSelect" onchange="changeTOCLevel(this.value)">
+                                    <option value="2">H2</option>
+                                    <option value="3">H3</option>
+                                    <option value="4">H4</option>
+                                    <option value="5">H5</option>
+                                    <option value="6">H6</option>
+                                </select>
+                            </div>
+                            <button class="toc-toggle" onclick="toggleTOC()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="toc-content" id="tocContent">
+                        <ul class="toc-list" id="tocList"></ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="markdown-body" id="markdownContent"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 返回顶部按钮 -->
+    <button class="back-to-top" id="backToTop" onclick="scrollToTop()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // 配置 marked
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (Prism.languages[lang]) {
+                    return Prism.highlight(code, Prism.languages[lang], lang);
+                }
+                return code;
+            },
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            mangle: false
+        });
+
+        // 初始化
+        let currentTheme = 'light';
+        let currentFile = null;
+        let tocCollapsed = false;
+        let headings = [];
+        let maxTOCLevel = 2; // 默认最大显示到H2
+
+        // 文件输入处理
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        // 拖放处理
+        const dropZone = document.getElementById('dropZone');
+        const body = document.body;
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            body.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            body.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('dragover');
+        }
+
+        body.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.match(/\.(md|markdown)$/i)) {
+                    processFile(file);
+                } else {
+                    showTooltip('请选择 Markdown 文件 (.md 或 .markdown)', e.clientX, e.clientY);
+                }
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        function processFile(file) {
+            currentFile = file;
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                displayMarkdown(content, file);
+            };
+            
+            reader.onerror = function() {
+                showTooltip('文件读取失败', window.innerWidth / 2, window.innerHeight / 2);
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function displayMarkdown(content, file) {
+            // 使用 DOMPurify 清理 HTML
+            const html = DOMPurify.sanitize(marked.parse(content));
+            
+            // 更新文件信息
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('lastModified').textContent = new Date(file.lastModified).toLocaleString('zh-CN');
+            
+            // 显示内容
+            document.getElementById('markdownContent').innerHTML = html;
+            
+            // 生成目录
+            generateTOC();
+            
+            // 切换显示
+            dropZone.style.display = 'none';
+            document.getElementById('contentWrapper').classList.add('active');
+            
+            // 重新高亮代码
+            Prism.highlightAll();
+            
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function generateTOC() {
+            const markdownContent = document.getElementById('markdownContent');
+            const tocList = document.getElementById('tocList');
+            const headers = markdownContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            
+            // 清空目录
+            tocList.innerHTML = '';
+            headings = [];
+            
+            if (headers.length === 0) {
+                document.getElementById('tocContainer').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('tocContainer').style.display = 'block';
+            
+            // 生成目录项
+            headers.forEach((header, index) => {
+                const level = parseInt(header.tagName.substring(1));
+                const text = header.textContent;
+                const id = `heading-${index}`;
+                
+                // 为标题添加ID
+                header.id = id;
+                
+                // 保存标题信息
+                headings.push({
+                    element: header,
+                    id: id,
+                    level: level,
+                    text: text
+                });
+            });
+            
+            // 渲染目录
+            renderTOC();
+            
+            // 监听滚动更新目录高亮
+            window.addEventListener('scroll', updateTOCHighlight);
+        }
+
+        function renderTOC() {
+            const tocList = document.getElementById('tocList');
+            tocList.innerHTML = '';
+            
+            headings.forEach((heading, index) => {
+                // 只显示小于等于最大层级的标题
+                if (heading.level > maxTOCLevel) {
+                    return;
+                }
+                
+                // 创建目录项
+                const li = document.createElement('li');
+                li.className = 'toc-item';
+                
+                const a = document.createElement('a');
+                a.href = `#${heading.id}`;
+                a.className = `toc-link toc-level-${heading.level}`;
+                a.textContent = heading.text;
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    heading.element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                };
+                
+                li.appendChild(a);
+                tocList.appendChild(li);
+            });
+        }
+
+        function changeTOCLevel(level) {
+            maxTOCLevel = parseInt(level);
+            renderTOC();
+            
+            // 重新计算高亮
+            updateTOCHighlight();
+            
+            // 保存设置到 localStorage
+            localStorage.setItem('toc-max-level', level);
+        }
+
+        function updateTOCHighlight() {
+            if (headings.length === 0) return;
+            
+            const scrollY = window.pageYOffset;
+            const tocLinks = document.querySelectorAll('.toc-link');
+            
+            let activeIndex = -1;
+            
+            // 找到当前可见的标题（只考虑在目录中显示的标题）
+            for (let i = headings.length - 1; i >= 0; i--) {
+                const heading = headings[i];
+                if (heading.level > maxTOCLevel) continue;
+                
+                const rect = heading.element.getBoundingClientRect();
+                if (rect.top <= 150) {
+                    activeIndex = i;
+                    break;
+                }
+            }
+            
+            // 更新目录高亮
+            tocLinks.forEach((link, index) => {
+                // 找到对应的标题索引
+                const headingIndex = headings.findIndex(h => 
+                    h.level <= maxTOCLevel && 
+                    h.id === link.getAttribute('href').substring(1)
+                );
+                
+                if (headingIndex === activeIndex) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+            
+            // 显示/隐藏返回顶部按钮
+            const backToTop = document.getElementById('backToTop');
+            if (scrollY > 300) {
+                backToTop.classList.add('show');
+            } else {
+                backToTop.classList.remove('show');
+            }
+        }
+
+        function toggleTOC() {
+            const tocContainer = document.getElementById('tocContainer');
+            const toggleBtn = tocContainer.querySelector('.toc-toggle svg');
+            
+            tocCollapsed = !tocCollapsed;
+            
+            if (tocCollapsed) {
+                tocContainer.classList.add('collapsed');
+                toggleBtn.style.transform = 'rotate(180deg)';
+            } else {
+                tocContainer.classList.remove('collapsed');
+                toggleBtn.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function resetContent() {
+            dropZone.style.display = 'block';
+            document.getElementById('contentWrapper').classList.remove('active');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('tocContainer').style.display = 'none';
+            currentFile = null;
+            headings = [];
+            window.removeEventListener('scroll', updateTOCHighlight);
+        }
+
+        function changeTheme(theme) {
+            currentTheme = theme;
+            document.body.setAttribute('data-theme', theme);
+            
+            // 更新 Prism 主题
+            const prismTheme = document.getElementById('prism-theme');
+            if (theme === 'dark' || theme === 'vscode') {
+                prismTheme.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css';
+            } else {
+                prismTheme.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
+            }
+            
+            // 重新高亮代码
+            if (document.getElementById('contentWrapper').classList.contains('active')) {
+                Prism.highlightAll();
+            }
+            
+            // 保存主题到 localStorage
+            localStorage.setItem('markdown-theme', theme);
+        }
+
+        function showTooltip(message, x, y) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = message;
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = (y - 40) + 'px';
+            tooltip.classList.add('show');
+            
+            setTimeout(() => {
+                tooltip.classList.remove('show');
+            }, 3000);
+        }
+
+        // 加载保存的设置
+        window.addEventListener('DOMContentLoaded', () => {
+            // 加载主题
+            const savedTheme = localStorage.getItem('markdown-theme');
+            if (savedTheme) {
+                document.getElementById('themeSelect').value = savedTheme;
+                changeTheme(savedTheme);
+            }
+            
+            // 加载目录层级设置
+            const savedTOCLevel = localStorage.getItem('toc-max-level');
+            if (savedTOCLevel) {
+                document.getElementById('tocLevelSelect').value = savedTOCLevel;
+                maxTOCLevel = parseInt(savedTOCLevel);
+            }
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + O 打开文件
+            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                document.getElementById('fileInput').click();
+            }
+            
+            // Escape 关闭内容
+            if (e.key === 'Escape' && currentFile) {
+                resetContent();
+            }
+            
+            // Ctrl/Cmd + T 切换目录
+            if ((e.ctrlKey || e.metaKey) && e.key === 't' && currentFile) {
+                e.preventDefault();
+                toggleTOC();
+            }
+            
+            // Ctrl/Cmd + 数字键快速切换目录层级
+            if ((e.ctrlKey || e.metaKey) && currentFile) {
+                const num = parseInt(e.key);
+                if (num >= 2 && num <= 6) {
+                    e.preventDefault();
+                    document.getElementById('tocLevelSelect').value = num;
+                    changeTOCLevel(num);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
