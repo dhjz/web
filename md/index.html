@@ -67,7 +67,7 @@
         .toc-container.collapsed .toc-content { display: none; }
         .toc-list { list-style: none; padding: 0; margin: 0; }
         .toc-item { margin: 0.25rem 0; }
-        .toc-link { display: block; padding: 0.25rem 0.5rem; color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; border-radius: 4px; transition: all 0.3s ease; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .toc-link { display: block; padding: 0.25rem 0.5rem; color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; border-radius: 4px; xtransition: all 0.3s ease; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .toc-link:hover { background-color: var(--bg-secondary); color: var(--accent-color); }
         .toc-link.active { background-color: var(--accent-color); color: white; }
         .toc-level-1 { padding-left: 0.5rem; }
@@ -149,6 +149,13 @@
                         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
                     </svg>
                     重置
+                </button>
+                <button class="btn btn-secondary" onclick="clearCache()" id="clearCacheBtn" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    清除缓存
                 </button>
                 <div class="theme-selector">
                     <label for="themeSelect" style="color: white;">主题:</label>
@@ -249,6 +256,7 @@
         let tocCollapsed = false;
         let headings = [];
         let maxTOCLevel = 2; // 默认最大显示到H2
+        let isFromCache = false; // 标记当前内容是否来自缓存
 
         // 文件输入处理
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -311,6 +319,8 @@
             
             reader.onload = function(e) {
                 const content = e.target.result;
+                // 重置缓存标志，确保新文件会被正确缓存
+                isFromCache = false;
                 displayMarkdown(content, file);
             };
             
@@ -330,6 +340,9 @@
             document.getElementById('fileSize').textContent = formatFileSize(file.size);
             document.getElementById('lastModified').textContent = new Date(file.lastModified).toLocaleString('zh-CN');
             
+            // 总是保存当前内容到缓存，确保每次打开新文件都会更新缓存
+            saveToCache(content, file);
+            
             // 显示内容
             document.getElementById('markdownContent').innerHTML = html;
             
@@ -343,8 +356,22 @@
             // 重新高亮代码
             Prism.highlightAll();
             
-            // 滚动到顶部
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // 检查URL hash，如果存在则滚动到对应位置
+            setTimeout(() => {
+                const hash = window.location.hash.substring(1);
+                if (hash) {
+                    const targetElement = document.getElementById(hash);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        // 如果hash对应的元素不存在，滚动到顶部
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                } else {
+                    // 没有hash，滚动到顶部
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 100); // 延迟执行，确保DOM已经完全渲染
         }
 
         function generateTOC() {
@@ -409,6 +436,8 @@
                 a.onclick = (e) => {
                     e.preventDefault();
                     heading.element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // 手动更新URL hash
+                    history.replaceState(null, null, `#${heading.id}`);
                 };
                 
                 li.appendChild(a);
@@ -434,6 +463,7 @@
             const tocLinks = document.querySelectorAll('.toc-link');
             
             let activeIndex = -1;
+            let activeHeadingId = null;
             
             // 找到当前可见的标题（只考虑在目录中显示的标题）
             for (let i = headings.length - 1; i >= 0; i--) {
@@ -443,11 +473,13 @@
                 const rect = heading.element.getBoundingClientRect();
                 if (rect.top <= 150) {
                     activeIndex = i;
+                    activeHeadingId = heading.id;
                     break;
                 }
             }
             
             // 更新目录高亮
+            let activeLink = null;
             tocLinks.forEach((link, index) => {
                 // 找到对应的标题索引
                 const headingIndex = headings.findIndex(h => 
@@ -457,10 +489,41 @@
                 
                 if (headingIndex === activeIndex) {
                     link.classList.add('active');
+                    activeLink = link;
                 } else {
                     link.classList.remove('active');
                 }
             });
+            
+            // 自动滚动目录，使高亮项展示在中间
+            if (activeLink) {
+                const tocContainer = document.getElementById('tocContainer');
+                // 只有当目录容器有滚动条时才执行滚动
+                if (tocContainer.scrollHeight > tocContainer.clientHeight) {
+                    // 使用scrollIntoView将高亮项展示在目录中间
+                    // activeLink.scrollIntoView({
+                    //     behavior: 'smooth',
+                    //     block: 'center'
+                    // });
+                    const linkTop = activeLink.offsetTop;
+                    const containerHeight = tocContainer.clientHeight;
+                    const linkHeight = activeLink.offsetHeight;
+                    const targetScrollTop = linkTop - (containerHeight / 2) + (linkHeight / 2);
+                    tocContainer.scrollTo({
+                        top: targetScrollTop,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+            
+            // 更新URL hash，记录当前浏览位置
+            if (activeHeadingId) {
+                // 只有当hash变化时才更新，避免频繁触发hashchange事件
+                if (window.location.hash !== `#${activeHeadingId}`) {
+                    // 使用replaceState而不是直接设置hash，避免页面滚动
+                    history.replaceState(null, null, `#${activeHeadingId}`);
+                }
+            }
             
             // 显示/隐藏返回顶部按钮
             const backToTop = document.getElementById('backToTop');
@@ -487,7 +550,7 @@
         }
 
         function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // 
         }
 
         function formatFileSize(bytes) {
@@ -503,8 +566,10 @@
             document.getElementById('contentWrapper').classList.remove('active');
             document.getElementById('fileInput').value = '';
             document.getElementById('tocContainer').style.display = 'none';
+            document.getElementById('clearCacheBtn').style.display = 'none';
             currentFile = null;
             headings = [];
+            isFromCache = false;
             window.removeEventListener('scroll', updateTOCHighlight);
         }
 
@@ -541,6 +606,57 @@
             }, 3000);
         }
 
+        // 缓存相关函数
+        function saveToCache(content, file) {
+            try {
+                const cacheData = {
+                    content: content,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    lastModified: file.lastModified,
+                    timestamp: new Date().getTime()
+                };
+                
+                // 总是更新缓存，确保最后打开的文件被保存
+                localStorage.setItem('markdown-cache', JSON.stringify(cacheData));
+                document.getElementById('clearCacheBtn').style.display = 'inline-flex';
+            } catch (e) {
+                console.error('保存到缓存失败:', e);
+                showTooltip('缓存保存失败，可能是文件太大', window.innerWidth / 2, window.innerHeight / 2);
+            }
+        }
+
+        function loadFromCache() {
+            try {
+                const cacheData = JSON.parse(localStorage.getItem('markdown-cache'));
+                
+                if (cacheData) {
+                    // 创建一个模拟的文件对象
+                    const cachedFile = {
+                        name: cacheData.fileName,
+                        size: cacheData.fileSize,
+                        lastModified: cacheData.lastModified
+                    };
+                    
+                    isFromCache = true;
+                    displayMarkdown(cacheData.content, cachedFile);
+                    document.getElementById('clearCacheBtn').style.display = 'inline-flex';
+                    
+                    return true;
+                }
+            } catch (e) {
+                console.error('从缓存加载失败:', e);
+            }
+            
+            return false;
+        }
+
+        function clearCache() {
+            localStorage.removeItem('markdown-cache');
+            document.getElementById('clearCacheBtn').style.display = 'none';
+            showTooltip('缓存已清除', window.innerWidth / 2, window.innerHeight / 2);
+        }
+
         // 加载保存的设置
         window.addEventListener('DOMContentLoaded', () => {
             // 加载主题
@@ -555,6 +671,14 @@
             if (savedTOCLevel) {
                 document.getElementById('tocLevelSelect').value = savedTOCLevel;
                 maxTOCLevel = parseInt(savedTOCLevel);
+            }
+            
+            // 尝试从缓存加载文件
+            const hasCache = localStorage.getItem('markdown-cache') !== null;
+            if (hasCache) {
+                document.getElementById('clearCacheBtn').style.display = 'inline-flex';
+                // 自动加载缓存的文件
+                loadFromCache();
             }
         });
 
