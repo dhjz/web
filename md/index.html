@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -357,21 +358,21 @@
             Prism.highlightAll();
             
             // 检查URL hash，如果存在则滚动到对应位置
-            setTimeout(() => {
-                const hash = window.location.hash.substring(1);
-                if (hash) {
-                    const targetElement = document.getElementById(hash);
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        // 如果hash对应的元素不存在，滚动到顶部
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                } else {
-                    // 没有hash，滚动到顶部
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }, 100); // 延迟执行，确保DOM已经完全渲染
+            // setTimeout(() => {
+            //     const hash = window.location.hash.substring(1);
+            //     if (hash) {
+            //         const targetElement = document.getElementById(hash);
+            //         if (targetElement) {
+            //             targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            //         } else {
+            //             // 如果hash对应的元素不存在，滚动到顶部
+            //             window.scrollTo({ top: 0, behavior: 'smooth' });
+            //         }
+            //     } else {
+            //         // 没有hash，滚动到顶部
+            //         window.scrollTo({ top: 0, behavior: 'smooth' });
+            //     }
+            // }, 100); // 延迟执行，确保DOM已经完全渲染
         }
 
         function generateTOC() {
@@ -433,12 +434,6 @@
                 a.href = `#${heading.id}`;
                 a.className = `toc-link toc-level-${heading.level}`;
                 a.textContent = heading.text;
-                a.onclick = (e) => {
-                    e.preventDefault();
-                    heading.element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // 手动更新URL hash
-                    history.replaceState(null, null, `#${heading.id}`);
-                };
                 
                 li.appendChild(a);
                 tocList.appendChild(li);
@@ -500,11 +495,6 @@
                 const tocContainer = document.getElementById('tocContainer');
                 // 只有当目录容器有滚动条时才执行滚动
                 if (tocContainer.scrollHeight > tocContainer.clientHeight) {
-                    // 使用scrollIntoView将高亮项展示在目录中间
-                    // activeLink.scrollIntoView({
-                    //     behavior: 'smooth',
-                    //     block: 'center'
-                    // });
                     const linkTop = activeLink.offsetTop;
                     const containerHeight = tocContainer.clientHeight;
                     const linkHeight = activeLink.offsetHeight;
@@ -580,9 +570,9 @@
             // 更新 Prism 主题
             const prismTheme = document.getElementById('prism-theme');
             if (theme === 'dark' || theme === 'vscode') {
-                prismTheme.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css';
+                prismTheme.href = 'https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/themes/prism-tomorrow.css';
             } else {
-                prismTheme.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
+                prismTheme.href = 'https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.30.0/themes/prism.css';
             }
             
             // 重新高亮代码
