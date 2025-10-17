@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -31,17 +32,17 @@
         [data-theme="github"] { --bg-primary: #ffffff; --bg-secondary: #f6f8fa; --bg-header: #24292e; --text-primary: #24292e; --text-secondary: #586069; --border-color: #e1e4e8; --accent-color: #0366d6; --shadow: 0 2px 10px rgba(0,0,0,0.1); --code-bg: #f6f8fa; --toc-bg: #f6f8fa; }
         [data-theme="vscode"] { --bg-primary: #1e1e1e; --bg-secondary: #252526; --bg-header: #333333; --text-primary: #cccccc; --text-secondary: #969696; --border-color: #3e3e42; --accent-color: #007acc; --shadow: 0 2px 10px rgba(0,0,0,0.3); --code-bg: #1e1e1e; --toc-bg: #252526; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-primary); color: var(--text-primary); transition: all 0.3s ease; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background-color: var(--bg-header); color: white; padding: 1rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+        header { background-color: var(--bg-header); color: white; padding: 0.4rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-        .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: bold; }
+        .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.4rem; font-weight: bold; }
         .logo svg { width: 32px; height: 32px; }
         .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
+        .btn { padding: 0.3rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .btn-secondary { background-color: transparent; border: 1px solid rgba(255,255,255,0.3); }
         .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
         .theme-selector { display: flex; gap: 0.5rem; align-items: center; }
-        .theme-selector select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; }
+        .theme-selector select { padding: 0.3rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; }
         main { flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; padding: 2rem; position: relative; }
         .drop-zone { border: 3px dashed var(--border-color); border-radius: 12px; padding: 3rem; text-align: center; transition: all 0.3s ease; background-color: var(--bg-secondary); margin-bottom: 2rem; }
         .drop-zone.dragover { border-color: var(--accent-color); background-color: var(--accent-color); opacity: 0.1; }
@@ -121,6 +122,26 @@
         .back-to-top.show { display: flex; }
         ::-webkit-scrollbar{ width: 10px; height: 10px;}
         ::-webkit-scrollbar-thumb{ background-color: #ddd; border-radius: 6px;}
+        
+        /* 历史文件栏样式 */
+        .history-bar { background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 0.5rem 1.2rem; display: none; }
+        .history-bar.active { display: block; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; display: none; }
+        .history-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+        .history-controls { display: flex; gap: 0.5rem; }
+        .history-clear { padding: 0.25rem 0.5rem; font-size: 0.8rem; background-color: transparent; border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-secondary); cursor: pointer; }
+        .history-clear:hover { background-color: var(--bg-primary); color: var(--text-primary); }
+        .history-container { display: flex; overflow-x: auto; padding-bottom: 0rem; gap: 0.5rem; }
+        .history-item { flex-shrink: 0; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.1rem 0.6rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; max-width: 200px; }
+        .history-item:hover { border-color: var(--accent-color); box-shadow: var(--shadow); }
+        .history-item.active { border-color: var(--accent-color); background-color: var(--accent-color); color: white; }
+        .history-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; }
+        .history-item-size { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+        .history-item.active .history-item-size { color: rgba(255,255,255,0.8); }
+        .history-item-delete { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.25rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .history-item-delete:hover { background-color: rgba(255,0,0,0.1); color: red; }
+        .history-item.active .history-item-delete:hover { background-color: rgba(255,255,255,0.2); color: white; }
+        .history-empty { color: var(--text-secondary); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
     </style>
 </head>
 <body>
@@ -135,7 +156,7 @@
                 <span>Markdown 预览器</span>
             </div>
             <div class="controls">
-                <input type="file" id="fileInput" accept=".md,.markdown" style="display: none;">
+                <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display: none;">
                 <button class="btn" onclick="document.getElementById('fileInput').click()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V15"></path>
@@ -171,10 +192,23 @@
         </div>
     </header>
 
+    <!-- 历史文件栏 -->
+    <div class="history-bar" id="historyBar">
+        <div class="history-header">
+            <span class="history-title">最近打开的文件</span>
+            <div class="history-controls">
+                <button class="history-clear" onclick="clearAllHistory()">清除所有</button>
+            </div>
+        </div>
+        <div class="history-container" id="historyContainer">
+            <div class="history-empty">暂无历史文件</div>
+        </div>
+    </div>
+
     <main>
         <div class="drop-zone" id="dropZone">
             <div class="drop-zone-icon">📄</div>
-            <div class="drop-zone-text">拖拽 Markdown 文件到这里</div>
+            <div class="drop-zone-text">拖拽 Markdown 或 TXT 文件到这里</div>
             <button class="btn" onclick="document.getElementById('fileInput').click()">
                 或点击选择文件
             </button>
@@ -258,6 +292,7 @@
         let headings = [];
         let maxTOCLevel = 2; // 默认最大显示到H2
         let isFromCache = false; // 标记当前内容是否来自缓存
+        let currentHistoryId = null; // 当前显示的历史文件ID
 
         // 文件输入处理
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -299,10 +334,10 @@
             
             if (files.length > 0) {
                 const file = files[0];
-                if (file.name.match(/\.(md|markdown)$/i)) {
+                if (file.name.match(/\.(md|markdown|txt)$/i)) {
                     processFile(file);
                 } else {
-                    showTooltip('请选择 Markdown 文件 (.md 或 .markdown)', e.clientX, e.clientY);
+                    showTooltip('请选择 Markdown 或 TXT 文件 (.md, .markdown 或 .txt)', e.clientX, e.clientY);
                 }
             }
         }
@@ -316,6 +351,8 @@
 
         function processFile(file) {
             currentFile = file;
+            // 重置历史文件ID，因为这是一个新文件
+            currentHistoryId = null;
             const reader = new FileReader();
             
             reader.onload = function(e) {
@@ -334,7 +371,16 @@
 
         function displayMarkdown(content, file) {
             // 使用 DOMPurify 清理 HTML
-            const html = DOMPurify.sanitize(marked.parse(content));
+            let html = DOMPurify.sanitize(marked.parse(content));
+            
+            // 为所有以http开头的链接添加target="_blank"
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const links = tempDiv.querySelectorAll('a[href^="http"]');
+            links.forEach(link => {
+                link.setAttribute('target', '_blank');
+            });
+            html = tempDiv.innerHTML;
             
             // 更新文件信息
             document.getElementById('fileName').textContent = file.name;
@@ -560,7 +606,11 @@
             currentFile = null;
             headings = [];
             isFromCache = false;
+            currentHistoryId = null; // 重置当前历史文件ID
             window.removeEventListener('scroll', updateTOCHighlight);
+            
+            // 更新历史文件栏，移除所有激活状态
+            renderHistoryBar();
         }
 
         function changeTheme(theme) {
@@ -599,52 +649,193 @@
         // 缓存相关函数
         function saveToCache(content, file) {
             try {
-                const cacheData = {
-                    content: content,
-                    fileName: file.name,
-                    fileSize: file.size,
+                // 只缓存小于200KB的文件
+                const maxFileSize = 200 * 1024; // 200KB
+                if (file.size > maxFileSize) {
+                    console.log('文件太大，不进行缓存');
+                    return;
+                }
+                
+                // 获取现有历史记录
+                let historyList = getHistoryList();
+                
+                // 生成唯一ID
+                const fileId = generateFileId(file);
+                
+                // 检查文件是否已在历史记录中
+                const existingIndex = historyList.findIndex(item => item.id === fileId);
+                
+                // 创建文件记录
+                const fileRecord = {
+                    id: fileId,
+                    name: file.name,
+                    size: file.size,
                     lastModified: file.lastModified,
+                    content: content,
                     timestamp: new Date().getTime()
                 };
                 
-                // 总是更新缓存，确保最后打开的文件被保存
-                localStorage.setItem('markdown-cache', JSON.stringify(cacheData));
+                if (existingIndex !== -1) {
+                    // 更新现有记录
+                    historyList[existingIndex] = fileRecord;
+                } else {
+                    // 添加新记录
+                    historyList.unshift(fileRecord);
+                    
+                    // 限制历史记录数量，最多保存20个文件
+                    if (historyList.length > 20) {
+                        historyList = historyList.slice(0, 20);
+                    }
+                }
+                
+                // 保存到localStorage
+                localStorage.setItem('markdown-history', JSON.stringify(historyList));
+                
+                // 更新历史文件栏
+                renderHistoryBar();
+                
+                // 显示清除缓存按钮
                 document.getElementById('clearCacheBtn').style.display = 'inline-flex';
             } catch (e) {
                 console.error('保存到缓存失败:', e);
-                showTooltip('缓存保存失败，可能是文件太大', window.innerWidth / 2, window.innerHeight / 2);
+                showTooltip('缓存保存失败', window.innerWidth / 2, window.innerHeight / 2);
+            }
+        }
+
+        function getHistoryList() {
+            try {
+                const historyData = localStorage.getItem('markdown-history');
+                return historyData ? JSON.parse(historyData) : [];
+            } catch (e) {
+                console.error('获取历史记录失败:', e);
+                return [];
+            }
+        }
+
+        function generateFileId(file) {
+            // 使用文件名、大小和最后修改时间生成唯一ID
+            return `${file.name}-${file.size}-${file.lastModified}`;
+        }
+
+        function renderHistoryBar() {
+            const historyContainer = document.getElementById('historyContainer');
+            const historyBar = document.getElementById('historyBar');
+            const historyList = getHistoryList();
+            
+            if (historyList.length === 0) {
+                historyContainer.innerHTML = '<div class="history-empty">暂无历史文件</div>';
+                historyBar.classList.remove('active');
+                return;
+            }
+            
+            historyBar.classList.add('active');
+            historyContainer.innerHTML = '';
+            
+            historyList.forEach(file => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.dataset.id = file.id;
+                
+                // 如果是当前显示的文件，添加active类
+                if (file.id === currentHistoryId) {
+                    historyItem.classList.add('active');
+                }
+                
+                historyItem.innerHTML = `
+                    <div class="history-item-info" onclick="loadHistoryFile('${file.id}')">
+                        <div class="history-item-name">${file.name}</div>
+                        <div class="history-item-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <button class="history-item-delete" onclick="removeHistoryItem('${file.id}', event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                `;
+                
+                historyContainer.appendChild(historyItem);
+            });
+        }
+
+        function loadHistoryFile(fileId) {
+            const historyList = getHistoryList();
+            const fileRecord = historyList.find(item => item.id === fileId);
+            
+            if (!fileRecord) {
+                showTooltip('历史文件不存在', window.innerWidth / 2, window.innerHeight / 2);
+                return;
+            }
+            
+            // 创建模拟文件对象
+            const mockFile = {
+                name: fileRecord.name,
+                size: fileRecord.size,
+                lastModified: fileRecord.lastModified
+            };
+            
+            // 设置当前历史文件ID
+            currentHistoryId = fileId;
+            isFromCache = true;
+            currentFile = mockFile;
+            
+            // 显示内容
+            displayMarkdown(fileRecord.content, mockFile);
+            
+            // 更新历史文件栏的激活状态
+            renderHistoryBar();
+        }
+
+        function removeHistoryItem(fileId, event) {
+            event.stopPropagation();
+            if (!confirm('确定要删除此历史记录吗？')) {
+                return;
+            }
+            try {
+                let historyList = getHistoryList();
+                historyList = historyList.filter(item => item.id !== fileId);
+                localStorage.setItem('markdown-history', JSON.stringify(historyList));
+                
+                // 如果删除的是当前显示的文件，重置内容
+                if (fileId === currentHistoryId) {
+                    resetContent();
+                }
+                
+                // 更新历史文件栏
+                renderHistoryBar();
+                
+                // 如果历史记录为空，隐藏清除缓存按钮
+                if (historyList.length === 0) {
+                    document.getElementById('clearCacheBtn').style.display = 'none';
+                }
+            } catch (e) {
+                console.error('删除历史记录失败:', e);
+                showTooltip('删除失败', window.innerWidth / 2, window.innerHeight / 2);
+            }
+        }
+
+        function clearAllHistory() {
+            if (confirm('确定要清除所有历史记录吗？')) {
+                try {
+                    localStorage.removeItem('markdown-history');
+                    renderHistoryBar();
+                    document.getElementById('clearCacheBtn').style.display = 'none';
+                    showTooltip('所有历史记录已清除', window.innerWidth / 2, window.innerHeight / 2);
+                } catch (e) {
+                    console.error('清除历史记录失败:', e);
+                    showTooltip('清除失败', window.innerWidth / 2, window.innerHeight / 2);
+                }
             }
         }
 
         function loadFromCache() {
-            try {
-                const cacheData = JSON.parse(localStorage.getItem('markdown-cache'));
-                
-                if (cacheData) {
-                    // 创建一个模拟的文件对象
-                    const cachedFile = {
-                        name: cacheData.fileName,
-                        size: cacheData.fileSize,
-                        lastModified: cacheData.lastModified
-                    };
-                    
-                    isFromCache = true;
-                    displayMarkdown(cacheData.content, cachedFile);
-                    document.getElementById('clearCacheBtn').style.display = 'inline-flex';
-                    
-                    return true;
-                }
-            } catch (e) {
-                console.error('从缓存加载失败:', e);
-            }
-            
+            // 这个函数现在不再需要，因为我们使用新的历史文件系统
             return false;
         }
 
         function clearCache() {
-            localStorage.removeItem('markdown-cache');
-            document.getElementById('clearCacheBtn').style.display = 'none';
-            showTooltip('缓存已清除', window.innerWidth / 2, window.innerHeight / 2);
+            // 清除所有历史记录
+            clearAllHistory();
         }
 
         // 加载保存的设置
@@ -663,12 +854,16 @@
                 maxTOCLevel = parseInt(savedTOCLevel);
             }
             
-            // 尝试从缓存加载文件
-            const hasCache = localStorage.getItem('markdown-cache') !== null;
-            if (hasCache) {
+            // 加载历史文件栏
+            renderHistoryBar();
+            
+            // 如果有历史记录，显示清除缓存按钮
+            const historyList = getHistoryList();
+            if (historyList.length > 0) {
                 document.getElementById('clearCacheBtn').style.display = 'inline-flex';
-                // 自动加载缓存的文件
-                loadFromCache();
+                
+                // 自动加载第一个历史记录
+                loadHistoryFile(historyList[0].id);
             }
         });
 
