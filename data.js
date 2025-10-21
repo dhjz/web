@@ -27,6 +27,7 @@ window.config = {
         { name: '字符压缩', short: '压缩', url: './pako/index.html', color: '#861683' },
         { name: '工具类', short: '工具类', url: './utils/lib.html', color: '#8B4513' },
         { name: 'JS库CDN', short: 'CDN', url: 'https://cdn.199311.xyz/', color: '#138b43' },
+        { name: '镜像库', short: 'CDN', url: 'https://cdn.199311.xyz/lib.html', color: '#7355B0' },
         { name: 'MD文件预览', short: 'MD', url: './md/index.html', color: '#2655bb' },
         { name: 'HTML预览', short: 'HTML', url: './ace/pure-tool.html', color: '#16a34a' },
       ]
