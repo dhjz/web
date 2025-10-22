@@ -3,170 +3,172 @@
 <html class="full js" lang="zh-hant">
 
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-    <meta name="viewport" content="width=760, initial-scale=1, maximum-scale=1">
-    <meta name="description" content="CSS三角形生成器 - 使用CSS绘制三角形">
-    <title>CSS三角形生成器</title>
-    <link rel="stylesheet" href="./static/common.css">
-    <script src="./static/jquery.js"></script>
-    <script src="./static/utils.js"></script>
-    <script src="./static/css.js"></script>
+  <meta name="viewport" content="width=760, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="CSS三角形生成器 - 使用CSS绘制三角形">
+  <title>CSS三角形生成器</title>
+  <link rel="stylesheet" href="./static/index.css">
+  <script src="./static/jquery.js"></script>
+  <script src="./static/utils.js"></script>
+  <script src="./static/css.js"></script>
 </head>
 
 <body>
-    <header id="header">
-        <div id="headerInner">
-            <hgroup>
-                <h1 class="title">CSS三角形生成器</h1>
-            </hgroup>
+  <header id="header">
+    <div id="headerInner">
+      <hgroup>
+        <h1 class="title">CSS三角形生成器</h1>
+      </hgroup>
 
-            <div id="social">
-                <div id="fb-root"></div>
+      <div id="social">
+        <div id="fb-root"></div>
 
-                <div class="fb-like" data-href="http://apps.eky.hk/css-triangle-generator/" data-send="false"
-                    data-layout="button_count" data-width="40" data-show-faces="false"></div>
-                <a href="https://twitter.com/share" class="twitter-share-button"
-                    data-url="http://apps.eky.hk/css-triangle-generator/" data-count="horizontal"
-                    data-via="ekykwan"></a>
+        <div class="fb-like" data-href="http://apps.eky.hk/css-triangle-generator/" data-send="false"
+          data-layout="button_count" data-width="40" data-show-faces="false"></div>
+        <a href="https://twitter.com/share" class="twitter-share-button"
+          data-url="http://apps.eky.hk/css-triangle-generator/" data-count="horizontal" data-via="ekykwan"></a>
 
-                <div class="g-plusone" data-size="small" data-href="http://apps.eky.hk/css-triangle-generator/"></div>
+        <div class="g-plusone" data-size="small" data-href="http://apps.eky.hk/css-triangle-generator/"></div>
+      </div>
+    </div>
+  </header>
+  <article id="article">
+    <aside id="sidebar">
+      <form id="data" action="http://apps.eky.hk/css-triangle-generator" method="get">
+        <fieldset id="fieldset-direction">
+          <legend id="legend-direction">方向</legend>
+          <ul id="direction1" class="directions">
+            <li>
+              <input type="radio" name="direction" id="direction-top" value="top" checked="">
+              <label for="direction-top">上</label>
+            </li>
+            <li>
+              <input type="radio" name="direction" id="direction-right" value="right">
+              <label for="direction-right">右</label>
+            </li>
+            <li>
+              <input type="radio" name="direction" id="direction-bottom" value="bottom">
+              <label for="direction-bottom">下</label>
+            </li>
+            <li>
+              <label for="direction-left">左</label>
+              <input type="radio" name="direction" id="direction-left" value="left">
+            </li>
+          </ul>
+          <ul id="direction2" class="directions">
+            <li>
+              <input type="radio" name="direction" id="direction-topRight" value="topRight">
+              <label for="direction-topRight">右上</label>
+            </li>
+            <li>
+              <input type="radio" name="direction" id="direction-bottomRight" value="bottomRight">
+              <label for="direction-bottomRight">右下</label>
+            </li>
+            <li>
+              <label for="direction-bottomLeft">左下</label>
+              <input type="radio" name="direction" id="direction-bottomLeft" value="bottomLeft">
+            </li>
+            <li>
+              <label for="direction-topLeft">左上</label>
+              <input type="radio" name="direction" id="direction-topLeft" value="topLeft">
+            </li>
+          </ul>
+          <div role="img" id="triangleDirection" class="selected-top">
+            <div class="corners">
+              <label for="direction-topRight" class="triangle topRight"></label>
+              <label for="direction-bottomRight" class="triangle bottomRight"></label>
+              <label for="direction-bottomLeft" class="triangle bottomLeft"></label>
+              <label for="direction-topLeft" class="triangle topLeft"></label>
             </div>
+            <div class="corners rotate-45">
+              <label for="direction-top" class="triangle top"></label>
+              <label for="direction-bottom" class="triangle bottom"></label>
+              <label for="direction-right" class="triangle right"></label>
+              <label for="direction-left" class="triangle left"></label>
+            </div>
+            <div role="img" id="centerFill"></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend id="legend-color">颜色</legend>
+          <input name="color" id="color" type="color" value="#007bff">
+        </fieldset>
+        <fieldset id="fieldset-type">
+          <legend id="legend-type">选项</legend>
+          <input type="checkbox" name="ie6" id="ie6" value="support">
+          <label for="ie6">支持IE6（加上滤镜 filter）</label>
+          <ul>
+            <li id="equilateral">
+              <input type="radio" name="type" id="type-equ" value="equ">
+              <label for="type-equ">等边</label>
+            </li>
+            <li>
+              <input type="radio" name="type" id="type-iso" value="iso" checked="">
+              <label for="type-iso">等腰</label>
+            </li>
+            <li>
+              <input type="radio" name="type" id="type-sca" value="sca">
+              <label for="type-sca">不等边</label>
+            </li>
+          </ul>
+        </fieldset>
+        <fieldset id="fieldset-size">
+          <legend id="legend-size">大小</legend>
+          <ul>
+            <li>
+              <label for="width">宽度</label>
+              <input name="width" id="width" value="200" type="number">px
+              <ul>
+                <li>
+                  <label for="width-left">左</label>
+                  <input name="width-left" id="width-left" value="100" type="number" disabled="">px
+                </li>
+                <li>
+                  <label for="width-right">右</label>
+                  <input name="width-right" id="width-right" value="100" type="number" disabled="">px
+                </li>
+              </ul>
+            </li>
+            <li>
+              <label for="height">高度</label>
+              <input name="height" id="height" value="100" type="number">px
+              <ul>
+                <li>
+                  <label for="height-top">上</label>
+                  <input name="height-top" id="height-top" value="50" type="number" disabled="">px
+                </li>
+                <li>
+                  <label for="height-bottom">下</label>
+                  <input name="height-bottom" id="height-bottom" value="50" type="number" disabled="">px
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </fieldset>
+        <!-- <input id="update" name="update" type="submit" value="Update"> -->
+      </form>
+    </aside>
+    <div id="workArea">
+      <div id="triangleOutput">
+        <div id="triangle"
+          style="border-color: transparent transparent rgb(0, 123, 255); border-width: 0px 0px 200px 200px;">
         </div>
-    </header>
-    <article id="article">
-        <aside id="sidebar">
-            <form id="data" action="http://apps.eky.hk/css-triangle-generator" method="get">
-                <fieldset id="fieldset-direction">
-                    <legend id="legend-direction">方向</legend>
-                    <ul id="direction1" class="directions">
-                        <li>
-                            <input type="radio" name="direction" id="direction-top" value="top" checked="">
-                            <label for="direction-top">上</label>
-                        </li>
-                        <li>
-                            <input type="radio" name="direction" id="direction-right" value="right">
-                            <label for="direction-right">右</label>
-                        </li>
-                        <li>
-                            <input type="radio" name="direction" id="direction-bottom" value="bottom">
-                            <label for="direction-bottom">下</label>
-                        </li>
-                        <li>
-                            <label for="direction-left">左</label>
-                            <input type="radio" name="direction" id="direction-left" value="left">
-                        </li>
-                    </ul>
-                    <ul id="direction2" class="directions">
-                        <li>
-                            <input type="radio" name="direction" id="direction-topRight" value="topRight">
-                            <label for="direction-topRight">右上</label>
-                        </li>
-                        <li>
-                            <input type="radio" name="direction" id="direction-bottomRight" value="bottomRight">
-                            <label for="direction-bottomRight">右下</label>
-                        </li>
-                        <li>
-                            <label for="direction-bottomLeft">左下</label>
-                            <input type="radio" name="direction" id="direction-bottomLeft" value="bottomLeft">
-                        </li>
-                        <li>
-                            <label for="direction-topLeft">左上</label>
-                            <input type="radio" name="direction" id="direction-topLeft" value="topLeft">
-                        </li>
-                    </ul>
-                    <div role="img" id="triangleDirection" class="selected-top">
-                        <div class="corners">
-                            <label for="direction-topRight" class="triangle topRight"></label>
-                            <label for="direction-bottomRight" class="triangle bottomRight"></label>
-                            <label for="direction-bottomLeft" class="triangle bottomLeft"></label>
-                            <label for="direction-topLeft" class="triangle topLeft"></label>
-                        </div>
-                        <div class="corners rotate-45">
-                            <label for="direction-top" class="triangle top"></label>
-                            <label for="direction-bottom" class="triangle bottom"></label>
-                            <label for="direction-right" class="triangle right"></label>
-                            <label for="direction-left" class="triangle left"></label>
-                        </div>
-                        <div role="img" id="centerFill"></div>
-                    </div>
-                </fieldset>
-                <fieldset id="fieldset-type">
-                    <legend id="legend-type">选项</legend>
-                    <input type="checkbox" name="ie6" id="ie6" value="support">
-                    <label for="ie6">支持IE6（加上滤镜 filter）</label>
-                    <ul>
-                        <li id="equilateral">
-                            <input type="radio" name="type" id="type-equ" value="equ">
-                            <label for="type-equ">等边</label>
-                        </li>
-                        <li>
-                            <input type="radio" name="type" id="type-iso" value="iso" checked="">
-                            <label for="type-iso">等腰</label>
-                        </li>
-                        <li>
-                            <input type="radio" name="type" id="type-sca" value="sca">
-                            <label for="type-sca">不等边</label>
-                        </li>
-                    </ul>
-                </fieldset>
-                <fieldset id="fieldset-size">
-                    <legend id="legend-size">大小</legend>
-                    <ul>
-                        <li>
-                            <label for="width">宽度</label>
-                            <input name="width" id="width" value="200" type="number">px
-                            <ul>
-                                <li>
-                                    <label for="width-left">左</label>
-                                    <input name="width-left" id="width-left" value="100" type="number" disabled="">px
-                                </li>
-                                <li>
-                                    <label for="width-right">右</label>
-                                    <input name="width-right" id="width-right" value="100" type="number" disabled="">px
-                                </li>
-                            </ul>
-                        </li>
-                        <li>
-                            <label for="height">高度</label>
-                            <input name="height" id="height" value="100" type="number">px
-                            <ul>
-                                <li>
-                                    <label for="height-top">上</label>
-                                    <input name="height-top" id="height-top" value="50" type="number" disabled="">px
-                                </li>
-                                <li>
-                                    <label for="height-bottom">下</label>
-                                    <input name="height-bottom" id="height-bottom" value="50" type="number"
-                                        disabled="">px
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </fieldset>
-                <fieldset>
-                    <legend id="legend-color">颜色</legend>
-                    <input name="color" id="color" type="color" value="#007bff">
-                </fieldset>
-                <!-- <input id="update" name="update" type="submit" value="Update"> -->
-            </form>
-        </aside>
-        <div id="workArea">
-            <div id="triangleOutput">
-                <div id="triangle"
-                    style="border-color: transparent transparent rgb(0, 123, 255); border-width: 0px 0px 200px 200px;">
-                </div>
-            </div>
-            <div id="cssOutput">
-                <h1>CSS</h1>
-                <textarea id="css" rows="8"
-                    cols="100">width: 0; height: 0; border-style: solid; border-width: 0 100px 100px 100px; border-color: transparent transparent #007bff transparent;</textarea>
-            </div>
-            <div>
-                <button id="copy">复制</button>
-            </div>
-        </div>
-    </article>
+      </div>
+      <div id="cssOutput">
+        <h1>CSS</h1>
+        <textarea id="css" rows="8" cols="100">
+width: 0;
+height: 0;
+border-style: solid;
+border-width: 0 100px 100px 100px;
+border-color: transparent transparent #007bff transparent;</textarea>
+      </div>
+      <div>
+        <button id="copy">复制</button>
+      </div>
+    </div>
+  </article>
 
 
 
