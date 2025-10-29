@@ -258,7 +258,8 @@ func OpenWebView(url string) {
 //go:embed ico.ico
 var iconData []byte
 go utils.GenTaskBarIcon(iconData)
-// utils.go
+//go:build windows   //go:build linux
+// utils.go 分成windows.go和linux.go
 func GenTaskBarIcon(iconData []byte) {
 	if runtime.GOOS == "windows" {
 		systray.Run(
