@@ -226,4 +226,34 @@ func InitAppConfig1() {
 		fmt.Println("Error unmarshalling JSON:", err)
 	}
 }
+
+// @ 打开webview
+// 安装依赖:  go get github.com/jchv/go-webview2
+// main.go:  独立线程运行go-weview2
+go utils.OpenWebView("http://localhost" + addr)
+// utils.go
+func OpenWebView(url string) {
+	w := webview2.NewWithOptions(webview2.WebViewOptions{
+		Debug:     true,
+		AutoFocus: true,
+		WindowOptions: webview2.WindowOptions{
+			Title:  "多线程下载器",
+			Width:  1200,
+			Height: 720,
+			IconId: 1, // icon resource id
+			Center: true,
+		},
+	})
+	if w == nil {
+		log.Fatalln("Failed to load webview.")
+	}
+	defer w.Destroy()
+	w.SetSize(1200, 720, webview2.HintNone) // HintNone  HintFixed
+	w.Navigate(url)
+	w.Run()
+}
+
+
+
+
 `
