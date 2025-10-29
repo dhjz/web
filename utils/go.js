@@ -252,8 +252,41 @@ func OpenWebView(url string) {
 	w.Navigate(url)
 	w.Run()
 }
+// @ 托盘图标
+// go get "github.com/getlantern/systray"
+// main.go
+//go:embed ico.ico
+var iconData []byte
+go utils.GenTaskBarIcon(iconData)
+// utils.go
+func GenTaskBarIcon(iconData []byte) {
+	if runtime.GOOS == "windows" {
+		systray.Run(
+			func() {
+				systray.SetIcon(iconData)
+				// systray.SetTitle("D-Monitor")
+				// systray.SetTooltip("D-Monitor 右键点击打开菜单！")
+				// menuOpen := systray.AddMenuItem("打开网页", "打开系统网页")
+				// systray.AddSeparator()
+				menuQuit := systray.AddMenuItem("退出", "退出程序")
 
-
+				go func() {
+					for {
+						select {
+						// case <-menuOpen.ClickedCh:
+						// OpenBrowser(fmt.Sprintf("http://localhost:%d/", base.RunPort))
+						case <-menuQuit.ClickedCh:
+							systray.Quit()
+							os.Exit(0)
+						}
+					}
+				}()
+			},
+			func() {
+				log.Println("Systray has exited.")
+			})
+	}
+}
 
 
 `
