@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章详情</title>
+    <style>
+      :root { --input-height: 30px; --input-radius: 6px;}
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; margin: 0; padding: 14px; background: #f5f5f5; }
+      .container { width: 96%; max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+      h1 { color: #333; margin-bottom: 20px; font-size: 28px; }
+      .content { color: #666; margin-bottom: 30px; font-size: 16px; }
+      .comments-section { border-top: 1px solid #eee; padding-top: 20px; }
+      .comments-title { font-size: 18px; color: #333; margin-bottom: 15px; }
+      .comment { background: #f9f9f9; padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 3px solid #007bff; }
+      .comment-text { color: #555; margin: 0; }
+      input, select { background-color: #fff; border-radius: var(--input-radius); border: 1px solid #dcdfe6;  color: #333;  display: inline-block; 
+          height: var(--input-height); line-height: var(--input-height); padding: 0 10px;  width: 300px; position: relative; }
+      button, .btn { display: inline-block; white-space: nowrap;  cursor: pointer;  background: #fff;  border: 1px solid #dcdfe6;  color: #333;  -webkit-appearance: none;
+  text-align: center;  user-select: none; height: var(--input-height); line-height: var(--input-height); padding: 0px 10px; border-radius: var(--input-radius); }
+    </style>
+</head>
+<body>
+    <div class="container">
+      <div><input type="text" id="v2id" placeholder="v2ex 文章id"> <button onclick="init()">加载</button></div>
+      <h1 id="title"></h1>
+      <div class="content" id="content"></div>
+      <div class="comments-section">
+        <h2 class="comments-title">评论</h2>
+        <div id="comments"></div>
+      </div>
+    </div>
+    
+    <script>
+      function init() {
+        // const article = {
+        //   title: "欢迎来到我的博客",
+        //   content: "这是一篇示例文章内容。这里可以展示文章的主要内容，支持多行文本显示。内容会自动换行，保持良好的阅读体验。",
+        //   comments: [
+        //     "这篇文章写得很好！",
+        //     "很有启发性的内容，感谢分享。",
+        //     "期待看到更多精彩的文章。"
+        //   ]
+        // };
+        const v2id = document.getElementById('v2id').value
+        if (v2id.length < 1) return alert('请输入v2ex 文章id')
+        fetch('https://u.199311.xyz/proxy?url=' + encodeURIComponent('https://www.v2ex.com/t/' + v2id)).then(res => res.text()).then(res => {
+          let doc = new DOMParser().parseFromString(res, 'text/html')
+          const article = {
+            title: doc.querySelector('.header h1').innerText,
+            content: doc.querySelector('.topic_content').innerHTML,
+            comments: []
+          }
+          doc.querySelectorAll('.reply_content').forEach(item => {
+            article.comments.push(item.innerText)
+          })
+          render(article);
+        })
+        
+      }
+
+      function render(article) {
+        document.getElementById('title').textContent = article.title;
+        document.getElementById('content').innerHTML = article.content;
+
+        const commentsContainer = document.getElementById('comments');
+        article.comments.forEach(comment => {
+          const commentDiv = document.createElement('div');
+          commentDiv.className = 'comment';
+          commentDiv.innerHTML = `<p class="comment-text">${comment}</p>`;
+          commentsContainer.appendChild(commentDiv);
+        });
+      }
+
+      // init()
+    </script>
+</body>
+</html>

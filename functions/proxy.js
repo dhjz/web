@@ -1,8 +1,20 @@
 export const onRequest = async ({ request }) => {
   const params = Object.fromEntries(new URL(request.url).searchParams);
+  // OPTIONS请求直接返回
+  if (request.method === 'OPTIONS') {
+    return new Response('', {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
 
-  let { url, method = 'get', type = 'text/plain;charset=utf-8', host, referer, cookie, accept } = params
+  let { u, url, method = 'get', type = 'text/plain;charset=utf-8', host, referer, cookie, accept } = params
   let result = ''
+  url = url || u;
   if (url) {
     try {
       const headers = {
