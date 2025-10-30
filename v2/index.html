@@ -34,9 +34,11 @@
     
     <script>
       if (location.hash.length > 1) {
-        init(location.hash.substring(1))
+        let val = location.hash.substring(1)
+        document.getElementById('v2id').value = val
+        init()
       }
-      function init(val) {
+      function init() {
         // const article = {
         //   title: "欢迎来到我的博客",
         //   content: "这是一篇示例文章内容。这里可以展示文章的主要内容，支持多行文本显示。内容会自动换行，保持良好的阅读体验。",
@@ -46,7 +48,7 @@
         //     "期待看到更多精彩的文章。"
         //   ]
         // };
-        const v2id = val || document.getElementById('v2id').value
+        const v2id = document.getElementById('v2id').value
         if (v2id.length < 1) return alert('请输入v2ex 文章id')
         fetch('https://util.199311.xyz/proxy?url=' + encodeURIComponent('https://www.v2ex.com/t/' + v2id)).then(res => res.text()).then(res => {
           let doc = new DOMParser().parseFromString(res, 'text/html')
