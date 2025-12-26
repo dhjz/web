@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vue3 分片下载器</title>
+  <style>
+    body { margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--fg); }
+    :root { --bg:#0f1115; --fg:rgba(255,255,255,.92); --panel:rgba(255,255,255,.04); --panel2:rgba(255,255,255,.03); --bd:rgba(127,127,127,.25); --bd2:rgba(127,127,127,.45); --inputBg:rgba(0,0,0,.15); --muted:rgba(255,255,255,.72); --muted2:rgba(255,255,255,.75); --accent:rgba(90,120,255,.75); --accentBd:rgba(90,120,255,.55); --danger:rgba(255,80,100,.60); --warn:rgba(230,180,80,.65); --ok:rgba(60,190,110,.55); }
+    body.light { --bg:#f5f6fa; --fg:rgba(0,0,0,.86); --panel:rgba(0,0,0,.03); --panel2:rgba(0,0,0,.02); --bd:rgba(0,0,0,.12); --bd2:rgba(0,0,0,.22); --inputBg:rgba(255,255,255,.95); --muted:rgba(0,0,0,.60); --muted2:rgba(0,0,0,.68); --accent:rgba(55,95,255,.80); --accentBd:rgba(55,95,255,.55); --danger:rgba(225,29,72,.55); --warn:rgba(217,119,6,.55); --ok:rgba(22,163,74,.55); }
+
+    .wrap { width:90%; max-width:1280px; margin:18px auto 40px; }
+    .header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:12px; }
+    .headerRight { display:flex; align-items:center; gap:10px; }
+    h1 { margin:0; font-size:16px; }
+    .hint { font-size:12px; opacity:.85; color:var(--muted); }
+    .layout { display:grid; grid-template-columns:360px 1fr; gap:12px; align-items:start; }
+    .panel { border:1px solid var(--bd); border-radius:10px; background:var(--panel); padding:12px; }
+    .panelTitle { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; font-weight:650; font-size:13px; }
+
+    .btn { padding:7px 10px; border-radius:8px; border:1px solid var(--bd); background:transparent; color:inherit; cursor:pointer; }
+    .btn:hover { border-color:var(--bd2); }
+    .btn:disabled { opacity:.55; cursor:not-allowed; }
+    .btnPrimary { border-color:var(--accentBd); background:rgba(90,120,255,.10); }
+    .btnDanger { border-color:var(--danger); background:rgba(255,80,100,.08); }
+    .btnWarn { border-color:var(--warn); background:rgba(230,180,80,.08); }
+
+    .select { padding:7px 10px; border-radius:8px; border:1px solid var(--bd); background:transparent; color:inherit; }
+    .select:hover { border-color:var(--bd2); }
+    .select:disabled { opacity:.55; cursor:not-allowed; }
+
+    .list { display:flex; flex-direction:column; gap:8px; max-height:640px; overflow:auto; padding-right:4px; }
+    .item { border:1px solid var(--bd); border-radius:10px; padding:10px; background:var(--panel2); cursor:pointer; }
+    .item:hover { border-color:var(--bd2); }
+    .item.active { border-color:var(--accentBd); }
+
+    .name { font-weight:650; font-size:13px; line-height:1.25; word-break:break-word; }
+    .meta { font-size:12px; opacity:.9; color:var(--muted); margin-top:4px; display:flex; gap:10px; flex-wrap:wrap; }
+    .url { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:11px; color:var(--muted); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .form { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .field label { display:block; font-size:12px; color:var(--muted2); margin-bottom:6px; }
+    .span2 { grid-column:1 / -1; }
+    input { width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--bd); outline:none; background:var(--inputBg); color:inherit; }
+    input:focus { border-color:var(--accentBd); box-shadow:0 0 0 3px rgba(90,120,255,.14); }
+    input:disabled { opacity:.65; cursor:not-allowed; }
+
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+    .pill { font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--bd); opacity:.95; }
+    .pill.ok { border-color:var(--ok); color:rgba(60,190,110,.95); }
+    .pill.warn { border-color:var(--warn); color:rgba(230,180,80,.95); }
+    .pill.bad { border-color:var(--danger); color:rgba(255,80,100,.95); }
+
+    .progressBox { margin-top:12px; border:1px solid var(--bd); border-radius:10px; padding:10px; background:var(--panel2); }
+    .pTop { display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+    .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:12px; }
+    .muted { opacity:.85; color:var(--muted); font-size:12px; }
+    .bar { height:10px; border-radius:999px; background:rgba(127,127,127,.22); overflow:hidden; margin-top:8px; border:1px solid var(--bd); }
+    .bar > div { height:100%; width:0%; background:var(--accent); transition:width .12s linear; }
+
+    .log { margin-top:10px; border:1px solid var(--bd); border-radius:10px; padding:10px; background:rgba(0,0,0,.10); max-height:240px; overflow:auto; white-space:pre-wrap; line-height:1.45; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:12px; }
+    body.light .log { background:rgba(255,255,255,.85); }
+    .empty { color:var(--muted); font-size:12px; }
+  </style>
+</head>
+
+<body class="light">
+<div id="app" class="wrap">
+  <div class="header">
+    <div>
+      <h1>纯前端多进程下载器（跨域Chrome）</h1>
+      <div class="hint">要求服务器支持 Range(206)。可选择“文件模式/内存模式”。</div>
+    </div>
+
+    <div class="headerRight">
+      <select class="select" v-model="ui.modeChoice" :disabled="running" :title="modeSelectTitle">
+        <option value="auto" v-if="supportsFSA">自动（优先文件模式）</option>
+        <option value="file" v-if="supportsFSA">文件模式（写盘）</option>
+        <option value="memory">内存模式（Blob）</option>
+      </select>
+
+      <button class="btn" @click="toggleTheme" :disabled="running">{{ ui.theme === 'light' ? '夜间模式' : '白天模式' }}</button>
+      <button class="btn btnPrimary" @click="downloadBat">跨域脚本</button>
+      <div class="hint">{{ modeHint }}</div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Left -->
+    <div class="panel">
+      <div class="panelTitle">
+        <span>文件历史</span>
+        <button class="btn" @click="clearHistory" :disabled="history.length===0">清空</button>
+      </div>
+
+      <div class="list" v-if="history.length">
+        <div class="item" v-for="(it, idx) in history" :key="it.time + '_' + idx" :class="{ active: selectedKey === (it.time + '_' + idx) }" @click="selectHistory(it, it.time + '_' + idx)" :title="it.url">
+          <div class="name">{{ it.filename || '(无文件名)' }}</div>
+          <div class="meta"><span>{{ fmtBytes(it.size) }}</span><span>{{ fmtTime(it.time) }}</span></div>
+          <div class="url">{{ it.url }}</div>
+          <div class="meta"><span>并发 {{ it.concurrency ?? '-' }}</span><span>分片 {{ it.chunkMB ?? '-' }}MB</span><span>方式 {{ it.mode || '-' }}</span><span>状态 {{ it.status || '-' }}</span></div>
+        </div>
+      </div>
+      <div v-else class="empty">暂无历史记录</div>
+    </div>
+
+    <!-- Right -->
+    <div class="panel">
+      <div class="panelTitle">
+        <span>下载参数与进度</span>
+        <span class="pill" :class="capClass">{{ capText }}</span>
+      </div>
+
+      <div class="form">
+        <div class="field span2">
+          <label>下载 URL</label>
+          <input v-model.trim="form.url" :disabled="running" placeholder="https://example.com/file.zip" />
+        </div>
+
+        <div class="field">
+          <label>并发数（默认 16，实时保存）</label>
+          <input v-model.number="form.concurrency" :disabled="running" type="number" min="1" max="32" />
+        </div>
+
+        <div class="field">
+          <label>分片大小 MB（默认 1，实时保存）</label>
+          <input v-model.number="form.chunkMB" :disabled="running" type="number" min="1" max="256" />
+        </div>
+
+        <div class="field span2">
+          <label>文件名（可选）</label>
+          <input v-model.trim="form.filename" :disabled="running" placeholder="留空自动推断" />
+        </div>
+
+        <div class="field span2">
+          <label>请求头 JSON（可选）</label>
+          <input v-model.trim="form.headersJson" :disabled="running" placeholder='{"Authorization":"Bearer xxx"}' />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" @click="doProbe" :disabled="running || !form.url">检测</button>
+        <button class="btn btnPrimary" @click="start" :disabled="running || !form.url">开始下载</button>
+        <button class="btn btnWarn" @click="retryFailed" :disabled="running || failedRanges.length===0">重试下载 ({{ failedRanges.length }})</button>
+        <button class="btn btnDanger" @click="cancel" :disabled="!running">取消</button>
+      </div>
+
+      <div class="progressBox">
+        <div class="pTop">
+          <div><b>{{ progress.percent.toFixed(2) }}%</b> <span class="muted">({{ fmtBytes(progress.downloaded) }} / {{ fmtBytes(progress.total) }})</span></div>
+          <div class="mono muted">{{ speedText }}</div>
+        </div>
+        <div class="muted mono" style="margin:6px 0 8px;">已下载字节：{{ progress.downloaded }} / {{ progress.total || 0 }} | 失败分片：{{ failedRanges.length }}</div>
+        <div class="bar"><div :style="{ width: progress.percent.toFixed(2) + '%' }"></div></div>
+      </div>
+
+      <div class="log">{{ logs.join('\n') }}</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+<script>
+const { createApp, watch } = Vue;
+
+createApp({
+  data() {
+    return {
+      supportsFSA: !!window.showSaveFilePicker,
+
+      running: false,
+      controller: null,
+
+      capText: "未检测",
+      capClass: "warn",
+      selectedKey: "",
+
+      form: { url: "", concurrency: 16, chunkMB: 1, filename: "", headersJson: "" },
+
+      progress: { total: 0, downloaded: 0, percent: 0, bps: 0 },
+
+      logs: [],
+      history: [],
+
+      ui: { modeChoice: "auto", theme: "light" },
+
+      failedRanges: [],
+      activeTask: null,
+      partBuffers: null,
+      fsState: null,
+
+      HISTORY_KEY: "mp_downloader_history_v1",
+      SETTINGS_KEY: "mp_downloader_settings_v1",
+      UI_KEY: "mp_downloader_ui_v1",
+      MAX_HISTORY: 50
+    };
+  },
+
+  computed: {
+    modeHint() {
+      const choice = this.ui.modeChoice;
+      if (!this.supportsFSA) return "当前仅支持：内存模式";
+      if (choice === "file") return "已选择：文件模式（写盘）";
+      if (choice === "memory") return "已选择：内存模式（Blob）";
+      return "已选择：自动（优先文件模式）";
+    },
+    modeSelectTitle() {
+      if (!this.supportsFSA) return "浏览器不支持 showSaveFilePicker，仅能使用内存模式";
+      return "选择下载模式";
+    },
+    speedText() { return this.progress.bps > 0 ? (this.fmtBytes(this.progress.bps) + "/s") : ""; }
+  },
+
+  mounted() {
+    this.history = this.loadHistory();
+    this.loadSettings();
+    this.loadUI();
+    this.applyTheme();
+    if (!this.supportsFSA && this.ui.modeChoice !== "memory") this.ui.modeChoice = "memory";
+    this.setCap("未检测", "warn");
+
+    let t = null;
+    watch(() => this.form.url, (v) => {
+      this.form.filename = "";
+      clearTimeout(t);
+      if (!v || this.running) return;
+      t = setTimeout(() => this.doProbe().catch(() => {}), 700);
+    });
+
+    const saveSettings = () => this.saveSettings();
+    watch(() => this.form.concurrency, saveSettings);
+    watch(() => this.form.chunkMB, saveSettings);
+    watch(() => this.form.headersJson, saveSettings);
+    watch(() => this.form.filename, saveSettings);
+
+    const saveUI = () => this.saveUI();
+    watch(() => this.ui.modeChoice, () => { if (!this.supportsFSA) this.ui.modeChoice = "memory"; saveUI(); });
+    watch(() => this.ui.theme, () => { this.applyTheme(); saveUI(); });
+  },
+
+  methods: {
+    // ----- theme -----
+    applyTheme() { document.body.classList.toggle("light", this.ui.theme === "light"); },
+    toggleTheme() { this.ui.theme = (this.ui.theme === "light") ? "dark" : "light"; },
+
+    loadUI() {
+      try {
+        const raw = localStorage.getItem(this.UI_KEY);
+        if (!raw) return;
+        const u = JSON.parse(raw);
+        if (u && typeof u === "object") {
+          if (typeof u.modeChoice === "string") this.ui.modeChoice = u.modeChoice;
+          if (typeof u.theme === "string") this.ui.theme = u.theme;
+        }
+      } catch {}
+    },
+    saveUI() { try { localStorage.setItem(this.UI_KEY, JSON.stringify({ modeChoice: this.ui.modeChoice, theme: this.ui.theme })); } catch {} },
+
+    // ----- bat download -----
+    downloadBat() {
+      const content = `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --disable-web-security --user-data-dir=E:\\AllCache\\Chrome --allow-running-insecure-content "https://u.199311.xyz/down/"\r\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = "多线程下载Chrome.bat";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      this.log("已下载：多线程下载Chrome.bat（仅用于本机开发测试）");
+    },
+
+    // ----- storage -----
+    clampForm() { this.form.concurrency = Math.max(1, Math.min(32, Number(this.form.concurrency) || 16)); this.form.chunkMB = Math.max(1, Math.min(256, Number(this.form.chunkMB) || 1)); },
+    loadSettings() {
+      try {
+        const raw = localStorage.getItem(this.SETTINGS_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (s && typeof s === "object") {
+          if (Number.isFinite(s.concurrency)) this.form.concurrency = s.concurrency;
+          if (Number.isFinite(s.chunkMB)) this.form.chunkMB = s.chunkMB;
+          if (typeof s.headersJson === "string") this.form.headersJson = s.headersJson;
+          if (typeof s.filename === "string") this.form.filename = s.filename;
+        }
+      } catch {}
+      this.clampForm();
+    },
+    saveSettings() {
+      this.clampForm();
+      const payload = { concurrency: this.form.concurrency, chunkMB: this.form.chunkMB, headersJson: this.form.headersJson || "", filename: this.form.filename || "" };
+      try { localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(payload)); } catch {}
+    },
+    loadHistory() {
+      try { const raw = localStorage.getItem(this.HISTORY_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch { return []; }
+    },
+    saveHistory(arr) { localStorage.setItem(this.HISTORY_KEY, JSON.stringify(arr.slice(0, this.MAX_HISTORY))); },
+    addHistory(entry) { const arr = this.loadHistory(); arr.unshift(entry); this.saveHistory(arr); this.history = arr.slice(0, this.MAX_HISTORY); },
+    clearHistory() { localStorage.removeItem(this.HISTORY_KEY); this.history = []; this.selectedKey = ""; this.log("已清空历史记录"); },
+    selectHistory(item, key) { this.selectedKey = key; if (this.running) return; this.form.url = item.url || ""; this.form.filename = item.filename || ""; this.saveSettings(); },
+
+    // ----- ui utils -----
+    setCap(text, kind) { this.capText = text; this.capClass = kind; },
+    log(line) { this.logs.push(`[${new Date().toLocaleTimeString()}] ${line}`); if (this.logs.length > 600) this.logs.shift(); },
+    fmtBytes(n) { if (!Number.isFinite(n)) return "-"; const u=["B","KB","MB","GB","TB"]; let i=0,x=n; while (x>=1024 && i<u.length-1) { x/=1024; i++; } return `${x.toFixed(i===0?0:2)} ${u[i]}`; },
+    fmtTime(iso) { try { return new Date(iso).toLocaleString(); } catch { return iso; } },
+    nowISO() { return new Date().toISOString(); },
+    resetProgress(total) { this.progress.total = total || 0; this.progress.downloaded = 0; this.progress.percent = 0; this.progress.bps = 0; this._speedState = null; },
+    guessNameFromUrl(url) { try { const u = new URL(url); const p = u.pathname.split("/").filter(Boolean).pop(); if (p) return decodeURIComponent(p.split("?")[0]); } catch {} return "download.bin"; },
+    parseContentDispositionFilename(cd) {
+      if (!cd) return null;
+      const mStar = cd.match(/filename\*\s*=\s*([^']*)''([^;]+)/i);
+      if (mStar && mStar[2]) { try { return decodeURIComponent(mStar[2].trim()); } catch { return mStar[2].trim(); } }
+      const m = cd.match(/filename\s*=\s*"([^"]+)"/i) || cd.match(/filename\s*=\s*([^;]+)/i);
+      return m ? m[1].trim() : null;
+    },
+    safeJsonParseHeaders(s) {
+      if (!s || !s.trim()) return {};
+      let obj;
+      try { obj = JSON.parse(s); } catch (e) { throw new Error("请求头 JSON 解析失败: " + e.message); }
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("请求头必须是 JSON 对象");
+      for (const k of Object.keys(obj)) obj[k] = String(obj[k]);
+      return obj;
+    },
+
+    // ----- probe -----
+    async probe(url, extraHeaders) {
+      const out = { size: null, filename: null, rangeWorks: false, via: "", notes: [] };
+      try {
+        const head = await fetch(url, { method: "HEAD", headers: extraHeaders });
+        out.via = "HEAD";
+        const len = head.headers.get("content-length");
+        out.size = len ? Number(len) : null;
+        out.filename = this.parseContentDispositionFilename(head.headers.get("content-disposition"));
+        const rp = await fetch(url, { method: "GET", headers: { ...extraHeaders, Range: "bytes=0-0" } });
+        out.rangeWorks = (rp.status === 206);
+        if (!out.size) { const cr = rp.headers.get("content-range"); const m = cr && cr.match(/\/(\d+)$/); out.size = m ? Number(m[1]) : out.size; }
+        if (!out.filename) out.filename = this.parseContentDispositionFilename(rp.headers.get("content-disposition")) || out.filename;
+        if (!out.rangeWorks) out.notes.push(`Range 探测未返回 206（状态码 ${rp.status}）`);
+        return out;
+      } catch (e) { out.notes.push("HEAD/探测失败: " + (e?.message || String(e))); }
+      try {
+        const rp = await fetch(url, { method: "GET", headers: { ...extraHeaders, Range: "bytes=0-0" } });
+        out.via = "RangeProbe";
+        out.rangeWorks = (rp.status === 206);
+        const cr = rp.headers.get("content-range");
+        const m = cr && cr.match(/\/(\d+)$/);
+        out.size = m ? Number(m[1]) : null;
+        out.filename = this.parseContentDispositionFilename(rp.headers.get("content-disposition"));
+        if (!out.rangeWorks) out.notes.push(`Range 探测未返回 206（状态码 ${rp.status}）`);
+        return out;
+      } catch (e) { out.notes.push("Range 探测失败: " + (e?.message || String(e))); return out; }
+    },
+    async doProbe() {
+      const url = this.form.url.trim();
+      if (!url) return;
+      let extraHeaders = {};
+      try { extraHeaders = this.safeJsonParseHeaders(this.form.headersJson); } catch (e) { this.log(e.message); this.setCap("请求头错误", "bad"); return; }
+      this.setCap("检测中", "warn");
+      this.log("开始检测...");
+      const info = await this.probe(url, extraHeaders);
+      this.log(`检测方式：${info.via || "-"}`);
+      this.log(`Range 支持：${info.rangeWorks ? "是(206)" : "否/未知"}`);
+      this.log(`大小：${info.size ? info.size + " (" + this.fmtBytes(info.size) + ")" : "-"}`);
+      if (info.filename) this.log(`文件名提示：${info.filename}`);
+      if (info.notes.length) info.notes.forEach(n => this.log("备注：" + n));
+      if (info.rangeWorks && info.size) this.setCap("支持 Range 分片", "ok");
+      else if (info.size) this.setCap("可获取大小但 Range 不确定", "warn");
+      else this.setCap("无法检测到大小/Range", "bad");
+      if (!this.form.filename.trim()) { this.form.filename = info.filename || this.guessNameFromUrl(url); this.saveSettings(); }
+    },
+
+    // ----- download core -----
+    splitRanges(totalSize, chunkSize) { const ranges=[]; let start=0; while (start<totalSize) { const end=Math.min(start+chunkSize-1,totalSize-1); ranges.push({ start, end }); start=end+1; } return ranges; },
+    async fetchRangeOnce(url, start, end, { extraHeaders, signal }) {
+      const res = await fetch(url, { method: "GET", headers: { ...extraHeaders, Range: `bytes=${start}-${end}` }, signal });
+      if (res.status !== 206) throw new Error(`期望 206，但返回 ${res.status}`);
+      return await res.arrayBuffer();
+    },
+    async fetchRangeWithRetry(url, start, end, { extraHeaders, signal, retries }) {
+      let lastErr;
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try { return await this.fetchRangeOnce(url, start, end, { extraHeaders, signal }); }
+        catch (e) { lastErr = e; await new Promise(r => setTimeout(r, 200 * (attempt + 1))); }
+      }
+      throw lastErr;
+    },
+    pushFailed(idx, start, end, err) {
+      const msg = err?.message || String(err);
+      const existing = this.failedRanges.find(x => x.idx === idx);
+      if (existing) { existing.attempts += 1; existing.lastError = msg; } else this.failedRanges.push({ idx, start, end, attempts: 1, lastError: msg });
+      this.log(`分片失败 idx=${idx} bytes=${start}-${end}：${msg}`);
+    },
+    updatePercentAndSpeedTick() {
+      const total = this.progress.total || 0;
+      if (total > 0) this.progress.percent = Math.min(100, (this.progress.downloaded / total) * 100);
+      const now = performance.now();
+      if (!this._speedState) this._speedState = { lastT: now, lastB: this.progress.downloaded };
+      const dt = (now - this._speedState.lastT) / 1000;
+      if (dt >= 0.5) { const dB = this.progress.downloaded - this._speedState.lastB; this.progress.bps = dB / dt; this._speedState.lastT = now; this._speedState.lastB = this.progress.downloaded; }
+    },
+    async flushFS() {
+      const task = this.activeTask;
+      const fs = this.fsState;
+      if (!task || task.mode !== "FileSystemAccess" || !fs) return;
+      while (fs.flushIndex < task.ranges.length) {
+        if (task.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        if (!fs.done[fs.flushIndex]) break;
+        const buf = fs.buffers[fs.flushIndex];
+        await fs.writable.write(buf);
+        fs.buffers[fs.flushIndex] = null;
+        fs.flushIndex++;
+      }
+    },
+    async runDownloadPass({ onlyIndices = null, maxPerChunkRetries = 2 } = {}) {
+      const task = this.activeTask;
+      if (!task) throw new Error("无任务可执行");
+      const { url, extraHeaders, ranges, concurrency, signal } = task;
+      const indices = onlyIndices ? [...onlyIndices] : ranges.map((_, i) => i);
+      let cursor = 0;
+      const worker = async () => {
+        while (true) {
+          const k = cursor++;
+          if (k >= indices.length) return;
+          const idx = indices[k];
+          const { start, end } = ranges[idx];
+          try {
+            const buf = await this.fetchRangeWithRetry(url, start, end, { extraHeaders, signal, retries: maxPerChunkRetries });
+            if (task.mode === "MemoryBlob") {
+              if (this.partBuffers[idx] == null) { this.partBuffers[idx] = buf; this.progress.downloaded += buf.byteLength; } else { this.partBuffers[idx] = buf; }
+            } else {
+              const fs = this.fsState;
+              if (fs.done[idx] !== true) { fs.buffers[idx] = buf; fs.done[idx] = true; this.progress.downloaded += buf.byteLength; } else { fs.buffers[idx] = buf; }
+            }
+          } catch (e) {
+            this.pushFailed(idx, start, end, e);
+          } finally {
+            this.updatePercentAndSpeedTick();
+          }
+        }
+      };
+      const workers = Array.from({ length: Math.min(concurrency, Math.max(indices.length, 1)) }, worker);
+      await Promise.all(workers);
+      if (task.mode === "FileSystemAccess") await this.flushFS();
+    },
+    collectMissingIndices() {
+      const task = this.activeTask;
+      if (!task) return [];
+      const missing = [];
+      if (task.mode === "MemoryBlob") { for (let i=0;i<this.partBuffers.length;i++) if (this.partBuffers[i]==null) missing.push(i); }
+      else { for (let i=0;i<this.fsState.done.length;i++) if (!this.fsState.done[i]) missing.push(i); }
+      return missing;
+    },
+    async finalizeIfComplete() {
+      const task = this.activeTask;
+      if (!task) return false;
+      if (this.failedRanges.length > 0) return false;
+
+      if (task.mode === "MemoryBlob") {
+        if (this.partBuffers.findIndex(x => x == null) !== -1) return false;
+        const blob = new Blob(this.partBuffers, { type: "application/octet-stream" });
+        const a = document.createElement("a");
+        const objUrl = URL.createObjectURL(blob);
+        a.href = objUrl;
+        a.download = task.filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+        this.log("内存合并完成（已触发保存）");
+        return true;
+      }
+
+      await this.flushFS();
+      if (this.fsState.flushIndex !== task.ranges.length) return false;
+      await this.fsState.writable.close();
+      this.log("写盘完成（文件已关闭）");
+      return true;
+    },
+
+    cancel() { if (this.controller) this.controller.abort(); },
+
+    async start() {
+      const url = this.form.url.trim();
+      if (!url) return;
+
+      this.clampForm();
+      this.saveSettings();
+
+      let extraHeaders = {};
+      try { extraHeaders = this.safeJsonParseHeaders(this.form.headersJson); } catch (e) { this.log(e.message); this.setCap("请求头错误", "bad"); return; }
+
+      const concurrency = this.form.concurrency;
+      const chunkMB = this.form.chunkMB;
+      const chunkSize = Math.floor(chunkMB * 1024 * 1024);
+      const filename = this.form.filename.trim() || this.guessNameFromUrl(url);
+
+      this.logs = [];
+      this.failedRanges = [];
+      this.activeTask = null;
+      this.partBuffers = null;
+      this.fsState = null;
+      this.resetProgress(0);
+
+      this.running = true;
+      this.controller = new AbortController();
+      this.setCap("准备中", "warn");
+
+      const entryBase = { time: this.nowISO(), url, filename, size: null, concurrency, chunkMB, mode: "", status: "" };
+
+      try {
+        const info = await this.probe(url, extraHeaders);
+        const total = info.size;
+
+        if (!total || !Number.isFinite(total)) { this.setCap("缺少总大小", "bad"); this.log("无法获取文件总大小：分片下载需要 Content-Length 或 Content-Range。"); return; }
+        if (!info.rangeWorks) { this.setCap("不支持 Range", "bad"); this.log("服务器未返回 206，可能不支持 Range。该页面仅实现 Range 并发分片下载。"); return; }
+
+        const ranges = this.splitRanges(total, chunkSize);
+        this.resetProgress(total);
+        this.progress.total = total;
+
+        // decide mode by selector
+        let mode = "MemoryBlob";
+        let writable = null;
+
+        const choice = this.supportsFSA ? this.ui.modeChoice : "memory";
+        if (choice === "memory") mode = "MemoryBlob";
+        else if (choice === "file") mode = "FileSystemAccess";
+        else mode = this.supportsFSA ? "FileSystemAccess" : "MemoryBlob"; // auto
+
+        if (mode === "FileSystemAccess") {
+          if (!this.supportsFSA) { mode = "MemoryBlob"; }
+          else {
+            const handle = await window.showSaveFilePicker({ suggestedName: filename });
+            writable = await handle.createWritable();
+          }
+        }
+
+        entryBase.mode = mode;
+        entryBase.size = total;
+
+        this.activeTask = { url, filename, extraHeaders, total, ranges, chunkSize, concurrency, mode, signal: this.controller.signal };
+        if (mode === "MemoryBlob") this.partBuffers = new Array(ranges.length).fill(null);
+        else this.fsState = { writable, done: new Array(ranges.length).fill(false), buffers: new Array(ranges.length).fill(null), flushIndex: 0 };
+
+        this.log(`开始下载：${url}`);
+        this.log(`文件：${filename}`);
+        this.log(`总大小：${total} (${this.fmtBytes(total)}) 并发：${concurrency} 分片：${chunkMB}MB 分片数：${ranges.length}`);
+        this.log(`模式：${mode}`);
+
+        await this.runDownloadPass({ maxPerChunkRetries: 2 });
+
+        if (this.failedRanges.length > 0) {
+          this.setCap(`存在失败分片：${this.failedRanges.length}（可点重试下载）`, "warn");
+          entryBase.status = "failed";
+          this.addHistory(entryBase);
+          this.log("首轮结束：存在失败分片。点击“重试下载”补齐。");
+          return;
+        }
+
+        const ok = await this.finalizeIfComplete();
+        if (!ok) {
+          this.setCap("未完全下载（可重试）", "warn");
+          const missing = this.collectMissingIndices();
+          for (const idx of missing) { const r = ranges[idx]; this.pushFailed(idx, r.start, r.end, new Error("缺失分片（需重试）")); }
+          entryBase.status = "failed";
+          this.addHistory(entryBase);
+          this.log("未确认全部完成，可点击“重试下载”。");
+          return;
+        }
+
+        this.setCap("下载成功", "ok");
+        entryBase.status = "success";
+        this.addHistory(entryBase);
+      } catch (e) {
+        const isAbort = e && e.name === "AbortError";
+        const isCancelPick = e && e.name === "NotAllowedError";
+        if (isAbort || isCancelPick) {
+          this.setCap("已取消", "warn");
+          this.log(isAbort ? "已取消下载。" : "已取消（未选择保存位置）。");
+          entryBase.status = "canceled";
+          this.addHistory(entryBase);
+        } else {
+          this.setCap("下载失败", "bad");
+          this.log("下载失败：" + (e?.message || String(e)));
+          entryBase.status = "failed";
+          this.addHistory(entryBase);
+        }
+        try { if (this.fsState?.writable) await this.fsState.writable.abort(); } catch {}
+      } finally {
+        this.running = false;
+        this.controller = null;
+      }
+    },
+
+    async retryFailed() {
+      if (this.running) return;
+      if (!this.activeTask) { this.log("没有可重试的任务，请先开始下载。"); return; }
+      if (this.failedRanges.length === 0) { this.log("没有失败分片。"); return; }
+
+      this.running = true;
+      this.controller = new AbortController();
+      this.activeTask.signal = this.controller.signal;
+
+      try {
+        this.setCap(`重试中：${this.failedRanges.length} 个失败分片`, "warn");
+        this.log(`开始重试失败分片：${this.failedRanges.length} 个`);
+
+        let round = 0;
+        while (this.failedRanges.length > 0) {
+          round++;
+          const toRetry = this.failedRanges.map(x => x.idx);
+          this.failedRanges = [];
+          this.log(`重试轮次 #${round}，分片数：${toRetry.length}`);
+          await this.runDownloadPass({ onlyIndices: toRetry, maxPerChunkRetries: 1 });
+          if (this.activeTask.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        }
+
+        const ok = await this.finalizeIfComplete();
+        if (ok) {
+          this.setCap("下载成功", "ok");
+          this.log("重试完成：已全部下载成功。");
+          this.addHistory({ time: this.nowISO(), url: this.activeTask.url, filename: this.activeTask.filename, size: this.activeTask.total, concurrency: this.activeTask.concurrency, chunkMB: Math.floor(this.activeTask.chunkSize / 1024 / 1024), mode: this.activeTask.mode, status: "success" });
+        } else {
+          this.setCap("仍未完全下载（可继续重试）", "warn");
+          this.log("重试结束但仍未完成，可能存在缺失分片。");
+          const missing = this.collectMissingIndices();
+          for (const idx of missing) { const r = this.activeTask.ranges[idx]; this.pushFailed(idx, r.start, r.end, new Error("缺失分片（需重试）")); }
+        }
+      } catch (e) {
+        const isAbort = e && e.name === "AbortError";
+        if (isAbort) { this.setCap("已取消", "warn"); this.log("已取消重试。"); }
+        else { this.setCap("重试失败", "bad"); this.log("重试失败：" + (e?.message || String(e))); }
+      } finally {
+        this.running = false;
+        this.controller = null;
+      }
+    }
+  }
+}).mount("#app");
+</script>
+</body>
+</html>

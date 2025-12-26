@@ -50,6 +50,7 @@ window.config = {
         { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
         { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
         { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
+        { name: '多线程下载', short: '下载', url: './down/index.html', color: '#56C4E3' },
       ]
     },
     {
