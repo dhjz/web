@@ -76,7 +76,59 @@ echo "build linux and windows exe success..."
 #1. 在E:\\Program\\Apache\\目录下新建mavenrepo文件夹，该目录用作maven的本地库。
 #2. 打开E:\\Program\\Apache\\maven\\conf\\settings.xml文件，查找下面这行代码：并修改成刚创建的目录
 # <localRepository>/path/to/local/repo</localRepository>
+<mirror>
+  <id>alimaven</id>
+  <mirrorOf>central</mirrorOf>
+  <name>Aliyun Maven</name>
+  <url>https://maven.aliyun.com/repository/public</url>
+</mirror>
 
+#-------------------------- 可选: vfox --------------------------
+# "https://vfox.dev/zh-hans/guides/quick-start.html"
+# storage: sdkPath: "E:/dev/vfox/caches"
+# "VFOX_NODEJS_MIRROR": "https://npmmirror.com/mirrors/node/"
+# "VFOX_GOLANG_MIRROR": "https://mirrors.aliyun.com/golang/"
+vfox config proxy.enable false
+vfox config proxy.url http://127.0.0.1:18080
+vfox config storage.sdkPath E:/dev/vfox/caches
+vfox add --alias node nodejs
+vfox add --alias go golang
+vfox add java
+
+vfox i node@20
+vfox u -g node@20
+npm config set registry https://registry.npmmirror.com
+npm config set prefix "E:\dev\vfox\caches\node\current\node_global"
+npm config set cache "E:\dev\vfox\caches\node\current\node_cache"
+npm install -g http-server
+npm install -g yarn
+yarn config set registry https://registry.npmmirror.com -g
+yarn config set global-folder "E:\dev\vfox\caches\node\current\yarn_global"
+yarn config set cache-folder "E:\dev\vfox\caches\node\current\yarn_cache"
+
+vfox i node@16
+vfox u -g node@16
+vfox seach go (1.23)
+vfox seach java (1.8)
+
+#-------------------------- idea相关配置 --------------------------
+# 插件
+## Atom Material Icons
+## EasyCode-MybatisCodeHelper 改名 EasyCode Plus    导入EasyCodeConfig_20260107.json
+## GitToolBox
+## MyBatisX
+## JRebel   http://home.199311.xyz:40033   10s刷新
+## String Manipulation  设置大小写的
+## maven helper 没搞明白
+ 
+# settings
+## Appearance, Theme,  "IntelliJ Light" 不Use custom font, zoom  100%
+## Keymap eclipse, 最好导入 "eclipse-复制" 导入 idea_settings_2021.2_20260105.zip
+## Editor 
+	## Font "Consolas"  size:14 line: 1.3
+	## Color Scheme "Classic Light"  导入 ColorScheme_20260107.icls
+## Build "maven"
+## Setting for new Project
 
 #-------------------------- 常见脚本命令 --------------------------
 # # 常见脚本命令
