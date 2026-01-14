@@ -49,6 +49,7 @@ window.config = {
         { name: 'D-API', short: 'Post', url: './api/index.html', color: '#67C23A ' },
         { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
         { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
+        { name: '局域网唤醒', short: 'WOL', url: 'http://home.199311.xyz:46666/', color: '#0066cc' },
         { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
         { name: '多线程下载', short: '下载', url: './down/index.html', color: '#56C4E3' },
       ]
