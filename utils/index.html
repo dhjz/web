@@ -311,7 +311,7 @@ function loadScript(url, globalName) {
 
 var addScript = (src) => new Promise((r) => document.body.appendChild(Object.assign(document.createElement('script'), { src, onload: r })))
 // addScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.12.1/html2pdf.bundle.min.js')
-//   .then(() => html2pdf(document.querySelector('.main-content'), { margin: [0, 6], filename: 'ceshi.pdf', image: { type: 'jpeg', quality: 1 }, html2canvas:  { scale: 2 } }))
+//   .then(() => html2pdf(document.querySelector('.main-content'), { margin: 8, filename: 'test.pdf', image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 3, useCORS: true }, jsPDF: { format: 'a4' }, pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }}))
 
 // # 浏览器-JSONP
 function getJSONP(url, options = {}) {
