@@ -34,6 +34,7 @@
     header { background-color: var(--bg-header); color: white; padding: 0.4rem 2rem; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
     .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
     .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.4rem; font-weight: bold; }
+    .text-center { text-align: center; }
     .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
     .btn { padding: 0.3rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -223,8 +224,7 @@
       <div class="temp-modal-content">
         <h3>临时预览</h3>
         <textarea v-model="tempContent" placeholder="输入Markdown内容..."></textarea>
-        <button class="btn" @click="saveTempAndPreview">确定</button>
-        <button class="btn btn-secondary" @click="showTempModal = false">取消</button>
+        <div class="text-center"><button class="btn" @click="saveTemp">确定</button>  <button class="btn" @click="showTempModal = false">取消</button></div>
       </div>
     </div>
   </div>
@@ -578,7 +578,7 @@
           this.tempContent = localStorage.getItem('tempMarkdown') || '# 临时预览\n\n在这里输入Markdown内容...';
           this.showTempModal = true;
         },
-        saveTempAndPreview() {
+        saveTemp() {
           localStorage.setItem('tempMarkdown', this.tempContent);
           this.showTempModal = false;
           const file = { name: 'temp.md', size: this.tempContent.length };
