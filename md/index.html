@@ -35,8 +35,10 @@
     .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
     .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.4rem; font-weight: bold; }
     .text-center { text-align: center; }
+    .cursor { cursor: pointer; }
     .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
     .btn { padding: 0.3rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
+    .btn.small { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .btn-secondary { background-color: transparent; border: 1px solid rgba(255,255,255,0.3); }
     .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
@@ -53,7 +55,7 @@
     to { opacity: 1; transform: translateY(0); }
     }
     .content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
-    .file-info { color: var(--text-secondary); font-size: 0.9rem; }
+    .file-info { color: var(--text-secondary); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
     .sidebar { flex-shrink: 0; width: var(--toc-width); display: flex; flex-direction: column; }
     .toc-container { background-color: var(--toc-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow); padding: 1rem; overflow-y: auto; max-height: calc(100vh - 200px); position: sticky; top: 114px; }
     .toc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
@@ -178,7 +180,10 @@
       <div class="content-wrapper" :class="{ active: showContent }">
         <div class="sidebar">
           <div class="content-header">
-            <div class="file-info">{{ currentFile?.name || '未命名文件' }} ({{ formatFileSize(currentFile?.size || 0) }})</div>
+            <div class="file-info">
+              {{ currentFile?.name || '未命名文件' }} ({{ formatFileSize(currentFile?.size || 0) }})
+              <span class="cursor" @click="downloadFile" v-if="currentFile">⬇️</span>
+            </div>
           </div>
           
           <div class="toc-container" ref="tocContainer" :class="{ collapsed: tocCollapsed }" v-if="hasTOC">
@@ -585,6 +590,15 @@
           this.displayMarkdown(this.tempContent, file);
           this.currentHistoryId = 'temp_md';
           localStorage.setItem('markdownCurrentDoc', 'temp_md');
+        },
+        downloadFile() {
+          const item = this.displayHistoryList.find(h => h.id === this.currentHistoryId);
+          if (item && item.content) {
+            const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([item.content], { type: 'text/plain' })), download: item.name });
+            document.body.appendChild(a).click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+          }
         }
       }
     }).mount('#app');
