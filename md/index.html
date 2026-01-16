@@ -36,6 +36,7 @@
     .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.4rem; font-weight: bold; }
     .text-center { text-align: center; }
     .cursor { cursor: pointer; }
+    i { font-style: normal; }
     .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
     .btn { padding: 0.3rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
     .btn.small { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
@@ -54,8 +55,9 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
     }
-    .content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+    .content-header { margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-color); }
     .file-info { color: var(--text-secondary); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+    .file-stats { display: flex; gap: 0.8rem; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.3rem; }
     .sidebar { flex-shrink: 0; width: var(--toc-width); display: flex; flex-direction: column; }
     .toc-container { background-color: var(--toc-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow); padding: 1rem; overflow-y: auto; max-height: calc(100vh - 200px); position: sticky; top: 114px; }
     .toc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
@@ -184,6 +186,7 @@
               {{ currentFile?.name || '未命名文件' }} ({{ formatFileSize(currentFile?.size || 0) }})
               <span class="cursor" @click="downloadFile" v-if="currentFile">⬇️</span>
             </div>
+            <div class="file-stats" v-if="currentFile"><i>{{ totalChars }} 字符</i><i>{{ nonEmptyChars }} 非空</i></div>
           </div>
           
           <div class="toc-container" ref="tocContainer" :class="{ collapsed: tocCollapsed }" v-if="hasTOC">
@@ -229,7 +232,7 @@
       <div class="temp-modal-content">
         <h3>临时预览</h3>
         <textarea v-model="tempContent" placeholder="输入Markdown内容..."></textarea>
-        <div class="text-center"><button class="btn" @click="saveTemp">确定</button>  <button class="btn" @click="showTempModal = false">取消</button></div>
+        <div class="text-center"><button class="btn" @click="saveTemp(false)">确定</button>  <button class="btn" @click="saveTemp(true)">确定(转义)</button>  <button class="btn" @click="showTempModal = false">取消</button></div>
       </div>
     </div>
   </div>
@@ -274,12 +277,12 @@
       },
       computed: {
         tempItem() {
-          const content = localStorage.getItem('tempMarkdown') || '# 临时预览\n\n在这里输入Markdown内容...';
+          // const content = localStorage.getItem('tempMarkdown') || '# 临时预览\n\n在这里输入Markdown内容...';
           return {
             id: 'temp_md',
             name: 'temp.md',
-            size: content.length,
-            content: content,
+            size: this.tempContent.length,
+            content: this.tempContent,
             timestamp: Date.now(),
             isTemp: true
           };
@@ -295,6 +298,14 @@
         },
         hasHistory() {
           return this.historyList.length > 0;
+        },
+        totalChars() {
+          const item = this.displayHistoryList.find(h => h.id === this.currentHistoryId);
+          return item ? item.content.length : 0;
+        },
+        nonEmptyChars() {
+          const item = this.displayHistoryList.find(h => h.id === this.currentHistoryId);
+          return item ? item.content.replace(/\s/g, '').length : 0;
         }
       },
       mounted() {
@@ -581,11 +592,16 @@
           this.tempContent = localStorage.getItem('tempMarkdown') || '# 临时预览\n\n在这里输入Markdown内容...';
           this.showTempModal = true;
         },
-        saveTemp() {
-          localStorage.setItem('tempMarkdown', this.tempContent);
+        saveTemp(escape = false) {
+          let content = this.tempContent;
+          if (escape) {
+            content = content.replace(/\\n/g, '\n');
+          }
+          this.tempContent = content;
+          localStorage.setItem('tempMarkdown', content);
           this.showTempModal = false;
-          const file = { name: 'temp.md', size: this.tempContent.length };
-          this.displayMarkdown(this.tempContent, file);
+          const file = { name: 'temp.md', size: content.length };
+          this.displayMarkdown(content, file);
           this.currentHistoryId = 'temp_md';
           localStorage.setItem('markdownCurrentDoc', 'temp_md');
         },
