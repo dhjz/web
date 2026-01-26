@@ -744,6 +744,18 @@ function timeFormat(date, formatStr = 'yyyy-MM-dd HH:mm:ss') {
   return formatStr
 }
 
+function timeFormat1 (date = new Date(), fmt = 'yyyy-MM-dd HH:mm:ss') {
+  return fmt.replace(/y+|M+|d+|H+|h+|m+|s+/g, k => ({
+    y: String(date.getFullYear()),
+    M: String(date.getMonth() + 1).padStart(2, '0'),
+    d: String(date.getDate()).padStart(2, '0'),
+    H: String(date.getHours()).padStart(2, '0'),
+    h: String(date.getHours()).padStart(2, '0'),
+    m: String(date.getMinutes()).padStart(2, '0'),
+    s: String(date.getSeconds()).padStart(2, '0')
+  })[k[0]].slice(k[0] === 'y' && k.length === 2 ? 2 : 0));
+}
+
 // # 工具-解析日期
 function timeParse(str, formatStr) {
   if (formatStr) { // 必须包含年月日
