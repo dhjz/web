@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      padding: 4px;
+    }
+
+    input,
+    select,
+    textarea {
+      background-color: #fff;
+      border-radius: 4px;
+      border: 1px solid #dcdfe6;
+      color: #333;
+      line-height: 32px;
+      padding: 0 10px;
+      outline: none;
+      margin-right: 20px;
+    }
+
+    button {
+      background: #409eff;
+      border: none;
+      color: #fff;
+      line-height: 32px;
+      padding: 0px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button+button {
+      margin-left: 10px;
+    }
+
+    textarea {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 50px);
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <button onclick="toMarkdown()">转Markdown</button>
+  <button onclick="copy()">复制结果</button>
+  <textarea name="" id=""></textarea>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.2.1/turndown.min.js"></script>
+  <script src="https://registry.npmmirror.com/turndown-plugin-gfm/1.0.2/files/dist/turndown-plugin-gfm.js"></script>
+
+  <script>
+    var gfm = turndownPluginGfm.gfm
+    var turndownService = new TurndownService({
+      headingStyle: "atx",
+      codeBlockStyle: 'fenced',
+    })
+    turndownService.use(gfm)
+    // var markdown = turndownService.turndown('<strike>Hello world!</strike>')
+    console.log(top)
+
+    function toMarkdown() {
+      let htmlStr = top.ue.getContent()
+      console.log(htmlStr)
+      htmlStr = normalizeTable(htmlStr)
+      console.log(htmlStr)
+      const markdownStr = turndownService.turndown(htmlStr)
+      console.log(markdownStr)
+      document.querySelector('textarea').value = markdownStr
+    }
+
+    function normalizeTable(html) {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+
+      doc.querySelectorAll("table").forEach((table) => {
+        // 1) 删除 colgroup（以及其中的 col）
+        table.querySelectorAll("colgroup").forEach((cg) => cg.remove());
+
+        // 2) 第一行没有 th 时，把第一行 td 转成 th 作为表头
+        const firstRow = table.querySelector("tr");
+        if (!firstRow) return;
+
+        if (!firstRow.querySelector("th")) {
+          firstRow.querySelectorAll("td").forEach((td) => {
+            const th = doc.createElement("th");
+            th.innerHTML = td.innerHTML;
+            // 可选：复制属性（一般不需要）
+            // for (const { name, value } of Array.from(td.attributes)) th.setAttribute(name, value);
+            td.replaceWith(th);
+          });
+        }
+      });
+
+      return doc.body.innerHTML;
+    }
+
+    function copy() {
+      if (document.querySelector('textarea').value.trim() === '') return dnotify('暂无结果, 复制失败');
+      document.querySelector('textarea').select()
+      document.execCommand('copy')
+      document.querySelector('textarea').blur()
+      dnotify('复制成功')
+    }
+
+    window.dnotifyTimer = null; window.dnotifyEl = document.body.appendChild(Object.assign(document.createElement('div'), {
+      id: 'dnotify', style: `display:none; min-width: 260px;max-width: 40%; padding: 10px; box-sizing: border-box; border: 1px solid #ebeef5; text-align: center; color:#333;
+    position: fixed; background-color: #fff; top:16px;right:16px;z-index: 9999999; font-size: 14px;line-height: 1.4; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,.1); `
+    }));
+    function dnotify(txt, time) {
+      dnotifyEl.style.display = 'block';
+      dnotifyEl.innerHTML = txt;
+      clearTimeout(dnotifyTimer);
+      dnotifyTimer = setTimeout(() => dnotifyEl.style.display = 'none', (time || 3) * 1000);
+    }
+  </script>
+</body>
+
+</html>
