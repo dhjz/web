@@ -6,49 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      padding: 4px;
-    }
-
-    input,
-    select,
-    textarea {
-      background-color: #fff;
-      border-radius: 4px;
-      border: 1px solid #dcdfe6;
-      color: #333;
-      line-height: 32px;
-      padding: 0 10px;
-      outline: none;
-      margin-right: 20px;
-    }
-
-    button {
-      background: #409eff;
-      border: none;
-      color: #fff;
-      line-height: 32px;
-      padding: 0px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    button+button {
-      margin-left: 10px;
-    }
-
-    textarea {
-      display: block;
-      width: 100%;
-      height: calc(100vh - 50px);
-      margin-top: 6px;
-    }
+    *{ margin: 0; padding: 0; box-sizing: border-box;}
+    body{ padding: 4px;}
+    input, select, textarea{ background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6; color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px;}
+    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer;}
+    button+button{ margin-left: 10px;}
+    textarea{ display: block; width: 100%; height: calc(100vh - 50px); margin-top: 6px;}
   </style>
 </head>
 
@@ -62,8 +25,32 @@
   <script>
     var gfm = turndownPluginGfm.gfm
     var turndownService = new TurndownService({
-      headingStyle: "atx",
-      codeBlockStyle: 'fenced',
+      headingStyle: "atx",      // 默认 "setext"；标题风格：setext(h1/h2下划线) 或 atx(###)
+      hr: "---",                 // 默认 "* * *"；<hr> 输出内容  ---
+      bulletListMarker: "-",       // 默认 "*"；无序列表符号："*" "-" "+"
+      codeBlockStyle: "fenced",  // 默认 "indented"；代码块：缩进 或 fenced(三反引号)
+      fence: "```",                // 默认 "```"；fenced 代码块围栏（codeBlockStyle="fenced" 时生效）
+      emDelimiter: "_",            // 默认 "_"；<em> 的包裹符号："_" 或 "*"
+      strongDelimiter: "**",       // 默认 "**"；<strong> 的包裹符号："**" 或 "__"
+      linkStyle: "inlined",        // 默认 "inlined"；链接：[text](url) 或 referenced 引用式
+      linkReferenceStyle: "full",  // 默认 "full"；引用式链接风格：full/collapsed/shortcut
+      br: "  \n",                  // 默认 "  \n"；<br> 如何转成换行（两个空格+换行=Markdown硬换行）
+
+      // 下面这些是“替换钩子”，一般不需要改；用于 keep/remove/空节点 等场景的输出控制
+      blankReplacement: function (content, node) {
+        return "";                 // 默认：通常返回 ""（不同版本可能略有差异）；空节点如何替换
+      },
+      keepReplacement: function (content, node) {
+        return node.outerHTML;     // 默认：通常是 outerHTML；对 .keep() 的节点如何输出
+      },
+      removeReplacement: function (content, node) {
+        return "";                 // 默认：""；对 .remove() 的节点如何替换
+      },
+      // replacement: function (content, node) {
+      //   return content;          // 通用兜底替换钩子（不常用，慎改）
+      // },
+
+      // rules: { }                // 可选；传入自定义规则集合（更推荐用 td.addRule / td.use）
     })
     turndownService.use(gfm)
     // var markdown = turndownService.turndown('<strike>Hello world!</strike>')
