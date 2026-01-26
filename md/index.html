@@ -37,8 +37,8 @@
     .text-center { text-align: center; }
     .cursor { cursor: pointer; }
     i { font-style: normal; }
-    .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-    .btn { padding: 0.3rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn { padding: 0.3rem 0.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
     .btn.small { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .btn-secondary { background-color: transparent; border: 1px solid rgba(255,255,255,0.3); }
@@ -146,6 +146,7 @@
           <input type="file" ref="fileInput" accept=".md,.markdown,.txt" style="display: none;" @change="handleFileSelect">
           <button class="btn" @click="triggerFileInput">📂 打开文件</button>
           <button class="btn btn-secondary" @click="openTempModal">📝 临时预览</button>
+          <button class="btn btn-secondary" onclick="window.open('../ueditor/index.html')">📝 Html2md</button>
           <button class="btn btn-secondary" @click="resetContent">🔄 重置</button>
           <button class="btn btn-secondary" @click="clearCache" v-if="showClearCacheBtn">🗑️ 清除缓存</button>
           <div class="theme-selector">
