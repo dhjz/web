@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>最简编辑器-带工具</title>
+  <title>运行编辑器</title>
   <style>
     * {  margin: 0; padding: 0; box-sizing: border-box;  }
     #code-editor { width: 100dvw; height: 100dvh; line-height: 1.4; }
@@ -40,7 +40,7 @@
       keyboardHandler: 'ace/keyboard/vscode',
     });
     editor.session.on('change', () => { localStorage.setItem('ace_code', editor.getValue())});
-    let txt = Object.fromEntries(new URLSearchParams(location.search)).txt
+    let txt = Object.fromEntries(new URLSearchParams(location.search)).s
     // 打印字符串大小
     console.log('传入字符串大小: ' + ((txt || '').length / 1024).toFixed(2) + 'kb');
     editor.setValue(txt ? base64ToUtf8(txt) : (localStorage.getItem('ace_code') || ''));
@@ -50,6 +50,7 @@
       return new TextDecoder().decode(Uint8Array.from(atob(str), char => char.charCodeAt(0)));
     }
 
+    // window.open(`https://u.199311.xyz/run.html?s=${encodeURIComponent(utf8ToBase64(code))}`)
     function utf8ToBase64(str) {
       return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
     }
