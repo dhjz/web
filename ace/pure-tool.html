@@ -42,7 +42,7 @@
     editor.session.on('change', () => { localStorage.setItem('ace_code', editor.getValue())});
     let txt = Object.fromEntries(new URLSearchParams(location.search)).txt
     // 打印字符串大小
-    console.log('传入字符串大小: ' + (txt.length / 1024).toFixed(2) + 'kb');
+    console.log('传入字符串大小: ' + ((txt || '').length / 1024).toFixed(2) + 'kb');
     editor.setValue(txt ? base64ToUtf8(txt) : (localStorage.getItem('ace_code') || ''));
     editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
 
