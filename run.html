@@ -51,6 +51,7 @@
     }
 
     // window.open(`https://u.199311.xyz/run.html?s=${encodeURIComponent(utf8ToBase64(code))}`)
+    // window.open(`https://u.199311.xyz/run.html?s=${encodeURIComponent(btoa(String.fromCharCode(...new TextEncoder().encode(code))))}`)
     function utf8ToBase64(str) {
       return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
     }
