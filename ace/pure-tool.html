@@ -17,7 +17,7 @@
   <div id="code-editor"></div>
   <div class="tools">
     <select id="modeRef"></select>
-    <i>保存</i><i id="runRef">运行</i><i id="formatRef">格式化</i><i onclick="location.href = location.href.split('?').shift()">刷新</i>
+    <i onclick="localStorage.setItem('ace_code', editor.getValue())">保存</i><i id="runRef">运行</i><i id="formatRef">格式化</i><i onclick="location.href = location.href.split('?').shift()">刷新</i>
   </div>
 
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ace.min.js"></script>
