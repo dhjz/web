@@ -41,8 +41,15 @@
     });
     editor.session.on('change', () => { localStorage.setItem('ace_code', editor.getValue())});
     let txt = Object.fromEntries(new URLSearchParams(location.search)).txt
-    editor.setValue(txt ? decodeURIComponent(txt) : (localStorage.getItem('ace_code') || ''));
+    editor.setValue(txt ? base64ToUtf8(txt) : (localStorage.getItem('ace_code') || ''));
     editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
+
+    function base64ToUtf8(str) {
+      const binaryString = atob(str); // Base64解码为二进制字符串
+      const bytes = Uint8Array.from(binaryString, char => char.charCodeAt(0)); // 转换为Uint8Array
+      const decoder = new TextDecoder();
+      return decoder.decode(bytes); // 将UTF-8字节解码回字符串
+    }
   </script>
 </body>
 </html>
