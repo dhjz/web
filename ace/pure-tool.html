@@ -39,8 +39,8 @@
       enableBasicAutocompletion: true, // 启用基本自动完成功能
       keyboardHandler: 'ace/keyboard/vscode',
     });
-    // editor.setValue(this.svgCode);
-    editor.session.on('change', () => { console.log('editor change...', editor.getValue()) });
+    editor.setValue(Object.fromEntries(new URLSearchParams(location.search)).txt || localStorage.getItem('ace_code') || '');
+    editor.session.on('change', () => { localStorage.setItem('ace_code', editor.getValue())});
     editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
   </script>
 </body>
