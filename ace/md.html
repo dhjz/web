@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown编辑器</title>
+  <style>
+    * {  margin: 0; padding: 0; box-sizing: border-box;  }
+    #code-editor { width: 100dvw; height: 100dvh; line-height: 1.4; }
+  </style>
+</head>
+
+<body>
+  <div id="code-editor"></div>
+
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ace.min.js"></script>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.43.2/ext-language_tools.min.js"></script>
+  <!-- <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/ace/1.32.7/mode-json.min.js"></script> -->
+  <script>
+    // ace.require('ace/ext/language_tools');
+    const editor = ace.edit('code-editor', {
+      theme: 'ace/theme/tomorrow', // 主题   ace/theme/github   ace/theme/chrome ace/theme/tomorrow
+      mode: 'ace/mode/markdown', // 代码匹配模式
+      tabSize: 2, //标签大小
+      fontSize: 14, //设置字号
+      enableSnippets: true, // 启用代码段
+      showLineNumbers: true, // 显示行号
+      enableLiveAutocompletion: true, // 启用实时自动完成功能 （比如：智能代码提示）
+      enableBasicAutocompletion: true, // 启用基本自动完成功能
+      keyboardHandler: 'ace/keyboard/vscode',
+    });
+    // editor.setValue(this.svgCode);
+    editor.session.on('change', () => {
+      console.log('editor change...', editor.getValue());
+    });
+  </script>
+</body>
+
+</html>
