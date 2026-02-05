@@ -227,6 +227,15 @@ function base64ToBuffer(base64) {
   return bytes.buffer;
 }
 
+// # base64与utf8 互转
+function base64ToUtf8(str) {
+  return new TextDecoder().decode(Uint8Array.from(atob(str), char => char.charCodeAt(0)));
+}
+
+function utf8ToBase64(str) {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+}
+
 // # 文件-拖拽上传
 function dragUpload() {
   document.addEventListener('dragover', (e) => e.preventDefault())
