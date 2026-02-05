@@ -47,10 +47,11 @@
     editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
 
     function base64ToUtf8(str) {
-      const binaryString = atob(str); // Base64解码为二进制字符串
-      const bytes = Uint8Array.from(binaryString, char => char.charCodeAt(0)); // 转换为Uint8Array
-      const decoder = new TextDecoder();
-      return decoder.decode(bytes); // 将UTF-8字节解码回字符串
+      return new TextDecoder().decode(Uint8Array.from(atob(str), char => char.charCodeAt(0)));
+    }
+
+    function utf8ToBase64(str) {
+      return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
     }
   </script>
 </body>
