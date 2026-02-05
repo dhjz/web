@@ -41,7 +41,7 @@
     });
     editor.session.on('change', () => { localStorage.setItem('ace_code', editor.getValue())});
     let txt = Object.fromEntries(new URLSearchParams(location.search)).txt
-    editor.setValue(txt ? decodeURIComponent(base64ToUtf8(txt)) : (localStorage.getItem('ace_code') || ''));
+    editor.setValue(txt ? base64ToUtf8(txt) : (localStorage.getItem('ace_code') || ''));
     editor.commands.addCommand({ name: 'save', bindKey: {win: 'Ctrl-S', mac: 'Command-S'}, exec: () => console.log('save')})
 
     function base64ToUtf8(str) {
