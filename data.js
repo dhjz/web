@@ -52,7 +52,8 @@ window.config = {
         { name: '局域网唤醒', short: 'WOL', url: 'http://home.199311.xyz:46666/', color: '#0066cc' },
         { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
         { name: '内云服务', short: '云服务', url: 'http://home.199311.xyz:42220', color: '#56C4E3' },
-        { name: 'SSL证书更新', short: 'SSL', url: 'http://home.199311.xyz:40055', color: '#35C0F4' },
+        // { name: 'SSL证书更新', short: 'SSL', url: 'http://home.199311.xyz:40055', color: '#35C0F4' },
+        { name: '软件聚合', short: '软件', url: './soft/index.html', color: '#FE6200' },
       ]
     },
     {
