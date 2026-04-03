@@ -30,6 +30,7 @@ window.config = {
         { name: '镜像库', short: 'CDN', url: 'https://cdn.199311.xyz/lib.html', color: '#7355B0' },
         { name: 'MD文件预览', short: 'MD', url: './md/index.html', color: '#2655bb' },
         { name: 'HTML预览', short: 'HTML', url: './run.html', color: '#16a34a' },
+        { name: '文本转PDF', short: 'PDF', url: './pdf/index.html', color: '#c52d22' },
       ]
     },
     {
