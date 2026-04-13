@@ -58,6 +58,18 @@ go env -w GOOS=windows GOARCH=amd64 GOARM=
 go build -ldflags "-s -w -H=windowsgui" -o ./dist/
 echo "build linux and windows exe success..."
 
+# g.exe 版本管理工具
+# https://github.com/voidint/g
+# 配置环境变量 先新建 E:\\Program\\Go\\bin  E:\\Program\\Go\\home
+# 配置 G_EXPERIMENTAL=true  G_HOME=E:\\Program\\Go\\home  G_MIRROR=https://mirrors.aliyun.com/golang/  GOROOT=E:\\Program\\Go\\home\\go
+# 配置PATH: E:\\Program\\Go\\bin  E:\\Program\\Go\\home\\go\\bin E:\\Program\\Go\\home\\gopath\\bin
+g ls-remote  
+g install 1.25.6
+g use 1.25.6
+go env -w GOPROXY=https://goproxy.cn,direct
+go env -w GOCACHE=E:\\Program\\Go\\home\\gocache
+go env -w GOPATH=E:\\Program\\Go\\home\\gopath
+
 #-------------------------- gradle相关配置 --------------------------
 # # gradle相关配置
 # https://gradle.org/releases/    binary-only 
