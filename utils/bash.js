@@ -70,6 +70,42 @@ go env -w GOPROXY=https://goproxy.cn,direct
 go env -w GOCACHE=E:\\Program\\Go\\home\\gocache
 go env -w GOPATH=E:\\Program\\Go\\home\\gopath
 
+#-------------------------- java 多版本管理 --------------------------
+# # java 多版本管理
+# 下载地址:  https://mirrors.tuna.tsinghua.edu.cn/Adoptium/8/jdk/x64/linux/
+# linux
+# chmod +x /usr/local/bin/swjava    sudo ln -sfn /opt/java/jdk17 /opt/java/jdk
+#!/usr/bin/env bash
+set -euo pipefail
+
+v="\${1:-}"
+if [[ -z "$v" ]]; then
+  echo "Usage: swjava <version>"
+  echo "Example: swjava 8 | swjava 17"
+  exit 1
+fi
+
+target="/opt/java/jdk\${v}"
+
+if [[ ! -d "$target" ]]; then
+  echo "Error: JDK version '$v' not found: $target does not exist"
+  echo "Available:"
+  ls -1d /opt/java/jdk* 2>/dev/null | sed 's#.*/##' || true
+  exit 2
+fi
+
+if [[ ! -x "$target/bin/java" ]]; then
+  echo "Error: $target exists but $target/bin/java not found or not executable"
+  exit 3
+fi
+
+ln -sfn "$target" /opt/java/jdk
+
+echo "Switched to: $(readlink -f /opt/java/jdk)"
+/opt/java/jdk/bin/java -version
+
+# windows swjava.ps1  mklink /J E:\\Program\\java\\jdk E:\\Program\\java\\jdk17
+
 #-------------------------- gradle相关配置 --------------------------
 # # gradle相关配置
 # https://gradle.org/releases/    binary-only 
