@@ -139,6 +139,26 @@ echo "Switched to: $(readlink -f /opt/java/jdk)"
   <url>https://maven.aliyun.com/repository/public</url>
 </mirror>
 
+# linux
+wget https://mirrors.huaweicloud.com/apache/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
+# 1. 解压到 /opt
+sudo mkdir -p /opt/maven
+sudo tar -xzf apache-maven-3.9.6-bin.tar.gz -C /opt/maven
+
+# 2. 创建软链接（方便升级）
+sudo ln -sfn /opt/maven/apache-maven-3.9.6 /opt/maven/current
+
+# 3. 配置环境变量
+sudo tee /etc/profile.d/maven.sh >/dev/null <<'EOF'
+export MAVEN_HOME=/opt/maven/current
+export PATH=$MAVEN_HOME/bin:$PATH
+EOF
+sudo chmod +x /etc/profile.d/maven.sh
+source /etc/profile.d/maven.sh
+
+# 4. 验证
+mvn -v
+
 #-------------------------- 可选: vfox --------------------------
 # "https://vfox.dev/zh-hans/guides/quick-start.html"
 # storage: sdkPath: "E:/dev/vfox/caches"
