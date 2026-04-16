@@ -23,6 +23,14 @@ nohup ~/frp/frpc -c ~/frp/frpc.ini > ~/logs/frpc.log 2>&1 &
 #-------------------------- node相关配置 --------------------------
 # # node相关配置
 # https://github.com/coreybutler/nvm-windows/releases
+# linux nvm
+ALL_PROXY=http://192.168.137.1:10809 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+export NVM_DIR="$([ -z "\${XDG_CONFIG_HOME-}" ] && printf %s "\${HOME}/.nvm" || printf %s "\${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+echo 'export NVM_NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node' >> ~/.bashrc
+source ~/.bashrc
+npm config set registry https://registry.npmmirror.com
+
 nvm seeting.ini  nvm目录执行
 nvm node_mirror https://npmmirror.com/mirrors/node/
 nvm npm_mirror https://npmmirror.com/mirrors/npm/
