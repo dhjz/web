@@ -29,6 +29,7 @@
       background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);}
     .preview-title { font-weight: bold; color: #34495e; }
     .file-size { font-size: 0.9em; color: #7f8c8d; }
+    .file-size i { font-style: normal; color: #3498db; cursor: pointer; margin: 0 4px; }
     #download-link { display: none; margin-top: 14px; background-color: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-size: 18px; font-weight: bold; transition: background-color 0.3s ease; }
     #download-link:hover { background-color: #2ecc71; }
     #drag-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; display: none; justify-content: center; align-items: center; pointer-events: none; }
@@ -67,8 +68,10 @@
         <div class="preview-box">
           <span class="preview-title">原图预览</span>
           <img id="original-preview" src="" alt="Original Image Preview">
-          <span class="file-size" id="original-size"></span>
-          <span class="file-size" id="original-wh"></span>
+          <div class="file-size"><span id="original-size"></span> ， <span id="original-wh"></span></div>
+          <span class="file-size">
+            <i id="download-origin" onclick="downloadFile(false)">下载</i><i  id="open-origin" onclick="downloadFile(true)">打开</i>
+          </span>
         </div>
         <div class="preview-box">
           <span class="preview-title">ICO 预览</span>
@@ -98,6 +101,7 @@
     const dragOverlay = document.getElementById('drag-overlay');
 
     let originalImage = null;
+    let originalFile = null
     let currentIcoUrl = null;
     // 点击上传区域
     dropZone.addEventListener('click', () => fileInput.click());
@@ -142,11 +146,29 @@
       }
     })
 
+    function downloadFile(isOpen) {
+      if (!originalFile) {
+        return alert("没有原始图片文件！");
+      }
+      console.log('originalFile', originalFile)
+      const url = URL.createObjectURL(originalFile);
+      if (isOpen) return window.open(url);
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = originalFile.name || `image-${Date.now()}.png`;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     function handleFile(file) {
       if (!file.type.startsWith('image/')) {
         alert('请上传有效的图片文件！');
         return;
       }
+      originalFile = file
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
