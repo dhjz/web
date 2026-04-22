@@ -55,7 +55,7 @@ window.config = {
         { name: '内云服务', short: '云服务', url: 'http://home.199311.xyz:42220', color: '#56C4E3' },
         // { name: 'SSL证书更新', short: 'SSL', url: 'http://home.199311.xyz:40055', color: '#35C0F4' },
         { name: '软件聚合', short: '软件', url: './soft/index.html', color: '#FE6200' },
-        { name: 'Git加速', short: '加速', url: './h/', color: ' #3b82f6' },
+        { name: 'Git加速', short: '加速', url: './h/?key=Gc8mQ9', color: ' #3b82f6' },
       ]
     },
     {
