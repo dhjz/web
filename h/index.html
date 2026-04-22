@@ -6,14 +6,20 @@
   <title>Document</title>
   <style>
     input, select { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px; }
-button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
-
+    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
+    
+    .load-out { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; z-index: 999 }
+    .load-icon { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #3b82f6; border-radius: 50%; animation: s .6s linear infinite }
+    @keyframes s { to { transform: rotate(360deg) } }
+    p { margin-top: 16px; color: #666; font-size: 14px }
   </style>
 </head>
 <body>
   <button onclick="go()">开始</button>
   <button onclick="start()">重新生成</button>
   <button onclick="clear1()">清除缓存</button>
+  <div class="load-out"><div class="load-icon"></div><p>加载中...</p></div>
+
   <div id="urls"></div>
   <script>
     const CACHE_TIME = 60 * 20 // 20分钟
@@ -34,7 +40,9 @@ button{ background: #409eff; border: none; color: #fff; line-height: 32px; paddi
       let cnburl = getStorageExp('cnb_hub_proxy')
       console.log('cnburl', cnburl);
       document.getElementById('urls').innerHTML = `<a href="${cnburl}">${cnburl}</a>`
-      if (obj.debug) return;
+      if (obj.debug) {
+        return document.querySelector('.load-out').style.display = 'none;'
+      };
       if (cnburl) {
         location.href = cnburl
       } else {
