@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    input, select { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px; }
+button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
+
+  </style>
+</head>
+<body>
+  <button onclick="go()">开始</button>
+  <button onclick="start()">重新生成</button>
+  <button onclick="clear1()">清除缓存</button>
+  <div id="urls"></div>
+  <script>
+    const CACHE_TIME = 60 * 20 // 20分钟
+    let obj = url2Obj()
+    let authkey = '0161eUh0D5Gc8mQ9wAqfQMeZQVdTVByJN'.replace(obj.key, '')
+    console.log('authkey', authkey);
+
+    (function(){
+      go()
+    })()
+
+    function clear1() {
+      console.log(getStorageExp('cnb_hub_proxy'));
+      localStorage.removeItem('cnb_hub_proxy')
+    }
+
+    function go() {
+      let cnburl = getStorageExp('cnb_hub_proxy')
+      console.log('cnburl', cnburl);
+      document.getElementById('urls').innerHTML = `<a href="${cnburl}">${cnburl}</a>`
+      if (obj.debug) return;
+      if (cnburl) {
+        location.href = cnburl
+      } else {
+        start()
+      }
+    }
+
+    async function start() {
+      const url = 'https://x.199311.xyz/?u=' + encodeURIComponent('https://api.cnb.cool/tei333/hubproxy/-/workspace/start');
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.cnb.api+json',
+          Authorization: authkey,
+        },
+        body: '{"branch":"main","ref":""}'
+      };
+
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        console.log(data);
+        let temp = data.url
+        const matches = temp.match(/cnb-[a-zA-Z0-9]+-[a-zA-Z0-9]+/g);
+        console.log(matches); 
+        if (matches[0]) {
+          let url = 'https://' + matches[0] + '-001.cnb.space/'
+          setStorageExp('cnb_hub_proxy', url, CACHE_TIME)
+          location.href = url
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function url2Obj() {
+  return Object.fromEntries(new URLSearchParams(window.location.search))
+}
+
+    function setStorageExp (key, val, second) {
+  localStorage.setItem(key, JSON.stringify({ val, exp: !second ? 0 : (Date.now() + second * 1000) }));
+}
+function getStorageExp (key) {
+  const itemStr = localStorage.getItem(key);
+  if (!itemStr) return null;
+  const item = JSON.parse(itemStr);
+  return Date.now() < item.exp || item.exp == 0 ? item.val : localStorage.removeItem(key);
+}
+  </script>
+</body>
+</html>
