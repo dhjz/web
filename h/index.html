@@ -70,7 +70,8 @@
         const matches = temp.match(/cnb-[a-zA-Z0-9]+-[a-zA-Z0-9]+/g);
         console.log(matches); 
         if (matches[0]) {
-          let url = 'https://' + matches[0] + '-001.cnb.space/'
+          // let url = 'https://' + matches[0] + '-001.cnb.space/'
+          let url = `https://cnb.cool/tei333/hubproxy/-/workspace/vscode-web/${matches[0]}-001/`
           setStorageExp('cnb_hub_proxy', url, CACHE_TIME)
           location.href = url
         }
