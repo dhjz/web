@@ -20,7 +20,7 @@
     button.primary, .btn.primary { background: #409eff; color: #fff; border-color: #409eff; }
     .app { display: flex; height: 100%; }
     .side { flex: 1; position: relative;}
-    .center { width: 126px; height: calc(100vh - 20px); padding: 6px; text-align: center; overflow-y: auto }
+    .center { width: 130px; height: calc(100vh - 20px); padding: 6px; text-align: center; overflow-y: auto }
     .center > div { margin-bottom: 8px; }
     .center button { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .textarea { display: block; width: 100%; height: 100%; word-break: break-all; }
@@ -44,6 +44,7 @@
     <div class="center" id="btns">
       <div><button type="base64_en" class="primary">BASE64编码</button></div>
       <div><button type="base64_de">BASE64解码</button></div>
+      <div><button type="bcrypt">Bcrypt加密校验</button></div>
       <div><button type="md5">MD5</button></div>
       <div><button type="json_be">JSON格式化</button></div>
       <div><button type="json_mini">JSON压缩</button></div>
@@ -62,6 +63,11 @@
     </div>
   </div>
 
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js
+
+
+
+"></script>
   <script>
     window.type = 'base64_en'
     function getVal() {
@@ -127,6 +133,23 @@
       if (type == 'mini_css1') {
         setVal(miniCss(getVal(), true))
       }
+      if (type == 'bcrypt') {
+        let val = getVal().trim()
+        if (!val.includes(',') && !val.includes('，')) {
+          setVal(encryptB(val))
+        } else {
+          let arr = val.includes(',') ? val.split(','): val.split('，')
+          setVal(`${validB(arr[0].trim(), arr[1].trim())}, 交换验证: ${validB(arr[1].trim(), arr[0].trim())}`)
+        }
+      }
+    }
+
+    function encryptB(text, salt = 10) {
+      return dcodeIO.bcrypt.hashSync(text, salt);
+    }
+
+    function validB(text, val) {
+      return dcodeIO.bcrypt.compareSync(text, val);
     }
 
     // 移除HTML标签代码
