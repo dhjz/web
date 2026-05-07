@@ -158,12 +158,73 @@ stream {
     }
 }
 http {
+    # 放到这里也可以
+    upstream my_service {
+        # -------------------- 模式一：权重模式, 越高分配的越多 3倍 2倍 --------------------
+        server 127.0.0.1:3000 weight=1;
+        server 127.0.0.1:3001 weight=2;
+        server 127.0.0.1:3002 weight=3;
+        # -------------------- 模式二：主备模式 --------------------
+        # server 127.0.0.1:3000; # 主服务器
+        # server 127.0.0.1:3001 backup; # 备用服务器
+        # server 127.0.0.1:3002 backup; # 另一个备用服务器
+    }
     server {
         listen 8080;
         location / {
             proxy_pass my_service;
+            http://my_service/client/;
             # ...其他配置
         }
     }
 }
+
+# @ 通用配置 - cors.conf
+add_header 'Access-Control-Allow-Origin' '*';
+add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+add_header 'Access-Control-Allow-Headers' '*';
+# 允许浏览器缓存跨域请求的预检响应（OPTIONS 请求）
+add_header 'Access-Control-Max-Age' 1728000;
+# 如果是预检请求（OPTIONS），直接返回 200
+if ($request_method = 'OPTIONS') {
+	add_header 'Access-Control-Allow-Origin' '*';
+	add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+	add_header 'Access-Control-Allow-Headers' '*';
+	add_header 'Access-Control-Max-Age' 1728000;
+	return 200;
+}
+
+# @ 通用配置 - proxy_http.conf
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+# 与上游服务器建立连接的超时时间
+proxy_connect_timeout 600s;
+# 向上游服务器发送请求的超时时间
+proxy_send_timeout 600s;
+# 从上游服务器读取响应的超时时间，这是关键参数
+proxy_read_timeout 600s;
+# 客户端从代理服务器接收数据的超时时间[citation:1]
+send_timeout 600s;
+
+# @ 通用配置 - proxy_socket.conf
+proxy_http_version 1.1;
+proxy_set_header Connection '';
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+proxy_buffering off;
+proxy_cache off;
+proxy_read_timeout 3600s;
+
+
+# @ 通用配置 - proxy_web.conf
+index index.html;
+# 开发环境禁用缓存
+add_header Cache-Control "no-cache, no-store, must-revalidate";
+add_header Pragma "no-cache";
+add_header Expires 0;
+
 `
