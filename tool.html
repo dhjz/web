@@ -49,6 +49,8 @@
       <div><button type="json_be">JSON格式化</button></div>
       <div><button type="json_mini">JSON压缩</button></div>
       <div><button type="html_pure">净化HTML</button></div>
+      <div><button type="html_min">minHTML</button></div>
+      <div><button type="html_min1">minHTML1</button></div>
       <div><button type="mini_css">压缩css</button></div>
       <div><button type="mini_css1">压缩css全</button></div>
       <div><button type="blank">压缩所有空白</button></div>
@@ -120,6 +122,12 @@
       }
       if (type == 'html_pure') {
         setVal(pureHtml(getVal()))
+      }
+      if (type == 'html_min') {
+        setVal(minHtml(getVal(), true))
+      }
+      if (type == 'html_min1') {
+        setVal(minHtml(getVal(), false))
       }
       if (type == 'blank') {
         setVal(getVal().replace(/\s+/g, ''))
@@ -223,6 +231,49 @@
       // 触发点击下载链接
       link.click()
       URL.revokeObjectURL(link.href)
+    }
+
+    /**
+     * 净化HTML代码 (增强版：保护 pre/code 标签)
+     * @param {string} htmlStr - 原始HTML字符串
+     * @param {boolean} hasBlank - 是否保留标签间的换行 (true: 每个标签一行, false: 完全最小化)
+     */
+    function minHtml(htmlStr, hasBlank) {
+        if (!htmlStr) return '';
+
+        // 1. 首先去除所有标签内的属性 (全局处理，pre/code 内部的标签属性也会被删)
+        let result = htmlStr.replace(/<(\/?[a-z1-6]+)(?:\s+[^>]*?)(\/?)>/gi, '<$1$2>');
+
+        // 2. 提取并保护 <pre> 和 <code> 块
+        const protectedBlocks = [];
+        // 匹配 <pre>...</pre> 或 <code>...</code> 及其内容
+        result = result.replace(/<(pre|code)>([\s\S]*?)<\/\1>/gi, (match, tag, content) => {
+            const placeholder = `__PROTECTED_BLOCK_${protectedBlocks.length}__`;
+            protectedBlocks.push({ tag, content });
+            return `<${tag}>${placeholder}</${tag}>`;
+        });
+
+        // 3. 处理空白逻辑
+        if (!hasBlank) {
+            // --- 完全最小化模式 ---
+            result = result.replace(/>\s+</g, '><'); // 标签间
+            result = result.replace(/>\s+/g, '>');  // 标签后文字前
+            result = result.replace(/\s+</g, '<');  // 文字后标签前
+            result = result.replace(/\s+/g, ' ');   // 多个空格合并为一个
+        } else {
+            // --- 保留单换行模式 ---
+            result = result.replace(/>\s+/g, '>');
+            result = result.replace(/\s+</g, '<');
+            result = result.replace(/></g, '>\n<'); // 确保标签之间只有一个换行
+        }
+
+        // 4. 还原被保护的内容
+        protectedBlocks.forEach((block, index) => {
+            const placeholder = `__PROTECTED_BLOCK_${index}__`;
+            result = result.replace(placeholder, block.content);
+        });
+
+        return result.trim();
     }
 
 
