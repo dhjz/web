@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级水印工作台 V4</title>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box;  }
+        :root { --primary: #6366f1; --bg-dark: #0f172a; --panel-dark: #1e293b; --text: #f1f5f9; }
+        body { font-family: -apple-system, sans-serif; margin: 0; background: var(--bg-dark); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { background: #111827; padding: 12px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        #app {     height: 100%;  display: flex; flex-direction: column;}
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+
+        /* 左侧预览区：关键在于独立滚动 */
+        .preview-pane { flex: 1; overflow: auto; background: #020617; position: relative; display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+        .canvas-container { position: relative; background-image: 
+            linear-gradient(45deg, #1e293b 25%, transparent 25%), linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #1e293b 75%), linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); cursor: crosshair; line-height: 0; }
+        canvas { display: block; }
+        
+        /* 屏蔽框 */
+        .mask-overlay { position: absolute; border: 2px solid #ef4444; background: rgba(239, 68, 68, 0.2); pointer-events: none; z-index: 5; }
+        .mask-tag { position: absolute; top: -18px; left: -2px; background: #ef4444; color: white; font-size: 10px; padding: 1px 4px; border-radius: 2px; }
+
+        /* 右侧设置区：独立滚动 */
+        .settings-pane { width: 380px; background: var(--panel-dark); border-left: 1px solid #334155; overflow-y: auto; padding: 20px; scrollbar-width: thin; }
+        
+        .section { background: #111827; border-radius: 8px; padding: 16px; margin-bottom: 20px; border: 1px solid #334155; }
+        h3 { font-size: 13px; margin: 0 0 12px 0; color: #94a3b8; text-transform: uppercase; border-left: 3px solid var(--primary); padding-left: 8px; }
+        
+        .field { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 8px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+        input[type="range"] { height: 4px; background: #334155; accent-color: var(--primary); }
+        
+        .row { display: flex; gap: 8px; }
+        .row > * { flex: 1; }
+
+        .btn { padding: 6px 8px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; font-size: 13px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-danger { background: #991b1b; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
+        .btn:hover { filter: brightness(1.2); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .preview-pane { height: 50vh; flex: auto; }
+            .settings-pane { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <header>
+        <div style="font-weight: 800; letter-spacing: 1px;">水印 <span style="color:var(--primary)">工厂</span></div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <div v-if="rawImg" style="font-size: 11px;white-space: nowrap;">像素: {{rawImg.width}} x {{rawImg.height}}</div>
+            <button class="btn btn-primary" @click="$refs.bgInput.click()">上传</button>
+            <button class="btn btn-primary" @click="download" :disabled="!rawImg">导出</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- 左侧预览区 -->
+        <div class="preview-pane">
+            <div v-if="!rawImg" style="margin-top: 20vh; text-align: center">
+                <button class="btn btn-primary" @click="$refs.bgInput.click()">上传背景图片</button>
+            </div>
+
+            <div v-show="rawImg" class="canvas-container" 
+                 @mousedown="startMask" @mousemove="drawMask" @mouseup="endMask">
+                <!-- 预览主画布 -->
+                <canvas ref="previewCanvas"></canvas>
+                
+                <!-- 已绘制的屏蔽框 -->
+                <div v-for="(m, i) in config.masks" :key="i" class="mask-overlay" :style="getMaskStyle(m)">
+                    <span class="mask-tag">屏蔽区 {{i+1}}</span>
+                </div>
+                <!-- 正在拖拽的屏蔽框 -->
+                <div v-if="tempMask" class="mask-overlay" :style="getMaskStyle(tempMask)"></div>
+            </div>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div class="settings-pane">
+            <!-- 画布控制 -->
+            <div class="section">
+                <h3>画布与显示</h3>
+                <div class="field">
+                    <label>预览显示宽度: {{ config.previewW }}px</label>
+                    <input type="range" v-model.number="config.previewW" min="300" max="3000" step="50">
+                </div>
+                <div class="field">
+                    <button :class="['btn', isMaskEdit ? 'btn-danger' : 'btn-outline']" @click="isMaskEdit = !isMaskEdit">
+                        {{ isMaskEdit ? '正在绘图 (停止)' : '绘制屏蔽区域' }}
+                    </button>
+                    <button v-if="config.masks.length" class="btn btn-outline" style="margin-top:8px" @click="config.masks = []">清空所有屏蔽区</button>
+                </div>
+            </div>
+
+            <!-- 导出设置 -->
+            <div class="section">
+                <h3>导出属性</h3>
+                <div class="field">
+                    <label>尺寸模式</label>
+                    <select v-model="config.exportMode" @change="syncExportSize">
+                        <option value="original">原始尺寸 (1:1)</option>
+                        <option value="width">锁定宽度 (等比)</option>
+                        <option value="height">锁定高度 (等比)</option>
+                        <option value="custom">自定义宽高</option>
+                    </select>
+                </div>
+                <div class="row" v-if="config.exportMode !== 'original'">
+                    <div class="field">
+                        <label>宽 (px)</label>
+                        <input type="number" v-model.number="config.exportW" @input="onSizeInput('w')">
+                    </div>
+                    <div class="field">
+                        <label>高 (px)</label>
+                        <input type="number" v-model.number="config.exportH" @input="onSizeInput('h')">
+                    </div>
+                </div>
+                <div class="field">
+                    <label>格式</label>
+                    <select v-model="config.exportFormat">
+                        <option value="image/png">PNG</option>
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/webp">WebP</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 水印内容 -->
+            <div class="section">
+                <h3>水印配置</h3>
+                <div class="field">
+                    <select v-model="config.type">
+                        <option value="text">文字水印</option>
+                        <option value="image">图片水印</option>
+                    </select>
+                </div>
+                <div v-if="config.type === 'text'">
+                    <input type="text" v-model="config.text" placeholder="文字内容">
+                    <div class="row"><input type="range" v-model.number="config.fontSize" min="6" max="500"></div>
+                    <div class="row" style="margin-top:8px">
+                        <input type="number" v-model.number="config.fontSize" placeholder="字号">
+                        <input type="color" v-model="config.color" style="height:35px; padding:2px">
+                    </div>
+                </div>
+                <div v-else>
+                    <button class="btn btn-outline" @click="$refs.wmInput.click()">上传水印图</button>
+                    <label style="margin-top:8px">缩放: {{config.wmScale}}%</label>
+                    <input type="range" v-model.number="config.wmScale" min="1" max="100">
+                </div>
+            </div>
+
+            <!-- 核心坐标控制 -->
+            <div class="section">
+                <h3>排版 & 定位</h3>
+                <div class="field">
+                    <label><input type="checkbox" v-model="config.isTile"> 开启平铺铺满</label>
+                </div>
+
+                <!-- 非平铺模式下的 X,Y 百分比 -->
+                <div v-if="!config.isTile">
+                    <div class="field">
+                        <label>水平位置 (X): {{config.percentX}}%</label>
+                        <input type="range" v-model.number="config.percentX" min="0" max="100">
+                    </div>
+                    <div class="field">
+                        <label>垂直位置 (Y): {{config.percentY}}%</label>
+                        <input type="range" v-model.number="config.percentY" min="0" max="100">
+                    </div>
+                    <div class="row">
+                        <div class="field">
+                            <label>微调 X (px)</label>
+                            <input type="number" v-model.number="config.offsetX">
+                        </div>
+                        <div class="field">
+                            <label>微调 Y (px)</label>
+                            <input type="number" v-model.number="config.offsetY">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>透明度: {{config.opacity}}</label>
+                        <input type="range" v-model.number="config.opacity" min="0" max="1" step="0.1">
+                    </div>
+                    <div class="field">
+                        <label>旋转: {{config.rotate}}°</label>
+                        <input type="range" v-model.number="config.rotate" min="-180" max="180">
+                    </div>
+                </div>
+
+                <div class="field" v-if="config.isTile">
+                    <label>间距 (px)</label>
+                    <input type="range" v-model.number="config.gap" min="-20" max="1500">
+                    <input type="number" v-model.number="config.gap">
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="padding:16px; font-size:15px" @click="download" :disabled="!rawImg">生成并下载高清图</button>
+            <div style="height:60px"></div>
+        </div>
+    </div>
+
+    <!-- 隐藏 -->
+    <input type="file" ref="bgInput" class="hidden" @change="uploadImg('bg', $event)">
+    <input type="file" ref="wmInput" class="hidden" @change="uploadImg('wm', $event)">
+    <canvas ref="exportCanvas" class="hidden"></canvas>
+</div>
+
+<script>
+const { createApp, ref, reactive, onMounted, watch } = Vue;
+
+createApp({
+    setup() {
+        const previewCanvas = ref(null);
+        const exportCanvas = ref(null);
+        const rawImg = ref(null);
+        const wmImg = ref(null);
+        const isMaskEdit = ref(false);
+        const tempMask = ref(null);
+
+        const config = reactive({
+            previewW: 1000,
+            exportMode: 'original',
+            exportW: 0,
+            exportH: 0,
+            exportFormat: 'image/jpeg',
+            type: 'text',
+            text: '仅供办理业务使用',
+            fontSize: 40,
+            color: '#ffffff',
+            opacity: 0.5,
+            rotate: -30,
+            isTile: true,
+            percentX: 50,
+            percentY: 50,
+            offsetX: 0,
+            offsetY: 0,
+            gap: 150,
+            wmScale: 20,
+            masks: [] // 绝对像素坐标
+        });
+
+        onMounted(() => {
+            const saved = localStorage.getItem('wm_v4_config');
+            if (saved) Object.assign(config, JSON.parse(saved));
+        });
+
+        watch(config, () => {
+            localStorage.setItem('wm_v4_config', JSON.stringify(config));
+            render(previewCanvas.value, config.previewW);
+        }, { deep: true });
+
+        const uploadImg = (type, e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    if (type === 'bg') {
+                        rawImg.value = img;
+                        config.exportW = img.width;
+                        config.exportH = img.height;
+                    } else {
+                        wmImg.value = img;
+                    }
+                    render(previewCanvas.value, config.previewW);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        const syncExportSize = () => {
+            if (!rawImg.value || config.exportMode === 'original') return;
+            config.exportW = rawImg.value.width;
+            config.exportH = rawImg.value.height;
+        };
+
+        const onSizeInput = (type) => {
+            if (config.exportMode === 'custom' || !rawImg.value) return;
+            const ratio = rawImg.value.width / rawImg.value.height;
+            if (type === 'w') config.exportH = Math.round(config.exportW / ratio);
+            else config.exportW = Math.round(config.exportH * ratio);
+        };
+
+        // --- 绘图逻辑 ---
+        const render = (canvas, targetW) => {
+            if (!rawImg.value || !canvas) return;
+            const ctx = canvas.getContext('2d');
+            const ratio = targetW / rawImg.value.width;
+            const targetH = rawImg.value.height * ratio;
+
+            canvas.width = targetW;
+            canvas.height = targetH;
+
+            // 1. 背景
+            ctx.drawImage(rawImg.value, 0, 0, targetW, targetH);
+
+            // 2. 水印参数
+            ctx.save();
+            ctx.globalAlpha = config.opacity;
+            
+            let wmW, wmH;
+            if (config.type === 'text') {
+                const fs = config.fontSize * ratio;
+                ctx.font = `${fs}px sans-serif`;
+                wmW = ctx.measureText(config.text).width;
+                wmH = fs;
+            } else {
+                const s = (config.wmScale / 100) * ratio;
+                wmW = (wmImg.value?.width || 100) * s;
+                wmH = (wmImg.value?.height || 100) * s;
+            }
+
+            const angle = config.rotate * Math.PI / 180;
+
+            if (config.isTile) {
+                // 平铺模式
+                const gap = config.gap * ratio;
+                const stepX = wmW + gap;
+                const stepY = wmH + gap;
+                const limit = Math.max(targetW, targetH) * 2;
+
+                for (let i = -limit; i < limit; i += stepX) {
+                    for (let j = -limit; j < limit; j += stepY) {
+                        // 屏蔽检测：将画布坐标 i, j 还原为原图像素坐标
+                        const rx = i / ratio;
+                        const ry = j / ratio;
+                        if (config.masks.some(m => rx >= m.x && rx <= m.x + m.w && ry >= m.y && ry <= m.y + m.h)) continue;
+
+                        ctx.save();
+                        ctx.translate(i, j);
+                        ctx.rotate(angle);
+                        drawContent(ctx, wmW, wmH, ratio);
+                        ctx.restore();
+                    }
+                }
+            } else {
+                // 非平铺模式：百分比定位
+                const baseX = targetW * (config.percentX / 100);
+                const baseY = targetH * (config.percentY / 100);
+                const finalX = baseX + (config.offsetX * ratio);
+                const finalY = baseY + (config.offsetY * ratio);
+
+                // 屏蔽检测
+                const rx = finalX / ratio;
+                const ry = finalY / ratio;
+                if (!config.masks.some(m => rx >= m.x && rx <= m.x + m.w && ry >= m.y && ry <= m.y + m.h)) {
+                    ctx.save();
+                    ctx.translate(finalX, finalY);
+                    ctx.rotate(angle);
+                    drawContent(ctx, wmW, wmH, ratio);
+                    ctx.restore();
+                }
+            }
+            ctx.restore();
+        };
+
+        const drawContent = (ctx, w, h, ratio) => {
+            if (config.type === 'text') {
+                ctx.fillStyle = config.color;
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'center';
+                ctx.fillText(config.text, 0, 0);
+            } else if (wmImg.value) {
+                ctx.drawImage(wmImg.value, -w/2, -h/2, w, h);
+            }
+        };
+
+        // --- 屏蔽交互 ---
+        const startMask = (e) => {
+            if (!isMaskEdit.value || !rawImg.value) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const r = rawImg.value.width / rect.width;
+            tempMask.value = { x: (e.clientX - rect.left) * r, y: (e.clientY - rect.top) * r, w: 0, h: 0 };
+        };
+
+        const drawMask = (e) => {
+            if (!tempMask.value) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const r = rawImg.value.width / rect.width;
+            tempMask.value.w = (e.clientX - rect.left) * r - tempMask.value.x;
+            tempMask.value.h = (e.clientY - rect.top) * r - tempMask.value.y;
+        };
+
+        const endMask = () => {
+            if (tempMask.value) {
+                const m = tempMask.value;
+                config.masks.push({
+                    x: m.w > 0 ? m.x : m.x + m.w,
+                    y: m.h > 0 ? m.y : m.y + m.h,
+                    w: Math.abs(m.w),
+                    h: Math.abs(m.h)
+                });
+                tempMask.value = null;
+            }
+        };
+
+        const getMaskStyle = (m) => {
+            if (!rawImg.value) return {};
+            const r = config.previewW / rawImg.value.width;
+            return { left: (m.x * r) + 'px', top: (m.y * r) + 'px', width: (m.w * r) + 'px', height: (m.h * r) + 'px' };
+        };
+
+        const download = () => {
+            render(exportCanvas.value, config.exportW);
+            const link = document.createElement('a');
+            link.download = `factory_${Date.now()}.${config.exportFormat.split('/')[1]}`;
+            link.href = exportCanvas.value.toDataURL(config.exportFormat, 0.92);
+            link.click();
+        };
+
+        return {
+            previewCanvas, exportCanvas, rawImg, wmImg, config, isMaskEdit, tempMask,
+            uploadImg, syncExportSize, onSizeInput, startMask, drawMask, endMask, getMaskStyle, download
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
