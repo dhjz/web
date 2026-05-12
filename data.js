@@ -68,7 +68,7 @@ window.config = {
         { name: '音频转换', short: '音频转', url: './audioc/index.html', color: '#DC143C' },
         { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' },
         { name: '图片压缩', short: '压缩', url: 'https://tiny.199311.xyz/', color: '#ff3385' },
-        { name: 'SVG编辑', short: 'SVG', url: 'https://svg.199311.xyz/', color: '#D4237A' },
+        { name: 'SVG编辑', short: 'SVG', url: './svg/index.html', color: '#D4237A' },
         { name: '水印工具', short: '水印', url: './mark/index.html', color: '#111827' },
       ]
     },
