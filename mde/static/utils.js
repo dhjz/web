@@ -386,7 +386,7 @@ function generateTemplateCSS(config) {
     .preview-content a:hover { text-decoration: underline; }
     .preview-content code { font-family: ${fonts.code}; background: ${colors.codeBg}; padding: 2px 6px; border-radius: 4px; font-size: ${sizes.text - 1}pt; }
     .preview-content pre { background: ${colors.codeBg}; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0 0 ${spacing.paragraphMargin}px 0; }
-    .preview-content pre code { background: transparent; padding: 0; }
+    .preview-content pre code { background: transparent; padding: 0; white-space: pre-wrap; }
     .preview-content blockquote { border-left: 4px solid ${colors.quoteBorder}; padding: 12px 16px; margin: 0 0 ${spacing.paragraphMargin}px 0; background: ${colors.codeBg}; border-radius: 0 8px 8px 0; }
     .preview-content blockquote p { color: ${colors.quoteColor}; margin: 0; }
     .preview-content ul, .preview-content ol { color: ${colors.text}; font-family: ${fonts.text}; font-size: ${sizes.text}pt; line-height: ${spacing.lineHeight}; margin: 0 0 ${spacing.paragraphMargin}px 0; padding-left: 24px; }
@@ -416,7 +416,7 @@ function generateDocxCSS(config) {
     a { color: ${colors.link}; text-decoration: underline; }
     code { font-family: ${fonts.code}; background: ${colors.codeBg}; padding: 2px 6px; font-size: ${sizes.text - 1}pt; }
     pre { background: ${colors.codeBg}; padding: 16px; margin: 0 0 ${spacing.paragraphMargin}px 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; }
-    pre code { background: transparent; padding: 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; display: block; }
+    pre code { background: transparent; padding: 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; display: block; white-space: pre-wrap; }
     blockquote { border-left: 4px solid ${colors.quoteBorder}; padding: 12px 16px; margin: 0 0 ${spacing.paragraphMargin}px 0; background: ${colors.codeBg}; }
     blockquote p { color: ${colors.quoteColor}; margin: 0; }
     table { border-collapse: collapse; width: 100%; margin: 0 0 ${spacing.paragraphMargin}px 0; font-size: ${sizes.text}pt; }
