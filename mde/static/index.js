@@ -150,6 +150,24 @@ const app = Vue.createApp({
     }
   },
   methods: {
+    onDrag(e) {
+      e.preventDefault();
+    },
+    onDrop(e) {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      file && this.readFile(file);
+    },
+    async readFile(file) {
+      const txt = await readTxt(file);
+      this.markdownText = txt;
+    },
+    async handleUpload() {
+      const txt = await uploadText();
+      if (txt) {
+        this.markdownText = txt;
+      }
+    },
     renderMarkdown() {
       if (typeof marked !== 'undefined') {
         let html = marked.parse(this.markdownText);
@@ -410,6 +428,12 @@ const app = Vue.createApp({
     }
     let list = loadHistoryFromStorage();
     this.markdownText = list[0]?.content || '';
+    document.body.addEventListener('dragover', this.onDrag);
+    document.body.addEventListener('drop', this.onDrop);
+  },
+  beforeUnmount() {
+    document.body.removeEventListener('dragover', this.onDrag);
+    document.body.removeEventListener('drop', this.onDrop);
   }
 });
 

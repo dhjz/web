@@ -162,6 +162,26 @@ function uploadText() {
   })
 }
 
+function readTxt(f) {
+  return new Promise((r) => {
+    Object.assign(new FileReader(), { onload: ({ target: { result } }) => r(result) }).readAsText(f)
+  })
+}
+
+function uploadText2() {
+  return new Promise((r) => {
+    document.getElementById('impinput')?.remove()
+    const inputEl = Object.assign(document.createElement('input'), { type: 'file', id: 'impinput', style: 'display: none;' })
+    document.body.append(inputEl)
+    inputEl.onchange = function () {
+      const file = inputEl.files[0]
+      if (!file) return r(null)
+      Object.assign(new FileReader(), { onload: ({ target: { result } }) => r(result) }).readAsText(file)
+    }
+    inputEl.click()
+  })
+}
+
 // # 文件-一键上传并获取内容
 function uploadCont(isBase46) {
   // 拼接base64  data:image/jpeg;base64,XXXXXXXXXXXX
@@ -249,6 +269,12 @@ function dragUpload() {
       logs(cont, 'dragUpload()')
     }
     reader.readAsText(file, 'UTF-8')
+  })
+}
+
+function readTxt(f) {
+  return new Promise((r) => {
+    Object.assign(new FileReader(), { onload: ({ target: { result } }) => r(result) }).readAsText(f)
   })
 }
 
