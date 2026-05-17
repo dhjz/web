@@ -118,7 +118,8 @@ const app = Vue.createApp({
         { value: "'Fira Code', 'Consolas', monospace", label: 'Fira Code' },
         { value: "'Monaco', monospace", label: 'Monaco' },
         { value: "'Menlo', 'Consolas', monospace", label: 'Menlo' }
-      ]
+      ],
+      leftWidth: parseFloat(localStorage.getItem('panel-width')) || 50
     };
   },
   computed: {
@@ -150,6 +151,20 @@ const app = Vue.createApp({
     }
   },
   methods: {
+    startResize(e) {
+      const container = this.$refs.mainContainer;
+      const onMove = (ev) => {
+        const rect = container.getBoundingClientRect();
+        this.leftWidth = Math.min(80, Math.max(20, ((ev.clientX - rect.left) / rect.width) * 100));
+        localStorage.setItem('panel-width', this.leftWidth);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    },
     onDrag(e) {
       e.preventDefault();
     },

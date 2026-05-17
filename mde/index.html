@@ -16,8 +16,8 @@
             <!-- <div class="app-header">
                 <h1>免费 Markdown 转换器</h1>
             </div> -->
-            <div class="main-container">
-                <div class="panel">
+            <div class="main-container" ref="mainContainer">
+                <div class="panel" :style="{ width: leftWidth + '%' }">
                     <div class="panel-header">
                         <span class="title">Markdown 转换器</span>
                         <div class="toolbar">
@@ -39,7 +39,8 @@
                         ></textarea>
                     </div>
                 </div>
-                <div class="panel">
+                <div class="resize-handle" @mousedown="startResize" :title="leftWidth">⋮</div>
+                <div class="panel flex-1">
                     <div class="panel-header">
                         <span class="title">
                             预览区
