@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>免费 Markdown 转换器</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/element-plus/2.10.6/index.css">
+    <link rel="stylesheet" href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/KaTeX/0.16.8/katex.min.css">
+    <link rel="stylesheet" href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link rel="stylesheet" href="static/index.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="app-container">
+            <!-- <div class="app-header">
+                <h1>免费 Markdown 转换器</h1>
+            </div> -->
+            <div class="main-container">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="title">Markdown 转换器</span>
+                        <div class="toolbar">
+                            <el-button size="small" @click="openHistoryDialog">
+                                <el-icon><Clock /></el-icon>
+                                历史记录
+                            </el-button>
+                            <el-button size="small" @click="clearContent">清空</el-button>
+                            <el-button size="small" @click="fillExample">填入示例</el-button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <textarea 
+                            class="input-textarea" 
+                            v-model="markdownText" 
+                            spellcheck="false"
+                            placeholder="在此输入 Markdown 内容..."
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="title">
+                            预览区
+                            <span v-if="currentTemplate" class="template-name-badge">
+                                <el-icon><Document /></el-icon>
+                                {{ currentTemplate.name }}
+                            </span>
+                        </span>
+                        <div class="toolbar">
+                            <el-button size="small" @click="openSelectDialog">选择模板</el-button>
+                            <el-button size="small" @click="openEditDialog">编辑模板</el-button>
+                            <el-button size="small" type="success" @click="handleCopyRichText">复制富文本</el-button>
+                            <el-button size="small" type="primary" @click="handleExportWord">导出 Word</el-button>
+                            <el-button size="small" type="danger" @click="handleExportPDF">导出 PDF</el-button>
+                            <el-button size="small" type="warning" @click="handleExportHTML">导出 HTML</el-button>
+                            <el-button size="small" type="danger" plain @click="handlePrintPDF">打印</el-button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="preview-container">
+                            <div class="preview-paper">
+                                <div class="preview-content" v-html="renderedHTML"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <el-dialog v-model="selectDialogVisible" title="选择模板" width="850px">
+            <div class="category-tabs">
+                <el-radio-group v-model="currentCategory" size="small">
+                    <el-radio-button v-for="cat in templateCategories" :key="cat" :value="cat">{{ cat }}</el-radio-button>
+                </el-radio-group>
+            </div>
+            <div class="template-grid">
+                <div 
+                    v-for="tpl in filteredTemplates" 
+                    :key="tpl.id"
+                    class="template-card"
+                    :class="{ active: currentTemplate && currentTemplate.id === tpl.id }"
+                    @click="selectTemplate(tpl)"
+                >
+                    <h4>{{ tpl.name }}</h4>
+                    <div class="template-preview-sample">
+                        <div class="sample-title" :style="{ color: tpl.config.colors.title, fontFamily: tpl.config.fonts.title }">这是示例标题</div>
+                        <div class="sample-text" :style="{ color: tpl.config.colors.text, fontFamily: tpl.config.fonts.text }">这是示例的一段正文</div>
+                    </div>
+                    <span class="category-tag">{{ tpl.category }}</span>
+                </div>
+            </div>
+        </el-dialog>
+
+        <el-dialog v-model="editDialogVisible" title="编辑模板" width="600px" class="compact-dialog">
+            <el-form label-width="70px" size="small" class="compact-form">
+                <el-collapse v-model="activeCollapse">
+                    <el-collapse-item title="颜色设置" name="colors">
+                        <el-row :gutter="8">
+                            <el-col :span="12">
+                                <el-form-item label="标题颜色">
+                                    <el-color-picker v-model="editConfig.colors.title" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="正文颜色">
+                                    <el-color-picker v-model="editConfig.colors.text" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="链接颜色">
+                                    <el-color-picker v-model="editConfig.colors.link" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="代码背景">
+                                    <el-color-picker v-model="editConfig.colors.codeBg" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="引用颜色">
+                                    <el-color-picker v-model="editConfig.colors.quoteColor" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="引用边框">
+                                    <el-color-picker v-model="editConfig.colors.quoteBorder" />
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </el-collapse-item>
+                    <el-collapse-item title="字体设置" name="fonts">
+                        <el-row :gutter="8">
+                            <el-col :span="12">
+                                <el-form-item label="标题字体">
+                                    <el-select v-model="editConfig.fonts.title" style="width: 100%;">
+                                        <el-option v-for="opt in fontOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="正文字体">
+                                    <el-select v-model="editConfig.fonts.text" style="width: 100%;">
+                                        <el-option v-for="opt in fontOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="代码字体">
+                                    <el-select v-model="editConfig.fonts.code" style="width: 100%;">
+                                        <el-option v-for="opt in codeFontOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </el-collapse-item>
+                    <el-collapse-item title="字号设置 (单位: pt)" name="sizes">
+                        <el-row :gutter="8">
+                            <el-col :span="12">
+                                <el-form-item label="H1 字号">
+                                    <el-input-number v-model="editConfig.sizes.h1" :min="12" :max="42" :step="1" style="width: 100%;" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="H2 字号">
+                                    <el-input-number v-model="editConfig.sizes.h2" :min="12" :max="36" :step="1" style="width: 100%;" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="H3 字号">
+                                    <el-input-number v-model="editConfig.sizes.h3" :min="10" :max="28" :step="1" style="width: 100%;" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="正文字号">
+                                    <el-input-number v-model="editConfig.sizes.text" :min="8" :max="24" :step="1" style="width: 100%;" />
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <div class="size-hint">
+                            <div class="size-hint-title">📝 Word 字号对照表 (pt)</div>
+                            初号=42pt | 小初=36pt | 一号=26pt | 小一=24pt | 二号=22pt | 小二=18pt<br/>
+                            三号=16pt | 小三=15pt | 四号=14pt | 小四=12pt | 五号=10.5pt | 小五=9pt | 六号=7.5pt
+                        </div>
+                    </el-collapse-item>
+                    <el-collapse-item title="间距设置" name="spacing">
+                        <el-row :gutter="8">
+                            <el-col :span="12">
+                                <el-form-item label="行高">
+                                    <el-input-number v-model="editConfig.spacing.lineHeight" :min="1" :max="3" :step="0.1" :precision="1" style="width: 100%;" />
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="段落间距">
+                                    <el-input-number v-model="editConfig.spacing.paragraphMargin" :min="0" :max="40" style="width: 100%;" />
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </el-collapse-item>
+                </el-collapse>
+            </el-form>
+            <template #footer>
+                <el-button @click="resetTemplateConfig">重置</el-button>
+                <el-button type="primary" @click="applyEditConfig">应用</el-button>
+            </template>
+        </el-dialog>
+
+        <el-dialog v-model="historyDialogVisible" title="历史记录" width="650px">
+            <div class="history-settings">
+                <span class="history-label">最大保存数量：</span>
+                <el-input-number v-model="maxHistoryCount" :min="5" :max="50" size="small" style="width: 100px;" />
+                <span class="history-count">当前共 {{ historyList.length }} 条记录</span>
+            </div>
+            <div class="history-list" v-if="historyList.length > 0">
+                <div 
+                    v-for="(item, index) in historyList" 
+                    :key="item.id"
+                    class="history-item"
+                >
+                    <div class="history-item-info">
+                        <div class="history-item-title">{{ item.title || '无标题' }}</div>
+                        <div class="history-item-preview">{{ item.preview }}</div>
+                        <div class="history-item-time">{{ formatTime(item.timestamp) }}</div>
+                    </div>
+                    <div class="history-item-actions">
+                        <el-button size="small" type="primary" link @click="loadHistory(item)">加载</el-button>
+                        <el-button size="small" type="danger" link @click="deleteHistory(index)">删除</el-button>
+                    </div>
+                </div>
+            </div>
+            <el-empty v-else description="暂无历史记录" :image-size="80" />
+        </el-dialog>
+    </div>
+
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/element-plus/2.10.6/index.full.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/element-plus-icons-vue/2.3.2/index.iife.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/KaTeX/0.16.8/katex.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+    <script src="static/lib/html-docx.min.js"></script>
+    <script src="static/tpl.js"></script>
+    <script src="static/utils.js"></script>
+    <script src="static/index.js"></script>
+</body>
+</html>

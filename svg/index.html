@@ -59,6 +59,20 @@
     .toast { position: fixed; bottom: 20px; right: 20px; background: #2d3748; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 1000; }
     .toast.show { transform: translateY(0); opacity: 1; }
     ::-webkit-scrollbar{width: 8px;height: 8px}::-webkit-scrollbar-thumb{background-color: #ddd;border-radius: 6px}
+    .history-content { height: calc(100% - 60px); overflow-y: auto; }
+    .history-settings { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 10px; background: white; border-radius: 8px; }
+    .history-settings label { font-size: 14px; color: #4a5568; }
+    .history-settings input { width: 80px; }
+    .history-list { display: flex; flex-direction: column; gap: 12px; }
+    .history-empty { text-align: center; color: #718096; padding: 40px; font-size: 14px; }
+    .history-item { background: white; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
+    .history-item-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #718096; }
+    .history-item-time { font-weight: 500; }
+    .history-item-size { color: #4299e1; }
+    .history-item-preview { display: flex; align-items: center; justify-content: center; padding: 8px; background: #f7fafc; border-radius: 4px; margin-bottom: 8px; min-height: 60px; overflow: hidden; }
+    .history-item-preview svg { max-width: 100%; max-height: 80px; width: auto; height: auto; }
+    .history-item-actions { display: flex; gap: 8px; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
     @media (max-width: 768px) { .main-content { grid-template-columns: 1fr; height: auto; }
       .editor-panel, .preview-panel { min-height: 400px; }
     }
@@ -129,10 +143,13 @@
                 <button class="export-tab" :class="{ active: activeTab === 'data' }" @click="activeTab = 'data'">
                   DataURI
                 </button>
+                <button class="export-tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">
+                  历史记录
+                </button>
               </div>
 
               <div class="preview-container" @wheel="handleWheel" ref="previewContainer" v-show="activeTab === 'preview'" :style="{ background: currBgColor}">
-                <div class="preview-wrapper" ref="previewWrapper" id="preview-svg"  @mousedown="startPan" @mousemove="doPan" @mouseup="endPan"
+                <div class="preview-wrapper" ref="previewWrapper" id="preview-svg"  @mousedown="startPan"
                   :style="{ transform: `scale(${zoomLevel}) translate(${panX}px, ${panY}px)` }" v-html="previewHTML">
                 </div>
 
@@ -216,6 +233,30 @@
                   </button>
                 </div>
               </div>
+
+              <div class="export-content history-content" v-show="activeTab === 'history'">
+                <div class="history-settings">
+                  <label>最大记录数量:</label>
+                  <input type="number" v-model.number="maxHistory" min="1" max="100" @change="onMaxHistoryChange">
+                </div>
+                <div class="history-list">
+                  <div v-if="historyList.length === 0" class="history-empty">
+                    暂无历史记录
+                  </div>
+                  <div v-for="(item, index) in historyList" :key="item.id" class="history-item">
+                    <div class="history-item-info">
+                      <span class="history-item-time">{{ item.time }}</span>
+                      <span class="history-item-size">{{ formatBytes(item.size) }}</span>
+                    </div>
+                    <div class="history-item-preview" v-html="item.preview"></div>
+                    <div class="history-item-actions">
+                      <button class="btn btn-primary btn-sm" @click="applyHistory(item)">应用</button>
+                      <button class="btn btn-secondary btn-sm" @click="copyToClipboard(item.svg)">复制</button>
+                      <button class="btn btn-warning btn-sm" @click="deleteHistory(index)">删除</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -274,7 +315,9 @@
           startPanY: 0,
           svgoLoaded: false,
           currBgColor: '#f7fafc',
-          editor: null
+          editor: null,
+          maxHistory: 15,
+          historyList: []
         }
       },
       computed: {
@@ -305,7 +348,12 @@
       mounted() {
         this.initEditor()
         this.initEvents()
-        this.updatePreview();
+        this.loadHistory()
+        this.updatePreview()
+      },
+      beforeUnmount() {
+        document.removeEventListener('mousemove', this.doPan)
+        document.removeEventListener('mouseup', this.endPan)
       },
       methods: {
         initEditor() { 
@@ -393,24 +441,26 @@
           this.panY = mouseY - rect.height / 2 - svgY * this.zoomLevel;
         },
         startPan(event) {
-          if (event.button === 0 && event.target.closest('#preview-svg')) { // 左键
-            this.isPanning = true;
-            this.startX = event.clientX;
-            this.startY = event.clientY;
-            this.startPanX = this.panX;
-            this.startPanY = this.panY;
+          if (event.button === 0 && event.target.closest('#preview-svg')) {
+            event.preventDefault()
+            this.isPanning = true
+            this.startX = event.clientX
+            this.startY = event.clientY
+            this.startPanX = this.panX
+            this.startPanY = this.panY
+            document.addEventListener('mousemove', this.doPan, { passive: true })
+            document.addEventListener('mouseup', this.endPan)
           }
         },
         doPan(event) {
-          if (this.isPanning) {
-            const deltaX = event.clientX - this.startX;
-            const deltaY = event.clientY - this.startY;
-            this.panX = this.startPanX + deltaX;
-            this.panY = this.startPanY + deltaY;
-          }
+          if (!this.isPanning) return
+          this.panX = this.startPanX + (event.clientX - this.startX)
+          this.panY = this.startPanY + (event.clientY - this.startY)
         },
         endPan() {
-          this.isPanning = false;
+          this.isPanning = false
+          document.removeEventListener('mousemove', this.doPan)
+          document.removeEventListener('mouseup', this.endPan)
         },
         zoomIn() {
           this.zoomLevel = Math.min(5, this.zoomLevel + 0.2);
@@ -527,6 +577,7 @@
             return;
           }
           download(new Blob([this.svgCode], { type: 'image/svg+xml' }), 'image.svg')
+          this.saveToHistory(this.svgCode)
           this.showToastMessage('SVG文件已下载');
         },
         exportAsPNG() {
@@ -570,6 +621,7 @@
 
               // 导出图像
               const dataURL = canvas.toDataURL(`image/${format}`, 0.92);
+              this.saveToHistory(this.svgCode)
               this.showToastMessage(`${format.toUpperCase()}文件已导出`);
               if (format === 'ico') {
                 return this.downloadIco(dataURL, width);
@@ -645,6 +697,68 @@
           const sizes = ['B', 'KB', 'MB'];
           const i = Math.floor(Math.log(bytes) / Math.log(k));
           return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+        loadHistory() {
+          try {
+            const saved = localStorage.getItem('svg_history')
+            const maxSaved = localStorage.getItem('svg_max_history')
+            if (saved) {
+              this.historyList = JSON.parse(saved)
+            }
+            if (maxSaved) {
+              this.maxHistory = parseInt(maxSaved)
+            }
+          } catch (e) {
+            console.error('加载历史记录失败:', e)
+            this.historyList = []
+          }
+        },
+        saveToHistory(svgCode) {
+          if (!svgCode || !svgCode.trim()) return
+          const isDuplicate = this.historyList.some(item => item.svg === svgCode)
+          if (isDuplicate) return
+          try {
+            const now = new Date()
+            const timeStr = now.toLocaleString('zh-CN', {
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            const historyItem = {
+              id: Date.now(),
+              svg: svgCode,
+              time: timeStr,
+              size: new Blob([svgCode]).size,
+              preview: svgCode
+            }
+            this.historyList.unshift(historyItem)
+            if (this.historyList.length > this.maxHistory) {
+              this.historyList = this.historyList.slice(0, this.maxHistory)
+            }
+            localStorage.setItem('svg_history', JSON.stringify(this.historyList))
+            localStorage.setItem('svg_max_history', this.maxHistory.toString())
+          } catch (e) {
+            console.error('保存历史记录失败:', e)
+          }
+        },
+        deleteHistory(index) {
+          this.historyList.splice(index, 1)
+          localStorage.setItem('svg_history', JSON.stringify(this.historyList))
+          this.showToastMessage('已删除历史记录')
+        },
+        applyHistory(item) {
+          this.setEditorValue(item.svg)
+          this.showToastMessage('已应用历史记录')
+        },
+        onMaxHistoryChange() {
+          if (this.maxHistory < 1) this.maxHistory = 1
+          if (this.maxHistory > 100) this.maxHistory = 100
+          if (this.historyList.length > this.maxHistory) {
+            this.historyList = this.historyList.slice(0, this.maxHistory)
+          }
+          localStorage.setItem('svg_max_history', this.maxHistory.toString())
+          localStorage.setItem('svg_history', JSON.stringify(this.historyList))
         }
       }
     }).mount('#app');

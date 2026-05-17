@@ -199,7 +199,7 @@ main {
 .site-list {
     display: flex; /* 使用 flex 布局实现平铺 */
     flex-wrap: wrap; /* 允许元素换行 */
-    gap: 12px; /* 减小网站项之间的间距 */
+    gap: 8px 12px; /* 减小网站项之间的间距 */
     justify-content: flex-start; /* 从左侧开始平铺 */
 }
 
@@ -228,7 +228,7 @@ main {
     align-items: center;
     color: white; /* 文字颜色为白色 */
     font-size: 0.7em; /* 减小图标内文字字号 */
-    margin-bottom: 6px; /* 减小图标和名称之间的间距 */
+    margin-bottom: 4px; /* 减小图标和名称之间的间距 */
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1); /* 减小图标阴影 */
     transition: transform 0.2s ease;
 }

@@ -29,6 +29,7 @@ window.config = {
         { name: 'JS库CDN', short: 'CDN', url: 'https://cdn.199311.xyz/', color: '#138b43' },
         { name: '镜像库', short: 'CDN', url: 'https://cdn.199311.xyz/lib.html', color: '#7355B0' },
         { name: 'MD文件预览', short: 'MD', url: './md/index.html', color: '#2655bb' },
+        { name: 'MD文件转换', short: 'MD抓换', url: './mde/index.html', color: '#2f67e0' },
         { name: 'HTML预览', short: 'HTML', url: './run.html', color: '#16a34a' },
         { name: '文本转PDF', short: 'PDF', url: './pdf/index.html', color: '#c52d22' },
       ]
