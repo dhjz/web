@@ -324,6 +324,37 @@ function formatBytes(size) {
   return `${size.toFixed(1)}${units[exp]}`;
 }
 
+// # 浏览器-打印元素
+function printEl(selector, excludes = []) {
+  const element = typeof selector === 'string' ? document.querySelector(selector) : selector
+  if (!element) return console.error(`Element not found: ${selector}`)
+
+  const iframe = document.createElement('iframe')
+  iframe.style = 'position: absolute; left: -9999px; width: 0; height: 0;'
+  document.body.appendChild(iframe)
+
+  // 1. 复制样式：直接将 head 中的 style/link 节点 HTML 提取出来
+  const headHtml = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]')).map(x => x.outerHTML).join('')
+  const customStyle = `*{box-shadow:none!important;border-color:#333!important} table td,table th{position:static!important}`
+
+  // 2. 处理克隆和排除节点
+  const cloned = element.cloneNode(true)
+  cloned.querySelectorAll([...excludes, '.print-no, .no-print'].join(',')).forEach(x => x.remove())
+
+  // 3. 一次性写入 HTML (包含你的固定修复样式)
+  const iframeDoc = iframe.contentDocument
+  iframeDoc.open()
+  iframeDoc.write(`<!DOCTYPE html><html><head>${headHtml}<style>${customStyle}</style></head><body>${cloned.outerHTML}</body></html>`)
+  iframeDoc.close()
+
+  // 4. 等待加载完成后打印
+  iframe.contentWindow.onload = () => {
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
+    setTimeout(() => document.body.removeChild(iframe), 500)
+  }
+}
+
 // # 浏览器-加载script脚本
 function loadScript(url, globalName) {
   return new Promise((resolve, reject) => {
