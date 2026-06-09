@@ -1,172 +1,584 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>js文件转base64互转</title>
-  <style>#result { white-space: pre-wrap;  word-break: break-all; max-height: 50vh; overflow: auto; display: block; font-size: 13px; line-height: 1.3; margin: 10px; }</style>
-  <script src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/prism.min.js"></script>
-  <link href="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
-  <!-- <link href="https://cdn.bootcdn.net/ajax/libs/prism-themes/1.9.0/prism-vs.min.css" rel="stylesheet"> -->
-  <!-- <link href="https://cdn.bootcdn.net/ajax/libs/prism-themes/1.9.0/prism-vsc-dark-plus.min.css" rel="stylesheet"> -->
-  <!-- <link href="https://cdn.bootcdn.net/ajax/libs/prism-themes/1.9.0/prism-one-light.min.css" rel="stylesheet"> -->
-  <!-- <link href="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"> -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pako 压缩 Base64 转换器</title>
+    <!-- Vue 3 -->
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+    <!-- Pako -->
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <!-- Prism.js -->
+    <link href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; padding: 20px 16px; color: #374151; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; color: #1f2937; font-size: 1.8rem; margin-bottom: 6px; font-weight: 700; }
+        .principle { text-align: center; color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5; background: white; padding: 10px 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+        .principle code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #2563eb; }
+        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .card-title { font-size: 1.15rem; color: #1f2937; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .card-title .icon { width: 28px; height: 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; }
+        .upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 28px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; }
+        .upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-area.dragover { border-color: #3b82f6; background: #dbeafe; transform: scale(1.01); }
+        .upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
+        .upload-icon { font-size: 2.2rem; margin-bottom: 8px; }
+        .upload-text { color: #4b5563; font-size: 0.95rem; font-weight: 500; }
+        .upload-hint { color: #9ca3af; font-size: 0.8rem; margin-top: 4px; }
+        .file-info { display: none; margin-top: 12px; padding: 10px 12px; background: #eff6ff; border-radius: 8px; border-left: 3px solid #3b82f6; font-size: 0.9rem; }
+        .file-info.show { display: block; }
+        .file-name { font-weight: 600; color: #1f2937; }
+        .file-meta { color: #6b7280; font-size: 0.8rem; margin-top: 2px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .stat-box { background: #f9fafb; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #f3f4f6; }
+        .stat-label { font-size: 0.7rem; color: #6b7280; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 1rem; font-weight: 700; color: #2563eb; }
+        .stat-value.green { color: #059669; }
+        .stat-value.red { color: #dc2626; }
+        .control-group { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        .control-group label { font-weight: 600; color: #374151; font-size: 0.9rem; }
+        .slider-container { display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { width: 160px; accent-color: #2563eb; }
+        .slider-value { background: #2563eb; color: white; padding: 3px 10px; border-radius: 5px; font-weight: 600; font-size: 0.85rem; min-width: 26px; text-align: center; }
+        .level-desc { color: #6b7280; font-size: 0.8rem; }
+        textarea { width: 100%; min-height: 120px; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; resize: vertical; transition: border-color 0.2s; background: #fafafa; }
+        textarea:focus { outline: none; border-color: #2563eb; background: white; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 10px; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { transform: translateY(-1px); opacity: 0.9; }
+        .btn-secondary { background: #f3f4f6; color: #4b5563; margin-left: 8px; }
+        .btn-secondary:hover { background: #e5e7eb; }
+        .btn-success { background: #059669; color: white; }
+        .btn-success:hover { opacity: 0.9; }
+        .result-area { margin-top: 14px; display: none; }
+        .result-area.show { display: block; }
+        .output-box { background: #1e1e2e; color: #a6accd; padding: 12px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.8rem; word-break: break-all; max-height: 160px; overflow-y: auto; position: relative; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 0.75rem; }
+        .copy-btn:hover { background: rgba(255,255,255,0.2); }
+        .copy-btn.copied { background: #059669; border-color: #059669; }
+        .divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
+        .error-msg { color: #dc2626; background: #fef2f2; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; font-size: 0.85rem; }
+        .error-msg.show { display: block; }
+        .success-msg { color: #059669; background: #ecfdf5; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; font-size: 0.85rem; }
+        .success-msg.show { display: block; }
+        .preview-area { margin-top: 12px; text-align: center; }
+        .preview-area img { max-width: 100%; max-height: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .decode-info { background: #eff6ff; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #2563eb; display: none; }
+        .decode-info.show { display: block; }
+        .decode-info .label { color: #6b7280; font-size: 0.8rem; }
+        .decode-info .value { font-weight: 600; color: #1f2937; font-size: 1rem; }
+        .code-desc { color: #6b7280; margin-bottom: 12px; font-size: 0.85rem; line-height: 1.5; }
+        pre[class*="language-"] { border-radius: 8px !important; margin: 0 !important; font-size: 0.8rem !important; }
+        .decode-upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 20px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; margin-bottom: 12px; }
+        .decode-upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
+        .decode-upload-area.dragover { border-color: #3b82f6; background: #dbeafe; }
+        .decode-upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
+        .or-divider { text-align: center; color: #9ca3af; font-size: 0.8rem; margin: 8px 0; position: relative; }
+        .or-divider::before, .or-divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #e5e7eb; }
+        .or-divider::before { left: 0; }
+        .or-divider::after { right: 0; }
+        @media (max-width: 600px) { h1 { font-size: 1.4rem; }
+        .stats-grid { grid-template-columns: 1fr; }
+        .control-group { flex-direction: column; align-items: flex-start; }
+        input[type="range"] { width: 100%; }
+        }
 
+    </style>
 </head>
 <body>
-  <div>
-    <input type="file" id="file" class="filepond" name="filepond" />
-    文件大小: <span id="size"></span>
-    文件类型: <span id="type"></span>  
-    <button onclick="downloadText(tempBase64, tempName + '-base64.txt')" style="margin-left: 20px;">下载base64</button>
-    <button onclick="selectAll()" style="margin-left: 20px;">全选</button>
-    <button onclick="testDown()" style="margin-left: 20px;">模拟base64转文件</button>
-  </div>
-  <div id="result"></div>
-  <div>
-    <pre>
-      <code class="language-javascript">
-// 下载base64方法,   data:image/jpeg;base64,XXXXXXXXXXXX
-function downloadBase64(str, type, name) {
-  download(new Blob([base64ToBuffer(str)], { type }), name)
+    <div id="app">
+        <div class="container">
+            <h1>🔐 Pako 压缩 Base64 转换器</h1>
+            <div class="principle">
+                原理：文件 → 二进制 → <code>pako.deflate()</code> 压缩 → 嵌入文件名 → Base64 编码 <br> 逆向：Base64 → <code>pako.inflate()</code> 解压 → 提取文件名 → 还原文件
+            </div>
+
+            <!-- 文件转 Base64 -->
+            <div class="card">
+                <div class="card-title">
+                    <div class="icon">📤</div>
+                    文件 → Base64（压缩，含文件名）
+                </div>
+
+                <div class="control-group">
+                    <label>压缩级别：</label>
+                    <div class="slider-container">
+                        <input type="range" v-model.number="level" min="0" max="9" @input="onLevelChange">
+                        <span class="slider-value">{{ level }}</span>
+                    </div>
+                    <span class="level-desc">{{ levelDesc }}</span>
+                </div>
+                
+                <div class="upload-area" 
+                     @dragover.prevent="dragover = true" 
+                     @dragleave.prevent="dragover = false"
+                     @drop.prevent="onFileDrop"
+                     :class="{ dragover: dragover }">
+                    <input type="file" @change="onFileChange" ref="fileInput" />
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击或拖拽文件到此处</div>
+                    <div class="upload-hint">支持图片、文档、二进制等任意文件</div>
+                </div>
+
+                <div class="file-info" :class="{ show: fileName }">
+                    <div class="file-name">{{ fileName }}</div>
+                    <div class="file-meta">{{ fileMeta }}</div>
+                </div>
+
+                <div class="stats-grid" v-show="showStats">
+                    <div class="stat-box">
+                        <div class="stat-label">原始大小</div>
+                        <div class="stat-value">{{ originalSize }}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">压缩后大小</div>
+                        <div class="stat-value">{{ compressedSize }}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">压缩率</div>
+                        <div class="stat-value" :class="ratioColor">{{ compressionRatio }}</div>
+                    </div>
+                </div>
+
+                <div class="result-area" :class="{ show: showResult }">
+                    <div class="divider"></div>
+                    <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 8px; font-size: 0.9rem;">
+                        Base64 压缩结果（含文件名）
+                    </label>
+                    <div style="position: relative;">
+                        <div class="output-box">{{ base64Output }}</div>
+                        <button class="copy-btn" @click="copyToClipboard" :class="{ copied: copied }">{{ copyText }}</button>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-success" @click="downloadAsTxt">
+                            <span>💾</span> 下载为 .txt
+                        </button>
+                        <button class="btn btn-secondary" @click="clearEncode">
+                            <span>🗑️</span> 清空
+                        </button>
+                    </div>
+                    <div class="preview-area" v-if="previewUrl">
+                        <img :src="previewUrl" alt="预览" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Base64 转文件 -->
+            <div class="card">
+                <div class="card-title">
+                    <div class="icon">📥</div>
+                    Base64 → 文件（解压，自动提取文件名）
+                </div>
+
+                <div class="decode-upload-area"
+                     @dragover.prevent="decodeDragover = true"
+                     @dragleave.prevent="decodeDragover = false"
+                     @drop.prevent="onDecodeFileDrop"
+                     :class="{ dragover: decodeDragover }">
+                    <input type="file" @change="onDecodeFileChange" accept=".txt,text/plain" ref="decodeFileInput" />
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">点击或拖拽 Base64 文本文件到此处</div>
+                    <div class="upload-hint">支持 .txt 文件或之前下载的 .base64.txt 文件</div>
+                </div>
+
+                <div class="or-divider">或手动粘贴</div>
+
+                <div class="decode-info" :class="{ show: detectedFileName }">
+                    <div class="label">检测到文件名</div>
+                    <div class="value">{{ detectedFileName }}</div>
+                </div>
+
+                <div class="input-group">
+                    <textarea v-model="decodeInput" @input="onDecodeInput" placeholder="在此粘贴 Base64 字符串..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" @click="decodeBase64">
+                    <span>🔄</span> 解压并下载
+                </button>
+                <button class="btn btn-secondary" @click="clearDecode">
+                    <span>🗑️</span> 清空
+                </button>
+
+                <div class="error-msg" :class="{ show: decodeError }">{{ decodeError }}</div>
+                <div class="success-msg" :class="{ show: decodeSuccess }">{{ decodeSuccess }}</div>
+
+                <div class="stats-grid" v-show="showDecodeStats">
+                    <div class="stat-box">
+                        <div class="stat-label">压缩数据大小</div>
+                        <div class="stat-value">{{ decodeCompressedSize }}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">解压后大小</div>
+                        <div class="stat-value green">{{ decodeOriginalSize }}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">解压率</div>
+                        <div class="stat-value">{{ decodeRatio }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最小还原代码示例 -->
+            <div class="card">
+                <div class="card-title">
+                    <div class="icon">📜</div>
+                    最小还原代码（独立可用）
+                </div>
+                <div class="code-desc">
+                    以下代码不依赖本页面，仅需引入 pako 库即可将 Base64 字符串还原为原文件。
+                    复制到浏览器控制台或单独 HTML 文件中即可运行。
+                </div>
+                <pre><code class="language-javascript">// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js
+
+function restoreFile(base64Str) {
+    // Base64 解码
+    const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
+    
+    // Pako 解压
+    const data = pako.inflate(compressed);
+    
+    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
+    const nameLen = data[0] | (data[1] << 8);
+    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
+    const fileData = data.slice(2 + nameLen);
+    
+    // 自动下载
+    const blob = new Blob([fileData]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    
+    return fileName;
 }
 
-function base64ToBuffer(base64) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
+// 使用示例:
+// restoreFile("你的Base64字符串");</code></pre>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-primary" @click="copyCode">
+                        <span>📋</span> 复制代码
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+    <script>
+        const { createApp } = Vue;
 
-  return bytes.buffer;
-}
+        createApp({
+            data() {
+                return {
+                    // 压缩级别
+                    level: 6,
+                    levelDescriptions: {
+                        0: '不压缩（仅存储，最快）',
+                        1: '最快速度，压缩率最低',
+                        2: '快速压缩',
+                        3: '快速压缩',
+                        4: '中等压缩',
+                        5: '中等压缩',
+                        6: '平衡压缩率和速度（默认）',
+                        7: '较高压缩率',
+                        8: '高压缩率，较慢',
+                        9: '最高压缩率，最慢'
+                    },
+                    // 编码区状态
+                    dragover: false,
+                    fileName: '',
+                    fileMeta: '',
+                    showStats: false,
+                    originalSize: '-',
+                    compressedSize: '-',
+                    compressionRatio: '-',
+                    ratioColor: 'green',
+                    showResult: false,
+                    base64Output: '',
+                    copied: false,
+                    copyText: '复制',
+                    previewUrl: '',
+                    currentFileData: null,
+                    currentFileName: '',
+                    // 解码区状态
+                    decodeDragover: false,
+                    decodeInput: '',
+                    detectedFileName: '',
+                    decodeError: '',
+                    decodeSuccess: '',
+                    showDecodeStats: false,
+                    decodeCompressedSize: '-',
+                    decodeOriginalSize: '-',
+                    decodeRatio: '-'
+                };
+            },
+            computed: {
+                levelDesc() {
+                    return this.levelDescriptions[this.level];
+                }
+            },
+            methods: {
+                // 工具方法
+                formatBytes(bytes, decimals = 2) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const dm = decimals < 0 ? 0 : decimals;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+                },
+                arrayBufferToBase64(buffer) {
+                    const bytes = new Uint8Array(buffer);
+                    let binary = '';
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    return btoa(binary);
+                },
+                base64ToUint8Array(base64) {
+                    const binary = atob(base64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    return bytes;
+                },
+                encodeWithFileName(fileName, fileData) {
+                    const nameEncoder = new TextEncoder();
+                    const nameBytes = nameEncoder.encode(fileName);
+                    const nameLength = nameBytes.length;
+                    const header = new Uint8Array(2 + nameLength + fileData.length);
+                    header[0] = nameLength & 0xFF;
+                    header[1] = (nameLength >> 8) & 0xFF;
+                    header.set(nameBytes, 2);
+                    header.set(fileData, 2 + nameLength);
+                    return header;
+                },
+                decodeWithFileName(data) {
+                    const nameLength = data[0] | (data[1] << 8);
+                    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLength));
+                    const fileData = data.slice(2 + nameLength);
+                    return { fileName, fileData };
+                },
 
-function download(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  URL.revokeObjectURL(url);
-  setTimeout(() => link.remove(), 500);
-}
-      </code>
-    </pre>
-  </div>
+                // 编码区事件
+                onFileChange(e) {
+                    if (e.target.files.length > 0) {
+                        this.handleFile(e.target.files[0]);
+                    }
+                },
+                onFileDrop(e) {
+                    this.dragover = false;
+                    if (e.dataTransfer.files.length > 0) {
+                        this.handleFile(e.dataTransfer.files[0]);
+                    }
+                },
+                handleFile(file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const arrayBuffer = e.target.result;
+                        const fileData = new Uint8Array(arrayBuffer);
+                        this.currentFileData = fileData;
+                        this.currentFileName = file.name;
+                        this.processFile(file, arrayBuffer);
+                    };
+                    reader.readAsArrayBuffer(file);
+                },
+                processFile(file, arrayBuffer) {
+                    const packaged = this.encodeWithFileName(file.name, this.currentFileData);
+                    const compressed = pako.deflate(packaged, { level: this.level });
+                    const base64 = this.arrayBufferToBase64(compressed);
+                    
+                    this.fileName = file.name;
+                    this.fileMeta = `类型: ${file.type || '未知'} | 大小: ${this.formatBytes(file.size)}`;
+                    this.showStats = true;
+                    this.originalSize = this.formatBytes(arrayBuffer.byteLength);
+                    this.compressedSize = this.formatBytes(base64.length);
+                    
+                    const ratio = ((1 - base64.length / arrayBuffer.byteLength) * 100).toFixed(1);
+                    this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
+                    this.ratioColor = ratio >= 0 ? 'green' : 'red';
+                    
+                    this.base64Output = base64;
+                    this.showResult = true;
+                    
+                    if (file.type.startsWith('image/')) {
+                        this.previewUrl = URL.createObjectURL(file);
+                    } else {
+                        this.previewUrl = '';
+                    }
+                },
+                onLevelChange() {
+                    if (this.currentFileData && this.currentFileName) {
+                        this.recompressFile();
+                    }
+                },
+                recompressFile() {
+                    const packaged = this.encodeWithFileName(this.currentFileName, this.currentFileData);
+                    const compressed = pako.deflate(packaged, { level: this.level });
+                    const base64 = this.arrayBufferToBase64(compressed);
+                    
+                    this.compressedSize = this.formatBytes(base64.length);
+                    const ratio = ((1 - base64.length / this.currentFileData.length) * 100).toFixed(1);
+                    this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
+                    this.ratioColor = ratio >= 0 ? 'green' : 'red';
+                    this.base64Output = base64;
+                },
+                copyToClipboard() {
+                    if (!this.base64Output) return;
+                    navigator.clipboard.writeText(this.base64Output).then(() => {
+                        this.copied = true;
+                        this.copyText = '已复制!';
+                        setTimeout(() => {
+                            this.copied = false;
+                            this.copyText = '复制';
+                        }, 2000);
+                    });
+                },
+                downloadAsTxt() {
+                    if (!this.base64Output) return;
+                    const blob = new Blob([this.base64Output], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = this.currentFileName + '.base64.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                },
+                clearEncode() {
+                    this.fileName = '';
+                    this.fileMeta = '';
+                    this.showStats = false;
+                    this.showResult = false;
+                    this.base64Output = '';
+                    this.previewUrl = '';
+                    this.currentFileData = null;
+                    this.currentFileName = '';
+                    this.$refs.fileInput.value = '';
+                },
 
-  <!-- <textarea id="result" ></textarea> -->
-  <script>
-    document.getElementById('file').addEventListener('input', (e) => {
-      const file = e.target.files[0]
-      if (file) putFile(file.name, file)
-      document.getElementById('file').value = ''
-    })
+                // 解码区事件
+                onDecodeFileChange(e) {
+                    if (e.target.files.length > 0) {
+                        this.handleDecodeFile(e.target.files[0]);
+                    }
+                },
+                onDecodeFileDrop(e) {
+                    this.decodeDragover = false;
+                    if (e.dataTransfer.files.length > 0) {
+                        this.handleDecodeFile(e.dataTransfer.files[0]);
+                    }
+                },
+                handleDecodeFile(file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.decodeInput = e.target.result.trim();
+                        this.onDecodeInput();
+                    };
+                    reader.readAsText(file);
+                },
+                onDecodeInput() {
+                    const base64 = this.decodeInput.trim();
+                    if (!base64) {
+                        this.detectedFileName = '';
+                        return;
+                    }
+                    try {
+                        const compressedData = this.base64ToUint8Array(base64);
+                        const decompressed = pako.inflate(compressedData);
+                        const { fileName } = this.decodeWithFileName(decompressed);
+                        this.detectedFileName = fileName || '';
+                    } catch (e) {
+                        this.detectedFileName = '';
+                    }
+                },
+                decodeBase64() {
+                    this.decodeError = '';
+                    this.decodeSuccess = '';
+                    this.showDecodeStats = false;
 
-    function putFile(path, file) {
-      console.log('upload file:', file)
-      const reader = new FileReader()
-      reader.readAsArrayBuffer(file)
-      reader.onload = async () => {
-        const arrayBuffer = reader.result;
-        console.log(arrayBuffer);
-        const base64 = bufferToBase64(arrayBuffer)
-        console.log(base64);
-        document.getElementById('type').innerHTML = file.type
-        document.getElementById('result').innerHTML = base64
-        window.tempBase64 = base64
-        window.tempName = file.name
-        window.tempType = file.type
-        document.getElementById('size').innerHTML = getUnit(file.size) + ' (原始) --> ' + getUnit(base64.length) + ' (Base64)'
-        const buffer = base64ToBuffer(base64)
-        console.log(buffer);
-        // download(new Blob([buffer], { type: file.type }), file.name)
-        // const blob = new Blob([arrayBuffer], { type: file.type });
-        // const content = await blob.arrayBuffer();
-        // const acont = btoa(chunkChar(new Uint8Array(content)))
-        // console.log(content, acont);
-      }
-    }
+                    if (!this.decodeInput.trim()) {
+                        this.decodeError = '请输入 Base64 字符串或上传 .txt 文件';
+                        return;
+                    }
 
-    function testDown() {
-      download(new Blob([base64ToBuffer(tempBase64)], { type: tempType }), tempName)
-    }
+                    try {
+                        const compressedData = this.base64ToUint8Array(this.decodeInput.trim());
+                        const decompressed = pako.inflate(compressedData);
+                        const { fileName, fileData } = this.decodeWithFileName(decompressed);
 
-    function selectAll() { 
-      let div = document.getElementById('result');
-      let range = document.createRange();
-      range.selectNodeContents(div);
-      let selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
+                        if (!fileName) {
+                            throw new Error('无法提取文件名，可能不是本工具生成的数据');
+                        }
 
-    function bufferToBase64(buffer) {
-      const arr = new Uint8Array(buffer)
-      const chunkSize = 10000
-      const chunks = []
-      for (let i = 0; i < arr.length; i += chunkSize) {
-        chunks.push(arr.slice(i, i + chunkSize))
-      }
-      const strings = chunks.map(chunk => String.fromCharCode(...chunk))
-      return btoa(strings.join(''));
-    }
+                        const blob = new Blob([fileData]);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
 
-    function base64ToBuffer(base64) {
-      const binaryString = atob(base64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
+                        this.decodeCompressedSize = this.formatBytes(this.decodeInput.length);
+                        this.decodeOriginalSize = this.formatBytes(fileData.length);
+                        this.decodeRatio = (fileData.length / this.decodeInput.length).toFixed(2) + 'x';
+                        this.showDecodeStats = true;
 
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
+                        this.decodeSuccess = `✅ 文件 "${fileName}" 已成功解压并下载！`;
+                    } catch (err) {
+                        this.decodeError = '解压失败: ' + err.message;
+                        this.showDecodeStats = false;
+                    }
+                },
+                clearDecode() {
+                    this.decodeInput = '';
+                    this.detectedFileName = '';
+                    this.decodeError = '';
+                    this.decodeSuccess = '';
+                    this.showDecodeStats = false;
+                    this.$refs.decodeFileInput.value = '';
+                },
 
-      return bytes.buffer;
-    }
+                // 复制代码
+                copyCode() {
+                    const code = `// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js
 
-    function download(blob, name) {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      URL.revokeObjectURL(url);
-      setTimeout(() => link.remove(), 500);
-    }
-
-    function downloadText(text, name) {
-      const link = document.createElement('a');
-      link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)
-      link.download = name
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-
-    function getUnit(bytes, decimals = 2) {
-      if (bytes === 0) return '0B';
-
-      const k = 1024;
-      const dm = decimals < 0 ? 0 : decimals;
-      const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + '' + sizes[i];
-    }
-
-    function $copy(text) {
-      let inputElement = document.createElement('input');
-      inputElement.value = text;
-      document.body.appendChild(inputElement)
-      inputElement.select()
-      document.execCommand('copy', true);
-      inputElement.parentNode.removeChild(inputElement)
-      return true
-    }
-  </script>
+function restoreFile(base64Str) {
+    const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
+    const data = pako.inflate(compressed);
+    const nameLen = data[0] | (data[1] << 8);
+    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
+    const fileData = data.slice(2 + nameLen);
+    const blob = new Blob([fileData]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    return fileName;
+}`;
+                    navigator.clipboard.writeText(code).then(() => {
+                        alert('代码已复制到剪贴板');
+                    });
+                }
+            },
+            mounted() {
+                // Prism 高亮
+                Prism.highlightAll();
+            },
+            updated() {
+                // 每次更新后重新高亮
+                Prism.highlightAll();
+            }
+        }).mount('#app');
+    </script>
 </body>
 </html>
