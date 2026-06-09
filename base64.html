@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pako 压缩 Base64 转换器</title>
+    <title>压缩 Base64 转换器</title>
     <!-- Vue 3 -->
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
     <!-- Pako -->
@@ -81,10 +81,27 @@
         .or-divider::before, .or-divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #e5e7eb; }
         .or-divider::before { left: 0; }
         .or-divider::after { right: 0; }
+
+        /* 压缩引擎选择器样式 */
+        .engine-selector { background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .engine-selector-title { font-size: 1rem; color: #1f2937; margin-bottom: 10px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .engine-options { display: flex; gap: 20px; flex-wrap: wrap; }
+        .engine-option { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 2px solid #e5e7eb; transition: all 0.2s; background: #fafafa; }
+        .engine-option:hover { border-color: #3b82f6; background: #eff6ff; }
+        .engine-option.active { border-color: #2563eb; background: #eff6ff; }
+        .engine-option input[type="radio"] { width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer; }
+        .engine-option .engine-name { font-weight: 600; color: #1f2937; font-size: 0.9rem; }
+        .engine-option .engine-desc { color: #6b7280; font-size: 0.75rem; margin-top: 2px; }
+        .engine-option .engine-info { display: flex; flex-direction: column; }
+        .engine-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 6px; }
+        .engine-badge.native { background: #d1fae5; color: #059669; }
+        .engine-badge.lib { background: #dbeafe; color: #2563eb; }
+
         @media (max-width: 600px) { h1 { font-size: 1.4rem; }
         .stats-grid { grid-template-columns: 1fr; }
         .control-group { flex-direction: column; align-items: flex-start; }
         input[type="range"] { width: 100%; }
+        .engine-options { flex-direction: column; }
         }
 
     </style>
@@ -92,9 +109,39 @@
 <body>
     <div id="app">
         <div class="container">
-            <h1>🔐 Pako 压缩 Base64 转换器</h1>
+            <h1>🔐 压缩 Base64 转换器</h1>
+
+            <!-- 压缩引擎选择器 -->
+            <div class="engine-selector">
+                <div class="engine-selector-title">
+                    ⚙️ 压缩引擎选择
+                </div>
+                <div class="engine-options">
+                    <label class="engine-option" :class="{ active: engine === 'pako' }">
+                        <input type="radio" v-model="engine" value="pako" @change="onEngineChange">
+                        <div class="engine-info">
+                            <div class="engine-name">
+                                Pako.js
+                                <span class="engine-badge lib">第三方库</span>
+                            </div>
+                            <div class="engine-desc">纯 JavaScript 实现，兼容性好</div>
+                        </div>
+                    </label>
+                    <label class="engine-option" :class="{ active: engine === 'native' }">
+                        <input type="radio" v-model="engine" value="native" @change="onEngineChange">
+                        <div class="engine-info">
+                            <div class="engine-name">
+                                CompressionStream
+                                <span class="engine-badge native">浏览器原生</span>
+                            </div>
+                            <div class="engine-desc">浏览器内置 API，性能更优</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <div class="principle">
-                原理：文件 → 二进制 → <code>pako.deflate()</code> 压缩 → 嵌入文件名 → Base64 编码 <br> 逆向：Base64 → <code>pako.inflate()</code> 解压 → 提取文件名 → 还原文件
+                原理：文件 → 二进制 → <code>{{ compressCode }}</code> 压缩 → 嵌入文件名 → Base64 编码 <br> 逆向：Base64 → <code>{{ decompressCode }}</code> 解压 → 提取文件名 → 还原文件
             </div>
 
             <!-- 文件转 Base64 -->
@@ -104,7 +151,7 @@
                     文件 → Base64（压缩，含文件名）
                 </div>
 
-                <div class="control-group">
+                <div class="control-group" v-show="engine === 'pako'">
                     <label>压缩级别：</label>
                     <div class="slider-container">
                         <input type="range" v-model.number="level" min="0" max="9" @input="onLevelChange">
@@ -112,7 +159,10 @@
                     </div>
                     <span class="level-desc">{{ levelDesc }}</span>
                 </div>
-                
+                <div class="control-group" v-show="engine === 'native'" style="color: #6b7280; font-size: 0.85rem;">
+                    <span>💡 使用浏览器原生 CompressionStream，压缩级别由浏览器自动决定</span>
+                </div>
+
                 <div class="upload-area" 
                      @dragover.prevent="dragover = true" 
                      @dragleave.prevent="dragover = false"
@@ -229,36 +279,10 @@
                     最小还原代码（独立可用）
                 </div>
                 <div class="code-desc">
-                    以下代码不依赖本页面，仅需引入 pako 库即可将 Base64 字符串还原为原文件。
+                    以下代码不依赖本页面，{{ engine === 'pako' ? '仅需引入 pako 库' : '使用浏览器原生 API' }}即可将 Base64 字符串还原为原文件。
                     复制到浏览器控制台或单独 HTML 文件中即可运行。
                 </div>
-                <pre><code class="language-javascript">// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js
-
-function restoreFile(base64Str) {
-    // Base64 解码
-    const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
-    
-    // Pako 解压
-    const data = pako.inflate(compressed);
-    
-    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
-    const nameLen = data[0] | (data[1] << 8);
-    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
-    const fileData = data.slice(2 + nameLen);
-    
-    // 自动下载
-    const blob = new Blob([fileData]);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    
-    return fileName;
-}
-
-// 使用示例:
-// restoreFile("你的Base64字符串");</code></pre>
+                <pre><code class="language-javascript">{{ restoreCode }}</code></pre>
                 <div style="margin-top: 10px;">
                     <button class="btn btn-primary" @click="copyCode">
                         <span>📋</span> 复制代码
@@ -274,6 +298,8 @@ function restoreFile(base64Str) {
         createApp({
             data() {
                 return {
+                    // 压缩引擎选择
+                    engine: 'pako',
                     // 压缩级别
                     level: 6,
                     levelDescriptions: {
@@ -319,9 +345,162 @@ function restoreFile(base64Str) {
             computed: {
                 levelDesc() {
                     return this.levelDescriptions[this.level];
+                },
+                compressCode() {
+                    return this.engine === 'pako' ? 'pako.deflate()' : 'CompressionStream("gzip")';
+                },
+                decompressCode() {
+                    return this.engine === 'pako' ? 'pako.inflate()' : 'DecompressionStream("gzip")';
+                },
+                restoreCode() {
+                    if (this.engine === 'pako') {
+                        return `// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js
+
+function restoreFile(base64Str) {
+    // Base64 解码
+    const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
+
+    // Pako 解压
+    const data = pako.inflate(compressed);
+
+    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
+    const nameLen = data[0] | (data[1] << 8);
+    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
+    const fileData = data.slice(2 + nameLen);
+
+    // 自动下载
+    const blob = new Blob([fileData]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    return fileName;
+}
+
+// 使用示例:
+// restoreFile("你的Base64字符串");`;
+                    } else {
+                        return `// 使用浏览器原生 DecompressionStream API
+
+async function restoreFile(base64Str) {
+    // Base64 解码
+    const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
+
+    // 原生解压
+    const stream = new ReadableStream({
+        start(controller) {
+            controller.enqueue(compressed);
+            controller.close();
+        }
+    });
+    const decompressedStream = stream.pipeThrough(new DecompressionStream('gzip'));
+    const reader = decompressedStream.getReader();
+    const chunks = [];
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+    }
+    const data = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
+    let offset = 0;
+    for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
+    const nameLen = data[0] | (data[1] << 8);
+    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
+    const fileData = data.slice(2 + nameLen);
+
+    // 自动下载
+    const blob = new Blob([fileData]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    return fileName;
+}
+
+// 使用示例:
+// restoreFile("你的Base64字符串").then(name => console.log(name));`;
+                    }
                 }
             },
             methods: {
+                // ========== 压缩引擎相关 ==========
+                async compress(data) {
+                    if (this.engine === 'pako') {
+                        return pako.deflate(data, { level: this.level });
+                    } else {
+                        // 使用 CompressionStream
+                        const stream = new ReadableStream({
+                            start(controller) {
+                                controller.enqueue(data);
+                                controller.close();
+                            }
+                        });
+                        const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
+                        const reader = compressedStream.getReader();
+                        const chunks = [];
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            chunks.push(value);
+                        }
+                        const result = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
+                        let offset = 0;
+                        for (const chunk of chunks) {
+                            result.set(chunk, offset);
+                            offset += chunk.length;
+                        }
+                        return result;
+                    }
+                },
+                async decompress(compressedData) {
+                    if (this.engine === 'pako') {
+                        return pako.inflate(compressedData);
+                    } else {
+                        // 使用 DecompressionStream
+                        const stream = new ReadableStream({
+                            start(controller) {
+                                controller.enqueue(compressedData);
+                                controller.close();
+                            }
+                        });
+                        const decompressedStream = stream.pipeThrough(new DecompressionStream('gzip'));
+                        const reader = decompressedStream.getReader();
+                        const chunks = [];
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            chunks.push(value);
+                        }
+                        const result = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
+                        let offset = 0;
+                        for (const chunk of chunks) {
+                            result.set(chunk, offset);
+                            offset += chunk.length;
+                        }
+                        return result;
+                    }
+                },
+                onEngineChange() {
+                    // 切换引擎时，如果有已加载的文件，重新压缩
+                    if (this.currentFileData && this.currentFileName) {
+                        this.recompressFile();
+                    }
+                    // 清空解码区的检测结果
+                    this.detectedFileName = '';
+                    this.decodeError = '';
+                    this.decodeSuccess = '';
+                    this.showDecodeStats = false;
+                },
+
                 // 工具方法
                 formatBytes(bytes, decimals = 2) {
                     if (bytes === 0) return '0 Bytes';
@@ -388,40 +567,40 @@ function restoreFile(base64Str) {
                     };
                     reader.readAsArrayBuffer(file);
                 },
-                processFile(file, arrayBuffer) {
+                async processFile(file, arrayBuffer) {
                     const packaged = this.encodeWithFileName(file.name, this.currentFileData);
-                    const compressed = pako.deflate(packaged, { level: this.level });
+                    const compressed = await this.compress(packaged);
                     const base64 = this.arrayBufferToBase64(compressed);
-                    
+
                     this.fileName = file.name;
                     this.fileMeta = `类型: ${file.type || '未知'} | 大小: ${this.formatBytes(file.size)}`;
                     this.showStats = true;
                     this.originalSize = this.formatBytes(arrayBuffer.byteLength);
                     this.compressedSize = this.formatBytes(base64.length);
-                    
+
                     const ratio = ((1 - base64.length / arrayBuffer.byteLength) * 100).toFixed(1);
                     this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
                     this.ratioColor = ratio >= 0 ? 'green' : 'red';
-                    
+
                     this.base64Output = base64;
                     this.showResult = true;
-                    
+
                     if (file.type.startsWith('image/')) {
                         this.previewUrl = URL.createObjectURL(file);
                     } else {
                         this.previewUrl = '';
                     }
                 },
-                onLevelChange() {
+                async onLevelChange() {
                     if (this.currentFileData && this.currentFileName) {
-                        this.recompressFile();
+                        await this.recompressFile();
                     }
                 },
-                recompressFile() {
+                async recompressFile() {
                     const packaged = this.encodeWithFileName(this.currentFileName, this.currentFileData);
-                    const compressed = pako.deflate(packaged, { level: this.level });
+                    const compressed = await this.compress(packaged);
                     const base64 = this.arrayBufferToBase64(compressed);
-                    
+
                     this.compressedSize = this.formatBytes(base64.length);
                     const ratio = ((1 - base64.length / this.currentFileData.length) * 100).toFixed(1);
                     this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
@@ -483,7 +662,7 @@ function restoreFile(base64Str) {
                     };
                     reader.readAsText(file);
                 },
-                onDecodeInput() {
+                async onDecodeInput() {
                     const base64 = this.decodeInput.trim();
                     if (!base64) {
                         this.detectedFileName = '';
@@ -491,14 +670,14 @@ function restoreFile(base64Str) {
                     }
                     try {
                         const compressedData = this.base64ToUint8Array(base64);
-                        const decompressed = pako.inflate(compressedData);
+                        const decompressed = await this.decompress(compressedData);
                         const { fileName } = this.decodeWithFileName(decompressed);
                         this.detectedFileName = fileName || '';
                     } catch (e) {
                         this.detectedFileName = '';
                     }
                 },
-                decodeBase64() {
+                async decodeBase64() {
                     this.decodeError = '';
                     this.decodeSuccess = '';
                     this.showDecodeStats = false;
@@ -510,7 +689,7 @@ function restoreFile(base64Str) {
 
                     try {
                         const compressedData = this.base64ToUint8Array(this.decodeInput.trim());
-                        const decompressed = pako.inflate(compressedData);
+                        const decompressed = await this.decompress(compressedData);
                         const { fileName, fileData } = this.decodeWithFileName(decompressed);
 
                         if (!fileName) {
@@ -549,23 +728,7 @@ function restoreFile(base64Str) {
 
                 // 复制代码
                 copyCode() {
-                    const code = `// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js
-
-function restoreFile(base64Str) {
-    const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
-    const data = pako.inflate(compressed);
-    const nameLen = data[0] | (data[1] << 8);
-    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
-    const fileData = data.slice(2 + nameLen);
-    const blob = new Blob([fileData]);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    return fileName;
-}`;
-                    navigator.clipboard.writeText(code).then(() => {
+                    navigator.clipboard.writeText(this.restoreCode).then(() => {
                         alert('代码已复制到剪贴板');
                     });
                 }
