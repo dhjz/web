@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Bcrypt 哈希工具</title>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script> -->
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+    <style>
+        body { padding: 0 20px; }
+        input, select, textarea { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px; }
+button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>Bcrypt 哈希生成与校验</h2>
+    
+    <!-- 生成部分 -->
+    <div>
+        <input type="text" id="pwdInput" placeholder="输入原始密码">
+        因子:
+        <input type="number" id="costFactor" min="4" max="31" value="10" style="width: 60px;">
+        <button onclick="handleGenerate()">生成哈希</button>
+    </div>
+    <p>生成的哈希:</p>
+    <textarea id="result" rows="2" cols="60" readonly></textarea>
+
+    <hr>
+
+    <!-- 校验部分 -->
+    <div>
+        <input type="text" id="checkPwd" placeholder="输入要校验的密码">
+        <input type="text" id="checkHash" placeholder="输入哈希值" style="width: 500px;">
+        <button onclick="handleCheck()">校验匹配</button>
+    </div>
+    <p>校验结果: <span id="checkStatus" style="font-weight:bold;"></span></p>
+
+    <script>
+        // 获取库实例
+        const bcrypt = window.dcodeIO ? window.dcodeIO.bcrypt : window.bcrypt;
+
+        function handleGenerate() {
+            const pwd = document.getElementById('pwdInput').value;
+            const cost = parseInt(document.getElementById('costFactor').value);
+            console.log('cost:', cost);
+            bcrypt.hash(pwd, cost, function(err, hash) {
+                document.getElementById('result').value = err ? "错误: " + err : hash;
+            });
+        }
+
+        function handleCheck() {
+            const pwd = document.getElementById('checkPwd').value;
+            const hash = document.getElementById('checkHash').value;
+            const status = document.getElementById('checkStatus');
+
+            if (!pwd || !hash) {
+                alert("请同时输入密码和哈希值");
+                return;
+            }
+
+            // 核心校验逻辑
+            bcrypt.compare(pwd, hash, function(err, res) {
+                if (err) {
+                    status.innerText = "校验出错: " + err;
+                    status.style.color = "red";
+                } else if (res) {
+                    status.innerText = "✅ 匹配成功！密码正确";
+                    status.style.color = "green";
+                } else {
+                    status.innerText = "❌ 匹配失败！密码错误";
+                    status.style.color = "red";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
