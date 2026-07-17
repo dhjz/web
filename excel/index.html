@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel 合并工具</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --bg-elev: #ffffff;
+      --bg-elev-2: #f0f3f7;
+      --border: #d8dde4;
+      --border-strong: #b8c0cc;
+      --text: #1a202c;
+      --text-dim: #4a5568;
+      --text-faint: #718096;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-dim: rgba(37, 99, 235, 0.1);
+      --success: #16a34a;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --row-stripe: #f8fafc;
+      --row-hover: #eef4ff;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif; font-size: 14px; line-height: 1.5; overflow: hidden; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
+    .topbar { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: var(--bg-elev); border-bottom: 1px solid var(--border); flex-shrink: 0; box-shadow: var(--shadow-sm); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--text); }
+    .brand-mark { width: 30px; height: 30px; border-radius: 7px; background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3); }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+    .btn:hover:not(:disabled) { background: var(--bg-elev-2); border-color: var(--border-strong); }
+    .btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2); }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+    .btn-ghost:hover:not(:disabled) { background: var(--bg-elev-2); color: var(--text); }
+    .main { display: grid; grid-template-columns: 1fr 1fr 340px; flex: 1; min-height: 0; gap: 1px; background: var(--border); }
+    .panel { display: flex; flex-direction: column; background: var(--bg-elev); min-width: 0; overflow: hidden; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elev); flex-shrink: 0; gap: 12px; }
+    .panel-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+    .panel-title-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .panel-body { flex: 1; overflow: auto; min-height: 0; position: relative; background: var(--bg-elev); }
+    .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; color: var(--text-faint); text-align: center; gap: 12px; }
+    .empty-icon { opacity: 0.85; line-height: 1; transition: transform 0.2s; }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text-dim); }
+    .empty-hint { font-size: 13px; color: var(--text-faint); max-width: 280px; }
+    .empty.clickable { cursor: pointer; transition: background 0.15s; user-select: none; }
+    .empty.clickable:hover { background: var(--bg-elev-2); }
+    .empty.clickable:hover .empty-icon { transform: scale(1.08); }
+    .empty.clickable:hover .empty-title { color: var(--accent); }
+    .table-wrap { display: inline-block; min-width: 100%; }
+    table.excel { border-collapse: collapse; font-family: Consolas, 'Courier New', monospace; font-size: 12px; table-layout: auto; background: var(--bg-elev); }
+    table.excel th, table.excel td { border: 1px solid var(--border); padding: 4px 8px; white-space: nowrap; vertical-align: middle; background: var(--bg-elev); color: var(--text); }
+    table.excel thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elev-2); color: var(--text); font-weight: 700; text-align: center; border-bottom: 2px solid var(--border-strong); font-size: 11px; }
+    table.excel .col-index { position: sticky; left: 0; z-index: 1; background: var(--bg-elev-2); color: var(--text-faint); font-weight: 600; text-align: center; min-width: 50px; border-right: 2px solid var(--border-strong); font-size: 11px; }
+    table.excel thead .col-index { z-index: 3; background: var(--bg-elev-2); }
+    table.excel tbody tr:nth-child(even) td:not(.col-index) { background: var(--row-stripe); }
+    table.excel tbody tr:hover td:not(.col-index) { background: var(--row-hover); }
+    .merged { text-align: center !important; vertical-align: middle !important; font-weight: 600; background: #fff8e1 !important; border: 1px solid var(--accent) !important; color: var(--accent) !important;}
+    .merged-original { text-align: center !important; vertical-align: middle !important; background: var(--bg-elev-2) !important; }
+    .config { padding: 12px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; height: 100%; }
+    .config-section { display: flex; flex-direction: column; gap: 10px; }
+    .config-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); display: flex; align-items: center;justify-content: space-between; }
+    .config-hint { font-size: 12px; color: var(--text-faint); line-height: 1.6; }
+    select.sheet-select { width: 100%; padding: 9px 12px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; font-weight: 500; }
+    select.sheet-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    select.sheet-select:disabled { background: var(--bg-elev-2); cursor: not-allowed; }
+    .col-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); }
+    .col-item { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: background 0.1s; font-size: 13px; user-select: none; }
+    .col-item:hover { background: var(--bg-elev-2); }
+    .col-item input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; width: 16px; height: 16px; }
+    .col-letter { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 4px; background: var(--bg-elev-2); color: var(--text-faint); font-family: Consolas, monospace; font-size: 11px; font-weight: 700; border: 1px solid var(--border); }
+    .col-item input:checked ~ .col-letter { background: var(--accent); color: white; border-color: var(--accent); }
+    .col-item input:checked ~ .col-name { color: var(--text); font-weight: 600; }
+    .col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
+    .config-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-dim); cursor: pointer; user-select: none; font-weight: normal; }
+    .config-toggle input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; width: 13px; height: 13px; }
+    .config-actions { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 8px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 8px; }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-value { font-family: Consolas, monospace; font-size: 20px; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    .statusbar { display: flex; align-items: center; gap: 16px; padding: 8px 24px; background: var(--bg-elev); border-top: 1px solid var(--border); font-size: 12px; color: var(--text-dim); font-family: Consolas, monospace; flex-shrink: 0; }
+    .status-item { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }
+    .status-dot.active { background: var(--success); box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2); }
+    .cache-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; background: var(--accent-dim); color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+    .cache-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .dropzone { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(245, 247, 250, 0.92); backdrop-filter: blur(4px); z-index: 50; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+    .dropzone.active { opacity: 1; pointer-events: all; }
+    .dropzone-box { border: 2px dashed var(--accent); border-radius: 12px; padding: 40px 60px; text-align: center; color: var(--accent); background: var(--bg-elev); box-shadow: var(--shadow-md); }
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); padding: 12px 20px; background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-md); z-index: 100; animation: slideUp 0.2s ease-out; color: var(--text); }
+    .toast.success { border-color: var(--success); color: var(--success); }
+    .toast.error { border-color: var(--danger); color: var(--danger); }
+    @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--bg-elev); }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; border: 2px solid var(--bg-elev); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+    .file-input { display: none; }
+
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">E</div>
+        <span>Excel 合并工具</span>
+      </div>
+      <div class="toolbar">
+        <input type="file" ref="fileInput" class="file-input" accept=".xlsx,.xls" @change="handleFile">
+        <button class="btn btn-primary" @click="triggerFile">
+          <span style="font-size: 14px;">📥</span>
+          导入 Excel
+        </button>
+        <button class="btn" :disabled="!workbook" @click="previewMerge">
+          <span style="font-size: 14px;">👁️</span>
+          预览结果
+        </button>
+        <button class="btn" :disabled="!resultWorkbook" @click="exportFile">
+          <span style="font-size: 14px;">⬇️</span>
+          导出
+        </button>
+        <button class="btn btn-ghost" :disabled="!workbook" @click="reset" title="重置">
+          <span style="font-size: 14px;">🔄</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- Left: Original Preview -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-dot"></span>
+            原表格预览
+          </div>
+          <select v-if="sheetNames.length" v-model="activeSheet" class="sheet-select" style="width: auto; padding: 5px 10px; font-size: 12px;">
+            <option v-for="name in sheetNames" :key="name" :value="name">{{ name }}</option>
+          </select>
+        </div>
+        <div class="panel-body" ref="originalBody">
+          <div v-if="!workbook" class="empty clickable" @click="triggerFile" title="点击导入 Excel 文件">
+            <div class="empty-icon" style="font-size: 56px;">📄</div>
+            <div class="empty-title">未导入文件</div>
+            <div class="empty-hint">点击此处、拖入文件,或 Ctrl+V 粘贴 Excel</div>
+          </div>
+          <div v-else class="table-wrap" v-html="originalHtml"></div>
+        </div>
+      </div>
+
+      <!-- Middle: Result Preview -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-dot" :style="{ background: resultWorkbook ? '#16a34a' : '#b8c0cc' }"></span>
+            结果预览
+          </div>
+          <span v-if="mergeStats" style="font-size: 12px; color: var(--text-dim); font-family: Consolas, monospace; font-weight: 600;">
+            {{ mergeStats.mergedCells }} 个单元格已合并
+          </span>
+        </div>
+        <div class="panel-body" ref="resultBody">
+          <div v-if="!resultWorkbook" class="empty">
+            <div class="empty-icon" style="font-size: 56px;">📊</div>
+            <div class="empty-title">{{ workbook ? '尚未生成预览' : '等待导入文件' }}</div>
+            <div class="empty-hint" v-if="workbook">
+              在右侧勾选需要合并的列,然后点击「预览结果」
+            </div>
+          </div>
+          <div v-else class="table-wrap" v-html="resultHtml"></div>
+        </div>
+      </div>
+
+      <!-- Right: Config -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-dot" style="background: #d97706;"></span>
+            配置
+          </div>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+          <div class="config">
+            <div class="config-section">
+              <div class="config-label">
+                工作表
+                <label class="config-toggle">
+                  <input type="checkbox" v-model="syncScroll">
+                  <span>左右同步滚动</span>
+                </label>
+              </div>
+              <select v-model="activeSheet" class="sheet-select" :disabled="!sheetNames.length">
+                <option v-for="name in sheetNames" :key="name" :value="name">{{ name }}</option>
+              </select>
+            </div>
+            <div class="config-section">
+              <div class="config-label">合并列</div>
+              <div class="config-hint">
+                勾选需要合并的列。相同内容的相邻单元格将合并为一个单元格并居中显示。
+              </div>
+              <div v-if="!columns.length" style="padding: 24px; text-align: center; color: var(--text-faint); font-size: 12px; border: 1px dashed var(--border); border-radius: 6px;">
+                暂无列,请先导入文件
+              </div>
+              <div v-else class="col-list">
+                <label v-for="col in columns" :key="col.letter" class="col-item">
+                  <input type="checkbox" :value="col.letter" v-model="selectedColumns">
+                  <span class="col-letter">{{ col.letter }}</span>
+                  <span class="col-name">{{ col.name || '(空)' }}</span>
+                </label>
+              </div>
+            </div>
+
+            <div v-if="mergeStats" class="stats">
+              <div class="stat">
+                <div class="stat-value">{{ mergeStats.mergedCells }}</div>
+                <div class="stat-label">合并单元格</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">{{ mergeStats.columns }}</div>
+                <div class="stat-label">涉及列数</div>
+              </div>
+            </div>
+
+            <div class="config-actions">
+              <button class="btn btn-primary" :disabled="!workbook" @click="previewMerge" style="width: 100%; justify-content: center; padding: 10px;">
+                <span style="font-size: 14px;">👁️</span>
+                预览结果
+              </button>
+              <button class="btn" :disabled="!resultWorkbook" @click="exportFile" style="width: 100%; justify-content: center; padding: 10px;">
+                <span style="font-size: 14px;">⬇️</span>
+                导出 Excel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <div class="status-item">
+        <span class="status-dot" :class="{ active: !!workbook }"></span>
+        <span>{{ workbook ? fileName : '未加载文件' }}</span>
+      </div>
+      <div class="status-item" v-if="workbook && fileSize">
+        <span>大小: {{ formatFileSize(fileSize) }}</span>
+      </div>
+      <div class="status-item" v-if="workbook && fromCache" :title="'关闭浏览器后失效'">
+        <span class="cache-badge">本地缓存</span>
+      </div>
+      <div class="status-item" v-if="workbook">
+        <span>{{ sheetNames.length }} 个工作表</span>
+      </div>
+      <div class="status-item" v-if="currentSheetRowCount">
+        <span>{{ currentSheetRowCount }} 行 × {{ columns.length }} 列</span>
+      </div>
+      <div class="status-item" style="margin-left: auto;">
+        <span>所有处理在浏览器本地完成 · 数据不会上传</span>
+      </div>
+    </div>
+
+    <transition>
+      <div v-if="toast" class="toast" :class="toast.type">{{ toast.message }}</div>
+    </transition>
+
+    <div class="dropzone" :class="{ active: dragOver }">
+      <div class="dropzone-box">
+        <div style="font-size: 32px; margin-bottom: 8px;">📥</div>
+        <div style="font-size: 15px; font-weight: 700;">松开以导入文件</div>
+        <div style="font-size: 12px; opacity: 0.7; margin-top: 6px;">支持 .xlsx / .xls</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, watch, watchEffect } = Vue;
+
+    createApp({
+      setup() {
+        const fileInput = ref(null);
+        const workbook = ref(null);
+        const resultWorkbook = ref(null);
+        const sheetNames = ref([]);
+        const activeSheet = ref('');
+        const columns = ref([]);
+        const originalHtml = ref('');
+        const resultHtml = ref('');
+        const selectedColumns = ref([]);
+        const fileName = ref('');
+        const fileSize = ref(0);
+        const fromCache = ref(false);
+        const dragOver = ref(false);
+        const mergeStats = ref(null);
+        const currentSheetRowCount = ref(0);
+        const toast = ref(null);
+        const syncScroll = ref(true);
+        const originalBody = ref(null);
+        const resultBody = ref(null);
+
+        const MAX_PREVIEW_ROWS = 500;
+        const CACHE_KEY = '__excel_file_cache__';
+        const MAX_CACHE_SIZE = 3 * 1024 * 1024; // 3MB
+
+        function formatFileSize(bytes) {
+          if (!bytes && bytes !== 0) return '';
+          if (bytes < 1024) return bytes + ' B';
+          if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+          return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function arrayBufferToBase64(buffer) {
+          const bytes = new Uint8Array(buffer);
+          let binary = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+          }
+          return btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return bytes.buffer;
+        }
+
+        async function cacheFile(file, buffer) {
+          try {
+            if (file.size > MAX_CACHE_SIZE) {
+              clearCache();
+              return;
+            }
+            const payload = {
+              name: file.name,
+              size: file.size,
+              lastModified: file.lastModified,
+              data: arrayBufferToBase64(buffer)
+            };
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+          } catch (err) {
+            // QuotaExceededError 等,清缓存即可
+            console.warn('缓存失败:', err);
+            clearCache();
+          }
+        }
+
+        function clearCache() {
+          try { sessionStorage.removeItem(CACHE_KEY); } catch (e) {}
+        }
+
+        function readCache() {
+          try {
+            const raw = sessionStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        async function applyLoadedWorkbook(wb, { name = '', size = 0, fromCache: fromCacheFlag = false } = {}) {
+          workbook.value = wb;
+          sheetNames.value = wb.worksheets.map(ws => ws.name);
+          activeSheet.value = sheetNames.value[0] || '';
+          fileName.value = name;
+          fileSize.value = size;
+          fromCache.value = fromCacheFlag;
+          resultWorkbook.value = null;
+          resultHtml.value = '';
+          mergeStats.value = null;
+          refreshOriginalPreview();
+        }
+
+        async function restoreFromCache() {
+          const cached = readCache();
+          if (!cached || !cached.data) return false;
+          try {
+            const buffer = base64ToArrayBuffer(cached.data);
+            const wb = new ExcelJS.Workbook();
+            await wb.xlsx.load(buffer);
+            await applyLoadedWorkbook(wb, { name: cached.name, size: cached.size, fromCache: true });
+            showToast('已从本地缓存加载(关闭浏览器后失效)', 'success');
+            return true;
+          } catch (err) {
+            console.warn('缓存恢复失败:', err);
+            clearCache();
+            return false;
+          }
+        }
+
+        // onMounted:页面加载时尝试从缓存恢复
+        restoreFromCache();
+
+        function colLetterToNum(letter) {
+          let n = 0;
+          for (let i = 0; i < letter.length; i++) {
+            n = n * 26 + (letter.charCodeAt(i) - 64);
+          }
+          return n;
+        }
+        function colNumToLetter(num) {
+          let s = '';
+          while (num > 0) {
+            const m = (num - 1) % 26;
+            s = String.fromCharCode(65 + m) + s;
+            num = Math.floor((num - 1) / 26);
+          }
+          return s;
+        }
+
+        function cellValueToString(v) {
+          if (v === null || v === undefined) return '';
+          if (typeof v === 'object') {
+            if (v.richText) return v.richText.map(r => r.text).join('');
+            if (v.text) return v.text;
+            if (v.result !== undefined) return String(v.result);
+            if (v.formula) return '=' + v.formula;
+            return JSON.stringify(v);
+          }
+          return String(v);
+        }
+
+        function isEqualCellValue(a, b) {
+          const sa = cellValueToString(a);
+          const sb = cellValueToString(b);
+          if (sa === '' && sb === '') return true;
+          if (sa === '' || sb === '') return false;
+          return sa === sb;
+        }
+
+        function cellStyleToCss(cell) {
+          const styles = [];
+          const font = cell.font || {};
+          if (font.bold) styles.push('font-weight:600');
+          if (font.italic) styles.push('font-style:italic');
+          if (font.underline) styles.push('text-decoration:underline');
+          if (font.size) styles.push(`font-size:${font.size}px`);
+          if (font.name) styles.push(`font-family:${font.name}`);
+          if (font.color && font.color.argb) {
+            styles.push(`color:#${font.color.argb.slice(-6)}`);
+          }
+          const fill = cell.fill || {};
+          if (fill.type === 'pattern' && fill.pattern === 'solid' && fill.fgColor && fill.fgColor.argb) {
+            styles.push(`background-color:#${fill.fgColor.argb.slice(-6)}`);
+          }
+          const align = cell.alignment || {};
+          if (align.horizontal) styles.push(`text-align:${align.horizontal}`);
+          if (align.vertical) styles.push(`vertical-align:${align.vertical}`);
+          return styles.join(';');
+        }
+
+        function escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        function buildMergeMap(worksheet) {
+          const mergeMap = {};
+          const pushMerge = (top, left, bottom, right) => {
+            for (let r = top; r <= bottom; r++) {
+              for (let c = left; c <= right; c++) {
+                const key = `${r},${c}`;
+                if (r === top && c === left) {
+                  mergeMap[key] = { rowspan: bottom - top + 1, colspan: right - left + 1, top, left, bottom, right };
+                } else {
+                  mergeMap[key] = { hidden: true, top, left, bottom, right };
+                }
+              }
+            }
+          };
+          const modelMerges = (worksheet.model && worksheet.model.merges) || [];
+          for (const m of modelMerges) {
+            if (m && typeof m.top === 'number') pushMerge(m.top, m.left, m.bottom, m.right);
+          }
+          const internalMerges = worksheet._merges || {};
+          for (const k of Object.keys(internalMerges)) {
+            const it = internalMerges[k];
+            if (!it) continue;
+            if (it.tl && typeof it.tl.row === 'number') {
+              const top = it.tl.row + 1;
+              const left = it.tl.col + 1;
+              const br = it.br || it.dimensions || it;
+              const bottom = (br && typeof br.row === 'number') ? br.row + 1 : (it.br ? it.br.row + 1 : top);
+              const right = (br && typeof br.col === 'number') ? br.col + 1 : (it.br ? it.br.col + 1 : left);
+              pushMerge(top, left, bottom, right);
+            } else if (typeof it.top === 'number') {
+              pushMerge(it.top, it.left, it.bottom, it.right);
+            }
+          }
+          return mergeMap;
+        }
+
+        function renderWorksheetToHtml(worksheet, { highlightNewMerges = false } = {}) {
+          if (!worksheet) return '';
+          const rowCount = worksheet.rowCount;
+          const colCount = worksheet.columnCount;
+          if (rowCount === 0 || colCount === 0) {
+            return '<div class="empty-sheet">此工作表为空</div>';
+          }
+
+          const mergeMap = buildMergeMap(worksheet);
+          const displayRows = Math.min(rowCount, MAX_PREVIEW_ROWS);
+          const displayCols = Math.min(colCount, 26);
+
+          let html = '<table class="excel"><thead><tr>';
+          html += '<th class="col-index"></th>';
+          for (let c = 1; c <= displayCols; c++) {
+            html += `<th>${colNumToLetter(c)}</th>`;
+          }
+          html += '</tr></thead><tbody>';
+
+          for (let r = 1; r <= displayRows; r++) {
+            const row = worksheet.getRow(r);
+            html += '<tr>';
+            html += `<td class="col-index">${r}</td>`;
+            for (let c = 1; c <= displayCols; c++) {
+              const key = `${r},${c}`;
+              const merge = mergeMap[key];
+              if (merge && merge.hidden) continue;
+              const cell = row.getCell(c);
+              const value = cellValueToString(cell.value);
+              const css = cellStyleToCss(cell);
+              let attrs = '';
+              let cls = '';
+              if (merge) {
+                attrs += ` rowspan="${merge.rowspan}" colspan="${merge.colspan}"`;
+                cls = highlightNewMerges ? 'merged' : 'merged-original';
+              }
+              html += `<td class="${cls}" style="${css}"${attrs}>${escapeHtml(value)}</td>`;
+            }
+            html += '</tr>';
+          }
+          html += '</tbody></table>';
+
+          if (rowCount > MAX_PREVIEW_ROWS) {
+            html += `<div class="preview-truncated">仅预览前 ${MAX_PREVIEW_ROWS} 行,共 ${rowCount} 行</div>`;
+          }
+          return html;
+        }
+
+        const renderOriginal = (worksheet) => renderWorksheetToHtml(worksheet, { highlightNewMerges: false });
+
+        function updateColumns(worksheet) {
+          if (!worksheet) {
+            columns.value = [];
+            return;
+          }
+          const colCount = Math.min(worksheet.columnCount, 26);
+          const cols = [];
+          const headerRow = worksheet.getRow(1);
+          for (let c = 1; c <= colCount; c++) {
+            const letter = colNumToLetter(c);
+            const headerVal = cellValueToString(headerRow.getCell(c).value);
+            cols.push({ letter, name: headerVal });
+          }
+          columns.value = cols;
+          currentSheetRowCount.value = worksheet.rowCount;
+        }
+
+        function refreshOriginalPreview() {
+          if (!workbook.value || !activeSheet.value) return;
+          const ws = workbook.value.getWorksheet(activeSheet.value);
+          originalHtml.value = renderOriginal(ws);
+          updateColumns(ws);
+          selectedColumns.value = [];
+        }
+
+        watch(activeSheet, () => {
+          refreshOriginalPreview();
+          resultWorkbook.value = null;
+          resultHtml.value = '';
+          mergeStats.value = null;
+        });
+
+        // 左右两个预览面板的垂直滚动同步(checkbox 控制启用)
+        watchEffect(() => {
+          const a = originalBody.value;
+          const b = resultBody.value;
+          if (!a || !b || !syncScroll.value) return;
+          let syncing = false;
+          const onScroll = (src, dst) => () => {
+            if (syncing) return;
+            syncing = true;
+            dst.scrollTop = src.scrollTop;
+            requestAnimationFrame(() => { syncing = false; });
+          };
+          const ha = onScroll(a, b);
+          const hb = onScroll(b, a);
+          a.addEventListener('scroll', ha);
+          b.addEventListener('scroll', hb);
+          return () => {
+            a.removeEventListener('scroll', ha);
+            b.removeEventListener('scroll', hb);
+          };
+        });
+
+        function triggerFile() {
+          fileInput.value.click();
+        }
+
+        async function handleFile(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          await loadFile(file);
+        }
+
+        async function handleDrop(event) {
+          dragOver.value = false;
+          const file = event.dataTransfer.files[0];
+          if (!file) return;
+          if (!/\.(xlsx|xls)$/i.test(file.name)) {
+            showToast('请上传 .xlsx 或 .xls 文件', 'error');
+            return;
+          }
+          await loadFile(file);
+        }
+
+        async function loadFile(file) {
+          try {
+            showToast('正在解析文件...', 'success');
+            const buffer = await file.arrayBuffer();
+            const wb = new ExcelJS.Workbook();
+            await wb.xlsx.load(buffer);
+
+            await applyLoadedWorkbook(wb, { name: file.name, size: file.size || 0 });
+
+            // 3MB 以内的文件才缓存到 sessionStorage
+            if (file.size <= MAX_CACHE_SIZE) {
+              await cacheFile(file, buffer);
+            } else {
+              clearCache();
+            }
+
+            showToast('文件加载成功', 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('文件解析失败: ' + err.message, 'error');
+          }
+        }
+
+        function reset() {
+          workbook.value = null;
+          resultWorkbook.value = null;
+          sheetNames.value = [];
+          activeSheet.value = '';
+          columns.value = [];
+          originalHtml.value = '';
+          resultHtml.value = '';
+          selectedColumns.value = [];
+          fileName.value = '';
+          fileSize.value = 0;
+          fromCache.value = false;
+          mergeStats.value = null;
+          currentSheetRowCount.value = 0;
+          clearCache();
+          if (fileInput.value) fileInput.value.value = '';
+          showToast('已重置', 'success');
+        }
+
+        // 收集目标 worksheet 中,所有与指定列相交(且起点在该列)的合并区段,
+        // 用于避免 mergeCells() 在已有合并区内抛 "Cannot merge already merged cells" 错误
+        function collectColumnMerges(worksheet, colNum) {
+            const ranges = [];
+            const push = (top, left, bottom, right) => {
+              if (colNum >= left && colNum <= right) {
+                ranges.push({ top, bottom });
+              }
+            };
+            const modelMerges = (worksheet.model && worksheet.model.merges) || [];
+            for (const m of modelMerges) {
+              if (m && typeof m.top === 'number') push(m.top, m.left, m.bottom, m.right);
+            }
+            const internalMerges = worksheet._merges || {};
+            for (const k of Object.keys(internalMerges)) {
+              const it = internalMerges[k];
+              if (!it) continue;
+              if (it.tl && typeof it.tl.row === 'number') {
+                const top = it.tl.row + 1;
+                const left = it.tl.col + 1;
+                const br = it.br || it.dimensions || it;
+                const bottom = (br && typeof br.row === 'number') ? br.row + 1 : (it.br ? it.br.row + 1 : top);
+                const right = (br && typeof br.col === 'number') ? br.col + 1 : (it.br ? it.br.col + 1 : left);
+                push(top, left, bottom, right);
+              } else if (typeof it.top === 'number') {
+                push(it.top, it.left, it.bottom, it.right);
+              }
+            }
+            ranges.sort((a, b) => a.top - b.top);
+            return ranges;
+          }
+
+          function mergeColumnInWorksheet(worksheet, colNum) {
+            const rowCount = worksheet.rowCount;
+            if (rowCount < 2) return 0;
+
+            let dataStart = 1;
+            const firstRow = worksheet.getRow(1);
+            for (let c = 1; c <= worksheet.columnCount; c++) {
+              const cell = firstRow.getCell(c);
+              if ((cell.font && cell.font.bold) || (cell.fill && cell.fill.type === 'pattern')) {
+                dataStart = 2;
+                break;
+              }
+            }
+
+            let mergedCount = 0;
+            let startRow = dataStart;
+            let endRow = dataStart;
+
+            const getValue = (r) => cellValueToString(worksheet.getRow(r).getCell(colNum).value);
+            const alignCenter = (r) => {
+              const masterCell = worksheet.getRow(r).getCell(colNum);
+              masterCell.alignment = {
+                ...(masterCell.alignment || {}),
+                horizontal: 'center',
+                vertical: 'middle'
+              };
+            };
+            // 拆掉一段连续行的所有已有合并(含起点、终点)
+            const unmergeRows = (top, bottom) => {
+              let r = top;
+              while (r <= bottom) {
+                const m = findExistingMergeContaining(worksheet, colNum, r);
+                if (!m) { r++; continue; }
+                try { worksheet.unMergeCells(m.top, colNum, m.bottom, colNum); } catch (e) {}
+                r = m.bottom + 1;
+              }
+            };
+
+            for (let r = dataStart + 1; r <= rowCount + 1; r++) {
+              const currentValue = getValue(endRow);
+              const nextValue = r <= rowCount ? getValue(r) : null;
+
+              if (nextValue !== null && isEqualCellValue(currentValue, nextValue)) {
+                endRow = r;
+              } else {
+                if (startRow !== endRow) {
+                  // 整段若是已有合并的子集,跳过(已合并不需要再合)
+                  const exactMerge = isExactExistingMerge(worksheet, colNum, startRow, endRow);
+                  if (!exactMerge) {
+                    unmergeRows(startRow, endRow);
+                    worksheet.mergeCells(startRow, colNum, endRow, colNum);
+                  }
+                  mergedCount += (endRow - startRow);
+                  alignCenter(startRow);
+                }
+                startRow = r;
+                endRow = r;
+              }
+            }
+            return mergedCount;
+          }
+
+          // 判断 [top,bottom] 是否正好是某个已有合并的列范围(同一列、单列)
+          function isExactExistingMerge(worksheet, colNum, top, bottom) {
+            for (const m of collectColumnMerges(worksheet, colNum)) {
+              if (m.top === top && m.bottom === bottom) return true;
+            }
+            return false;
+          }
+
+          // 找到包含行 r 的、与 colNum 相交的已有合并区段
+          function findExistingMergeContaining(worksheet, colNum, r) {
+            for (const m of collectColumnMerges(worksheet, colNum)) {
+              if (r >= m.top && r <= m.bottom) return m;
+            }
+            return null;
+          }
+
+        async function previewMerge() {
+          if (!workbook.value || !activeSheet.value) return;
+          if (!selectedColumns.value.length) {
+            showToast('请至少选择一列进行合并', 'error');
+            return;
+          }
+          try {
+            const buffer = await workbook.value.xlsx.writeBuffer();
+            const newWb = new ExcelJS.Workbook();
+            await newWb.xlsx.load(buffer);
+
+            const ws = newWb.getWorksheet(activeSheet.value);
+            let totalMerged = 0;
+            for (const letter of selectedColumns.value) {
+              const colNum = colLetterToNum(letter);
+              totalMerged += mergeColumnInWorksheet(ws, colNum);
+            }
+
+            resultWorkbook.value = newWb;
+            resultHtml.value = renderWorksheetToHtml(ws, { highlightNewMerges: true });
+            mergeStats.value = {
+              mergedCells: totalMerged,
+              columns: selectedColumns.value.length
+            };
+            showToast(`已合并 ${totalMerged} 个单元格`, 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('生成预览失败: ' + err.message, 'error');
+          }
+        }
+
+        async function exportFile() {
+          if (!resultWorkbook.value) {
+            showToast('请先生成预览', 'error');
+            return;
+          }
+          try {
+            const buffer = await resultWorkbook.value.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const base = fileName.value.replace(/\.(xlsx|xls)$/i, '') || 'workbook';
+            a.href = url;
+            a.download = `${base}_merged_${ts}.xlsx`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            // Give browser a moment to start download
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 100);
+            showToast('已导出文件', 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('导出失败: ' + err.message, 'error');
+          }
+        }
+
+        function showToast(message, type = 'success') {
+          toast.value = { message, type };
+          setTimeout(() => { toast.value = null; }, 2400);
+        }
+
+        return {
+          fileInput, workbook, resultWorkbook, sheetNames, activeSheet, columns,
+          originalHtml, resultHtml, selectedColumns, fileName, fileSize, fromCache, dragOver,
+          mergeStats, currentSheetRowCount, toast, syncScroll, originalBody, resultBody,
+          formatFileSize,
+          triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, reset
+        };
+      }
+    }).mount('#app');
+
+    // 全局监听:整个 body 拖入 / 粘贴 Excel 文件
+    (function () {
+      const EXCEL_RE = /\.(xlsx|xls)$/i;
+      let dragCounter = 0;
+      const dropOverlay = document.querySelector('.dropzone');
+
+      function dispatchFileToInput(file) {
+        const input = document.querySelector('input.file-input');
+        if (!input) return;
+        try {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (err) {
+          console.error('无法直接赋值 files:', err);
+        }
+      }
+
+      function isFileDrag(e) {
+        if (!e.dataTransfer) return false;
+        const types = e.dataTransfer.types;
+        if (!types) return false;
+        for (const t of types) {
+          if (t === 'Files' || t === 'application/x-moz-file') return true;
+        }
+        return false;
+      }
+
+      window.addEventListener('dragenter', (e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        dragCounter++;
+        if (dropOverlay) dropOverlay.classList.add('active');
+      });
+      window.addEventListener('dragover', (e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      });
+      window.addEventListener('dragleave', (e) => {
+        if (!isFileDrag(e)) return;
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          if (dropOverlay) dropOverlay.classList.remove('active');
+        }
+      });
+      window.addEventListener('drop', (e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        dragCounter = 0;
+        if (dropOverlay) dropOverlay.classList.remove('active');
+        const files = e.dataTransfer.files;
+        if (!files || !files.length) return;
+        for (const f of files) {
+          if (EXCEL_RE.test(f.name)) {
+            dispatchFileToInput(f);
+            return;
+          }
+        }
+      });
+
+      // 全局粘贴支持:从剪贴板读取 Excel 文件
+      window.addEventListener('paste', (e) => {
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items || !items.length) return;
+        for (const item of items) {
+          if (item.kind === 'file') {
+            const file = item.getAsFile();
+            if (file && EXCEL_RE.test(file.name)) {
+              e.preventDefault();
+              dispatchFileToInput(file);
+              return;
+            }
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

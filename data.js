@@ -32,6 +32,7 @@ window.config = {
         { name: 'MD文件转换', short: 'MD转换', url: './mde/index.html', color: '#2f67e0' },
         { name: 'HTML预览', short: 'HTML', url: './run.html', color: '#16a34a' },
         { name: '文本转PDF', short: 'PDF', url: './pdf/index.html', color: '#c52d22' },
+        { name: '表格工具', short: 'Excel', url: './excel/index.html', color: '#077c32' },
       ]
     },
     {
