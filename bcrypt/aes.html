@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AES 加解密测试</title>
+  <!-- CryptoJS (AES/DES 等多种算法, 支持 CBC/ECB/CFB/OFB/CTR/GCM, Base64/Hex 输出) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f7fa;
+      color: #222;
+    }
+    h1 {
+      font-size: 22px;
+      margin: 0 0 16px;
+      color: #1f2937;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 860px) {
+      .container { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      padding: 18px;
+    }
+    .card h2 {
+      font-size: 16px;
+      margin: 0 0 12px;
+      color: #374151;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .form-row label {
+      min-width: 90px;
+      font-size: 13px;
+      color: #4b5563;
+    }
+    select, input[type=text], input[type=number], textarea {
+      flex: 1;
+      min-width: 120px;
+      padding: 6px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+    }
+    select:focus, input:focus, textarea:focus {
+      border-color: #3b82f6;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      padding: 7px 14px;
+      border: none;
+      border-radius: 4px;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2563eb; }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.secondary:hover { background: #4b5563; }
+    button.danger {
+      background: #ef4444;
+    }
+    button.danger:hover { background: #dc2626; }
+    .result {
+      background: #f9fafb;
+      border: 1px dashed #d1d5db;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      white-space: pre-wrap;
+      min-height: 90px;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .log {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    .log.success {
+      display: block;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+    .log.error {
+      display: block;
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .options {
+      background: #f9fafb;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .options .form-row { margin-bottom: 6px; }
+    .hint {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>AES / DES 加解密测试页面</h1>
+
+  <!-- 公共参数配置区 -->
+  <div class="card" style="margin-bottom: 16px; max-width: 1100px; margin-left: auto; margin-right: auto;">
+    <h2>参数配置</h2>
+    <div class="options">
+      <div class="form-row">
+        <label for="algorithm">算法:</label>
+        <select id="algorithm" data-persist="algorithm">
+          <option value="AES" selected>AES</option>
+          <option value="DES">DES</option>
+          <option value="TripleDES">3DES (TripleDES)</option>
+          <option value="RC4">RC4 (流式)</option>
+          <option value="RC4Drop">RC4-Drop</option>
+          <option value="Rabbit">Rabbit</option>
+        </select>
+
+        <label for="mode">模式:</label>
+        <select id="mode" data-persist="mode">
+          <option value="CBC" selected>CBC</option>
+          <option value="ECB">ECB</option>
+          <option value="CFB">CFB</option>
+          <option value="OFB">OFB</option>
+          <option value="CTR">CTR</option>
+        </select>
+
+        <label for="padding">填充:</label>
+        <select id="padding" data-persist="padding">
+          <option value="Pkcs7" selected>Pkcs7</option>
+          <option value="NoPadding">NoPadding</option>
+          <option value="ZeroPadding">ZeroPadding</option>
+          <option value="Ansix923">AnsiX923</option>
+          <option value="Iso10126">Iso10126</option>
+        </select>
+
+        <label for="keySize">Key 长度:</label>
+        <select id="keySize" data-persist="keySize">
+          <option value="128">128 bit</option>
+          <option value="192">192 bit</option>
+          <option value="256" selected>256 bit</option>
+        </select>
+
+        <button class="secondary" onclick="resetConfig()" title="清空 localStorage, 恢复页面默认值">恢复默认</button>
+      </div>
+
+      <div class="form-row">
+        <label for="key">Key:</label>
+        <input type="text" id="key" data-persist="key" value="aiobc-tsim-2026" placeholder="密钥(原文,会按 UTF-8 处理)" />
+
+        <label for="keyFormat">Key 格式:</label>
+        <select id="keyFormat" data-persist="keyFormat">
+          <option value="utf8" selected>UTF-8 文本</option>
+          <option value="hex">Hex</option>
+          <option value="base64">Base64</option>
+        </select>
+
+        <button class="secondary" onclick="randomKey()">随机生成</button>
+      </div>
+
+      <div class="form-row" id="ivRow">
+        <label for="iv">IV:</label>
+        <input type="text" id="iv" data-persist="iv" value="aiobc-tsim-ivkey" placeholder="ECB 模式不需要 IV" />
+
+        <label for="ivFormat">IV 格式:</label>
+        <select id="ivFormat" data-persist="ivFormat">
+          <option value="utf8" selected>UTF-8 文本</option>
+          <option value="hex">Hex</option>
+          <option value="base64">Base64</option>
+        </select>
+
+        <button class="secondary" onclick="randomIv()">随机生成</button>
+      </div>
+
+      <div class="form-row">
+        <label for="plainFormat">明文编码:</label>
+        <select id="plainFormat" data-persist="plainFormat">
+          <option value="utf8" selected>UTF-8 文本</option>
+          <option value="base64">Base64</option>
+          <option value="hex">Hex</option>
+        </select>
+
+        <label for="cipherFormat">密文格式:</label>
+        <select id="cipherFormat" data-persist="cipherFormat">
+          <option value="base64" selected>Base64</option>
+          <option value="hex">Hex</option>
+        </select>
+
+        <label for="charset">字符集:</label>
+        <select id="charset" data-persist="charset">
+          <option value="utf8" selected>UTF-8</option>
+          <option value="gbk">GBK / GB2312</option>
+        </select>
+      </div>
+
+      <div class="form-row" style="background: #fffbeb; padding: 8px; border-radius: 4px; border: 1px solid #fde68a;">
+        <input type="checkbox" id="javaCompatible" data-persist="javaCompatible" style="min-width: auto;" checked />
+        <label for="javaCompatible" style="min-width: auto; color: #92400e; font-weight: 500;">
+          和 Java 后端 <code>ApiKeyEncryptor</code> 兼容 (AES/CBC/PKCS5Padding)
+        </label>
+        <span class="hint" style="flex-basis: 100%; margin-top: 4px;">
+          勾选后 Key/IV 一律按 UTF-8 字节直接使用, 不走 CryptoJS 默认的 OpenSSL KDF,
+          长度严格匹配 Java 端 buildKey 的截断/补零规则 (16/24/32 字节, 不足截断, 超出取前 N 字节).
+          配合 <code>ApiKeyEncryptor</code> (默认 Key="aiobc-tsim-2026" / IV="aiobc-tsim-ivkey") 可直接核对数据库 <code>tr_ai_llm_config.api_key</code>.
+          <br />
+          配置已自动保存到 localStorage, 刷新页面后自动恢复.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- 加密区 -->
+    <div class="card">
+      <h2>加密</h2>
+      <div class="form-row">
+        <label for="plainText">明文:</label>
+      </div>
+      <textarea id="plainText" placeholder="输入要加密的文本">sk-test-1234567890abcdef</textarea>
+      <div class="btn-group">
+        <button onclick="doEncrypt()">加密</button>
+        <button class="secondary" onclick="copyText('cipherText')">复制密文</button>
+        <button class="danger" onclick="clearEncrypt()">清空</button>
+      </div>
+      <div style="margin-top: 12px;">
+        <label style="font-size: 13px; color: #4b5563;">密文:</label>
+        <div id="cipherText" class="result">（等待加密...）</div>
+      </div>
+    </div>
+
+    <!-- 解密区 -->
+    <div class="card">
+      <h2>解密</h2>
+      <div class="form-row">
+        <label for="cipherInput">密文:</label>
+      </div>
+      <textarea id="cipherInput" placeholder="输入要解密的密文"></textarea>
+      <div class="btn-group">
+        <button onclick="doDecrypt()">解密</button>
+        <button class="secondary" onclick="copyText('decryptText')">复制明文</button>
+        <button class="danger" onclick="clearDecrypt()">清空</button>
+      </div>
+      <div style="margin-top: 12px;">
+        <label style="font-size: 13px; color: #4b5563;">明文:</label>
+        <div id="decryptText" class="result">（等待解密...）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日志 -->
+  <div class="card" style="margin-top: 16px; max-width: 1100px; margin-left: auto; margin-right: auto;">
+    <h2>日志</h2>
+    <div id="log" class="log"></div>
+  </div>
+
+  <div class="hint" style="text-align: center; margin-top: 16px; max-width: 1100px; margin-left: auto; margin-right: auto;">
+    说明: CryptoJS 的 RC4/Rabbit 不支持 mode/padding; ECB 模式不需要 IV; NoPadding 模式下明文长度必须是块大小的整数倍.
+    <br />
+    默认勾选"和 Java 后端兼容": Key/IV 按 UTF-8 字节直接使用, 不走 CryptoJS 默认的 OpenSSL KDF (这是常见的密文对不上原因).
+    配合后端 <code>ApiKeyEncryptor</code> (AES/CBC/PKCS5Padding, Key="aiobc-tsim-2026", IV="aiobc-tsim-ivkey") 可直接核对数据库 <code>tr_ai_llm_config.api_key</code>.
+  </div>
+
+  <script>
+    // ===== 工具方法 =====
+
+    function showLog(msg, type) {
+      const el = document.getElementById('log');
+      el.className = 'log ' + (type || 'success');
+      el.textContent = msg;
+    }
+
+    function copyText(id) {
+      const el = document.getElementById(id);
+      const text = el.innerText || el.textContent || '';
+      if (!text || text.indexOf('等待') >= 0) {
+        showLog('没有可复制的内容', 'error');
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        showLog('已复制到剪贴板', 'success');
+      }).catch(err => {
+        showLog('复制失败: ' + err.message, 'error');
+      });
+    }
+
+    function clearEncrypt() {
+      document.getElementById('plainText').value = '';
+      document.getElementById('cipherText').textContent = '（等待加密...）';
+      showLog('已清空加密区', 'success');
+    }
+
+    function clearDecrypt() {
+      document.getElementById('cipherInput').value = '';
+      document.getElementById('decryptText').textContent = '（等待解密...）';
+      showLog('已清空解密区', 'success');
+    }
+
+    // 字符串 -> WordArray (支持 utf8 / gbk / hex / base64)
+    function parseInput(str, format) {
+      if (!str) return CryptoJS.lib.WordArray.create();
+      switch (format) {
+        case 'hex':
+          return CryptoJS.enc.Hex.parse(str);
+        case 'base64':
+          return CryptoJS.enc.Base64.parse(str);
+        case 'gbk':
+          // CryptoJS 没有 GBK 编码, 用 TextEncoder(浏览器原生 utf-8) 不可行,
+          // 改用 escape/unescape 把 GBK 字节转 latin1 字符串, 再交给 CryptoJS
+          try {
+            const bytes = stringToGbkBytes(str);
+            return CryptoJS.lib.WordArray.create(bytes);
+          } catch (e) {
+            throw new Error('GBK 编码失败: ' + e.message);
+          }
+        case 'utf8':
+        default:
+          return CryptoJS.enc.Utf8.parse(str);
+      }
+    }
+
+    function stringToGbkBytes(str) {
+      const result = [];
+      for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        // 仅处理常见中英文区间, 复杂场景建议后端处理
+        if (code < 0x80) {
+          result.push(code);
+        } else {
+          // 用 encodeURIComponent 的 %XX 形式取 GBK 字节(浏览器解析时会按页面 charset)
+          const encoded = encodeURIComponent(str.charAt(i));
+          // 这里用 escape 在多数浏览器仍能拿到 GBK 字节(若页面 charset 为 GBK)
+          // 兜底: 若浏览器不是 GBK 编码, 提示用户改用 UTF-8
+          try {
+            const tmp = unescape(encoded.replace(/%/g, '\\x').replace(/\\x([0-9A-Fa-f]{2})/g, '%$1'));
+            for (let j = 0; j < tmp.length; j++) {
+              result.push(tmp.charCodeAt(j));
+            }
+          } catch (e) {
+            // 降级: 直接 push 原 code (会让 AES 解密结果与 Java 端不一致, 仅用于本地调试)
+            result.push(code & 0xff, (code >> 8) & 0xff);
+          }
+        }
+      }
+      return result;
+    }
+
+    // WordArray -> 字符串(明文回显)
+    function stringify(wa, format) {
+      if (!wa || !wa.sigBytes) return '';
+      switch (format) {
+        case 'hex':
+          return CryptoJS.enc.Hex.stringify(wa);
+        case 'base64':
+          return CryptoJS.enc.Base64.stringify(wa);
+        case 'latin1':
+          // 强制按字节转 char, 不走 UTF-8 校验 (浏览器兼容)
+          return CryptoJS.enc.Latin1.stringify(wa);
+        case 'utf8':
+        default:
+          // 用 TextDecoder 解码 (更宽松, 非法字节替换为 U+FFFD, 不会抛错).
+          // 浏览器原生 API, 不用 CryptoJS 的 escape/decodeURIComponent 老路径.
+          try {
+            const bytes = new Uint8Array(wa.sigBytes);
+            for (let i = 0; i < wa.sigBytes; i++) {
+              bytes[i] = (wa.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+            }
+            return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+          } catch (e) {
+            // 兜底: Latin1 (每个字节一个 char, 永不抛错)
+            return CryptoJS.enc.Latin1.stringify(wa);
+          }
+      }
+    }
+
+    // 输出格式控制: 把 WordArray 输出成用户选择的格式
+    function formatOutput(wa, format) {
+      if (!wa || !wa.sigBytes) return '';
+      switch (format) {
+        case 'hex':
+          return CryptoJS.enc.Hex.stringify(wa);
+        case 'base64':
+        default:
+          return CryptoJS.enc.Base64.stringify(wa);
+      }
+    }
+
+    // 读取 Key(根据 keyFormat 解析)
+    function buildKey() {
+      const raw = document.getElementById('key').value;
+      const format = document.getElementById('keyFormat').value;
+      return parseInput(raw, format);
+    }
+
+    function buildIv() {
+      const raw = document.getElementById('iv').value;
+      const format = document.getElementById('ivFormat').value;
+      return parseInput(raw, format);
+    }
+
+    // 是否走 Java 后端兼容模式
+    function isJavaCompatible() {
+      const cb = document.getElementById('javaCompatible');
+      return cb && cb.checked;
+    }
+
+    /**
+     * 严格按 Java 端 ApiKeyEncryptor.buildKey 的规则处理 AES key 字节:
+     *  - 字节数组长度 != 16 / 24 / 32 时, 截断/右补零到 16 (AES-128)
+     *  - 等于 16/24/32 则原样使用
+     * CryptoJS 的 keySize=0 表示 "不要再用 OpenSSL KDF 展开", 让我们能直接喂原始字节.
+     */
+    function normalizeAesKeyForJava(rawKeyStr) {
+      // 1) UTF-8 字节序列
+      const utf8Bytes = [];
+      const utf8Wa = CryptoJS.enc.Utf8.parse(rawKeyStr || '');
+      for (let i = 0; i < utf8Wa.sigBytes; i++) {
+        utf8Bytes.push((utf8Wa.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
+      }
+      // 2) 长度规整 (跟 Java buildKey 完全一致)
+      let finalLen = utf8Bytes.length;
+      if (finalLen !== 16 && finalLen !== 24 && finalLen !== 32) {
+        finalLen = 16; // 截断或右补 0 到 16
+      }
+      const fixed = new Array(finalLen).fill(0);
+      for (let i = 0; i < Math.min(utf8Bytes.length, finalLen); i++) {
+        fixed[i] = utf8Bytes[i];
+      }
+      // 3) 按 CryptoJS 的 word 序(32-bit 大端)重新组装成 words 数组
+      const words = [];
+      for (let i = 0; i < finalLen; i += 4) {
+        words.push(
+          ((fixed[i]     || 0) << 24) |
+          ((fixed[i + 1] || 0) << 16) |
+          ((fixed[i + 2] || 0) << 8 ) |
+          ((fixed[i + 3] || 0))
+        );
+      }
+      return CryptoJS.lib.WordArray.create(words, finalLen);
+    }
+
+    /**
+     * Java 端 IV 固定 16 字节 "aiobc-tsim-ivkey" (UTF-8),
+     * 直接取 UTF-8 字节.
+     */
+    function normalizeIvForJava(rawIvStr) {
+      const utf8Wa = CryptoJS.enc.Utf8.parse(rawIvStr || '');
+      const words = [];
+      for (let i = 0; i < utf8Wa.sigBytes; i += 4) {
+        const w = utf8Wa.words[i >>> 2] >>> 0;
+        // 高位字节置零, 防止 sigBytes 不在 4 倍数上时高位干扰
+        const shift = (4 - utf8Wa.sigBytes % 4) * 8;
+        if (utf8Wa.sigBytes % 4 !== 0) {
+          words.push((w << shift) >>> 0);
+        } else {
+          words.push(w);
+        }
+      }
+      return CryptoJS.lib.WordArray.create(words, utf8Wa.sigBytes);
+    }
+
+    // 随机生成 Key / IV (按 keySize 字节)
+    function randomKey() {
+      const bits = parseInt(document.getElementById('keySize').value, 10);
+      const bytes = bits / 8;
+      const wa = CryptoJS.lib.WordArray.random(bytes);
+      // 强制使用 hex 显示, 方便复制
+      document.getElementById('key').value = CryptoJS.enc.Hex.stringify(wa);
+      document.getElementById('keyFormat').value = 'hex';
+      showLog('已随机生成 ' + bytes + ' 字节 Key (hex)', 'success');
+    }
+
+    function randomIv() {
+      const alg = document.getElementById('algorithm').value;
+      let blockSize = 16; // AES / DES / 3DES 都是 8 字节块
+      if (alg === 'AES') blockSize = 16;
+      else if (alg === 'DES' || alg === 'TripleDES') blockSize = 8;
+      const wa = CryptoJS.lib.WordArray.random(blockSize);
+      document.getElementById('iv').value = CryptoJS.enc.Hex.stringify(wa);
+      document.getElementById('ivFormat').value = 'hex';
+      showLog('已随机生成 ' + blockSize + ' 字节 IV (hex)', 'success');
+    }
+
+    // 兼容模式下自动把 Key 长度重置为 128 (匹配默认 ApiKeyEncryptor 的 16 字节 key)
+    document.getElementById('javaCompatible').addEventListener('change', function () {
+      if (this.checked) {
+        // 把 Key 长度固定到 128, 因为 Java 端 buildKey 默认会取 16 字节
+        const keySizeSel = document.getElementById('keySize');
+        if (keySizeSel.value !== '128') {
+          keySizeSel.value = '128';
+          showLog('"和 Java 后端兼容"已开启: Key 长度自动设为 128 bit', 'success');
+        }
+      }
+    });
+
+    // 监听算法切换, 自动调整 keySize 选项
+    document.getElementById('algorithm').addEventListener('change', function () {
+      const alg = this.value;
+      const keySizeSel = document.getElementById('keySize');
+      // RC4 / Rabbit / DES / 3DES 都是 CryptoJS 内置变长, 这里做点基本提示
+      keySizeSel.innerHTML = '';
+      if (alg === 'AES') {
+        [128, 192, 256].forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v; opt.textContent = v + ' bit';
+          if (v === 128) opt.selected = true;
+          keySizeSel.appendChild(opt);
+        });
+      } else if (alg === 'DES') {
+        const opt = document.createElement('option');
+        opt.value = 64; opt.textContent = '64 bit (56 有效)'; opt.selected = true;
+        keySizeSel.appendChild(opt);
+      } else if (alg === 'TripleDES') {
+        const opt = document.createElement('option');
+        opt.value = 192; opt.textContent = '192 bit'; opt.selected = true;
+        keySizeSel.appendChild(opt);
+      } else if (alg === 'RC4' || alg === 'RC4Drop' || alg === 'Rabbit') {
+        for (let i = 1; i <= 32; i++) {
+          const opt = document.createElement('option');
+          opt.value = i * 8; opt.textContent = i * 8 + ' bit';
+          if (i === 16) opt.selected = true;
+          keySizeSel.appendChild(opt);
+        }
+      }
+      // 流式算法禁用 mode/padding/iv
+      const streamMode = alg === 'RC4' || alg === 'RC4Drop' || alg === 'Rabbit';
+      document.getElementById('mode').disabled = streamMode;
+      document.getElementById('padding').disabled = streamMode;
+      document.getElementById('iv').disabled = streamMode;
+      document.getElementById('ivFormat').disabled = streamMode;
+    });
+
+    // ECB 模式下禁用 IV
+    document.getElementById('mode').addEventListener('change', function () {
+      const isEcb = this.value === 'ECB';
+      document.getElementById('iv').disabled = isEcb;
+      document.getElementById('ivFormat').disabled = isEcb;
+    });
+
+    // ===== 加密 / 解密 =====
+
+    function getConfig() {
+      const algorithm = document.getElementById('algorithm').value;
+      const mode = document.getElementById('mode').value;
+      const padding = document.getElementById('padding').value;
+      const keySize = parseInt(document.getElementById('keySize').value, 10);
+      const javaCompatible = isJavaCompatible();
+
+      let key, iv;
+      if (javaCompatible) {
+        // 与 Java 后端 ApiKeyEncryptor 完全等价:
+        // - Key: UTF-8 字节, 长度仅 16/24/32, 否则截断或补零到 16
+        // - IV : UTF-8 字节直接用
+        // CryptoJS keySize=0 表示不再做 OpenSSL KDF 展开
+        if (algorithm !== 'AES') {
+          throw new Error('"和 Java 后端兼容"模式仅支持 AES 算法, 当前: ' + algorithm);
+        }
+        key = normalizeAesKeyForJava(document.getElementById('key').value);
+        iv = normalizeIvForJava(document.getElementById('iv').value);
+      } else {
+        key = buildKey();
+        iv = buildIv();
+      }
+
+      const plainFormat = document.getElementById('plainFormat').value;
+      const cipherFormat = document.getElementById('cipherFormat').value;
+      const charset = document.getElementById('charset').value;
+      return { algorithm, mode, padding, keySize, key, iv, plainFormat, cipherFormat, charset, javaCompatible };
+    }
+
+    function buildCipherParams(cfg) {
+      const params = {};
+      // 流式算法没有 mode/padding
+      const stream = cfg.algorithm === 'RC4' || cfg.algorithm === 'RC4Drop' || cfg.algorithm === 'Rabbit';
+      if (!stream) {
+        params.mode = CryptoJS.mode[cfg.mode];
+        params.padding = CryptoJS.pad[cfg.padding];
+      }
+      // keySize 处理
+      if (cfg.javaCompatible) {
+        // 不再让 CryptoJS 用 OpenSSL KDF 重新展开, 用我们准备好的原始字节
+        params.keySize = 0;
+      } else if (cfg.algorithm === 'AES') {
+        // CryptoJS keySize 单位是 32bit word
+        params.keySize = cfg.keySize / 32;
+      }
+      // ECB 模式不传 IV
+      if (!stream && cfg.mode !== 'ECB' && cfg.iv && cfg.iv.sigBytes > 0) {
+        params.iv = cfg.iv;
+      }
+      return params;
+    }
+
+    function doEncrypt() {
+      try {
+        const cfg = getConfig();
+        const plain = document.getElementById('plainText').value;
+        if (!plain) {
+          showLog('请输入明文', 'error');
+          return;
+        }
+        // 解析明文(根据 plainFormat 决定)
+        const wa = parseInput(plain, cfg.plainFormat);
+        const params = buildCipherParams(cfg);
+        const encrypted = CryptoJS[cfg.algorithm].encrypt(wa, cfg.key, params);
+        const out = formatOutput(encrypted.ciphertext, cfg.cipherFormat);
+        document.getElementById('cipherText').textContent = out;
+        showLog('加密成功 (算法=' + cfg.algorithm + ', 模式=' + cfg.mode + ', 填充=' + cfg.padding + ')', 'success');
+      } catch (e) {
+        showLog('加密失败: ' + (e.message || e), 'error');
+        console.error(e);
+      }
+    }
+
+    function doDecrypt() {
+      try {
+        const cfg = getConfig();
+        const cipherStr = document.getElementById('cipherInput').value;
+        if (!cipherStr) {
+          showLog('请输入密文', 'error');
+          return;
+        }
+        // 解析密文(根据 cipherFormat 决定)
+        const cipherWa = parseInput(cipherStr, cfg.cipherFormat);
+        const params = buildCipherParams(cfg);
+        const cipherParams = CryptoJS.lib.CipherParams.create({ ciphertext: cipherWa });
+        const decrypted = CryptoJS[cfg.algorithm].decrypt(cipherParams, cfg.key, params);
+        const out = stringify(decrypted, cfg.plainFormat);
+        document.getElementById('decryptText').textContent = out;
+        showLog('解密成功', 'success');
+      } catch (e) {
+        showLog('解密失败: ' + (e.message || e) + ' (请检查 Key / IV / 模式 / 填充是否匹配)', 'error');
+        console.error(e);
+      }
+    }
+
+    // ===== localStorage 配置持久化 =====
+
+    const STORAGE_KEY = 'testaes.config.v1';
+
+    // 页面默认值(必须与 HTML 里 value/selected 保持一致)
+    const DEFAULT_CONFIG = {
+      algorithm: 'AES',
+      mode: 'CBC',
+      padding: 'Pkcs7',
+      keySize: '128',
+      key: '',
+      keyFormat: 'utf8',
+      iv: '',
+      ivFormat: 'utf8',
+      plainFormat: 'utf8',
+      cipherFormat: 'base64',
+      charset: 'utf8',
+      javaCompatible: true,
+      // 明文/密文输入框也支持持久化(可选)
+      plainText: '.SttWnoiLG5bsHLuF',
+      cipherInput: ''
+    };
+
+    // 列出所有需要持久化的字段(从 DOM 自动收集 data-persist)
+    const PERSIST_FIELDS = (function () {
+      const fields = [];
+      document.querySelectorAll('[data-persist]').forEach(el => {
+        fields.push(el.id);
+      });
+      return fields;
+    })();
+
+    function loadConfig() {
+      let saved = {};
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) saved = JSON.parse(raw) || {};
+      } catch (e) {
+        console.warn('[testaes] 读取 localStorage 失败:', e);
+      }
+      const cfg = Object.assign({}, DEFAULT_CONFIG, saved);
+      // 应用到 DOM
+      PERSIST_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (!(id in cfg)) return;
+        if (el.type === 'checkbox') {
+          el.checked = !!cfg[id];
+        } else {
+          // select / input 都用 value
+          el.value = cfg[id] == null ? '' : String(cfg[id]);
+        }
+      });
+      // 输入框(plainText / cipherInput) - 不在 PERSIST_FIELDS 里, 单独处理
+      if ('plainText' in cfg) document.getElementById('plainText').value = cfg.plainText;
+      if ('cipherInput' in cfg) document.getElementById('cipherInput').value = cfg.cipherInput;
+      return cfg;
+    }
+
+    function saveConfig() {
+      const cfg = {};
+      PERSIST_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.type === 'checkbox') {
+          cfg[id] = el.checked;
+        } else {
+          cfg[id] = el.value;
+        }
+      });
+      cfg.plainText = document.getElementById('plainText').value;
+      cfg.cipherInput = document.getElementById('cipherInput').value;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+      } catch (e) {
+        console.warn('[testaes] 写入 localStorage 失败:', e);
+      }
+      return cfg;
+    }
+
+    function resetConfig() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        // ignore
+      }
+      // 恢复默认值到 DOM
+      Object.keys(DEFAULT_CONFIG).forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.type === 'checkbox') {
+          el.checked = !!DEFAULT_CONFIG[id];
+        } else {
+          el.value = DEFAULT_CONFIG[id] == null ? '' : String(DEFAULT_CONFIG[id]);
+        }
+      });
+      // 触发一次 algorithm change 以重排 keySize 选项
+      document.getElementById('algorithm').dispatchEvent(new Event('change'));
+      showLog('已恢复默认配置 (localStorage 已清空)', 'success');
+    }
+
+    // 给所有持久化字段绑定自动保存 (debounce 防止 input 连续触发)
+    (function bindAutoSave() {
+      let timer = null;
+      const handler = () => {
+        clearTimeout(timer);
+        timer = setTimeout(saveConfig, 200);
+      };
+      PERSIST_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const evt = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+        el.addEventListener(evt, handler);
+      });
+      // 输入框也保存
+      ['plainText', 'cipherInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', handler);
+      });
+    })();
+
+    // 初始化顺序: 先 load (恢复持久化配置), 再触发 algorithm change 让 keySize 选项与持久值对齐
+    loadConfig();
+    document.getElementById('algorithm').dispatchEvent(new Event('change'));
+  </script>
+</body>
+</html>
