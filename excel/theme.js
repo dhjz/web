@@ -248,21 +248,13 @@
   }
 
   async function writeBufferAndDownload(wb, fileName, theme) {
-    // 先克隆原 workbook 的 cell style,避免 applyThemeToWorkbook 修改原始数据。
-    // 用 JSON 深克隆每个 cell 的 style(plain object,JSON 安全)。
-    wb.worksheets.forEach((ws) => {
-      ws.eachRow({ includeEmpty: true }, (row) => {
-        if (!row || !row.cells) return;
-        for (let i = 0; i < row.cells.length; i++) {
-          const cell = row.cells[i];
-          if (cell && cell.style) {
-            cell.style = JSON.parse(JSON.stringify(cell.style));
-          }
-        }
-      });
-    });
-    applyThemeToWorkbook(wb, theme);
-    const buffer = await wb.xlsx.writeBuffer();
+    // 先把原 workbook 写 buffer 再读回来,得到一个完全独立的副本。
+    // 这样 applyThemeToWorkbook 修改的是副本,原 wb 不受影响。
+    const srcBuffer = await wb.xlsx.writeBuffer();
+    const cloneWb = new ExcelJS.Workbook();
+    await cloneWb.xlsx.load(srcBuffer);
+    applyThemeToWorkbook(cloneWb, theme);
+    const buffer = await cloneWb.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
