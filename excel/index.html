@@ -125,6 +125,10 @@
           <span style="font-size: 14px;">📥</span>
           导入 Excel
         </button>
+        <button class="btn" @click="openMarkdownImport">
+          <span style="font-size: 14px;">📋</span>
+          从 Markdown 导入
+        </button>
         <button class="btn" :disabled="!workbook" @click="previewMerge">
           <span style="font-size: 14px;">👁️</span>
           预览结果
@@ -288,6 +292,7 @@
     </div>
   </div>
   <script src="theme.js"></script>
+  <script src="md.js"></script>
   <script>
     const { createApp, ref, watch, watchEffect } = Vue;
 
@@ -868,12 +873,44 @@
           setTimeout(() => { toast.value = null; }, 2400);
         }
 
+        function openMarkdownImport() {
+          if (!window.ExcelMarkdownImport) {
+            showToast('Markdown 导入插件未加载', 'error');
+            return;
+          }
+          // 如果当前还没有 workbook,传给插件的会是 null,
+          // 插件内部会自己 new ExcelJS.Workbook(),完成后我们把新 wb 接回来。
+          window.ExcelMarkdownImport.open({
+            workbook: workbook.value || null,
+            sheetName: 'Markdown',
+            onDone: ({ workbook: wb, worksheet, importedRows, range }) => {
+              workbook.value = wb;
+              sheetNames.value = wb.worksheets.map((ws) => ws.name);
+              activeSheet.value = worksheet.name;
+              fileSize.value = fileSize.value || 0;
+              fromCache.value = false;
+              resultWorkbook.value = null;
+              resultHtml.value = '';
+              mergeStats.value = null;
+              refreshOriginalPreview();
+              const tip = range && range.start !== range.end
+                ? `已导入 Markdown 表格 → sheet「${worksheet.name}」(行 ${range.start}~${range.end},导入 ${importedRows} 行)`
+                : `已导入 Markdown 表格 → sheet「${worksheet.name}」(${importedRows} 行)`;
+              showToast(tip, 'success');
+            },
+            onError: (err) => {
+              showToast('Markdown 导入失败: ' + (err && err.message || err), 'error');
+            },
+          });
+        }
+
         return {
           fileInput, workbook, resultWorkbook, sheetNames, activeSheet, columns,
           originalHtml, resultHtml, selectedColumns, fileName, fileSize, fromCache, dragOver,
           mergeStats, currentSheetRowCount, toast, syncScroll, originalBody, resultBody,
           formatFileSize,
-          triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, reset
+          triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, reset,
+          openMarkdownImport
         };
       }
     }).mount('#app');
