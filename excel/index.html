@@ -129,7 +129,7 @@
           <span style="font-size: 14px;">👁️</span>
           预览结果
         </button>
-        <button class="btn" :disabled="!resultWorkbook" @click="exportFile">
+        <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(false)">
           <span style="font-size: 14px;">⬇️</span>
           导出
         </button>
@@ -239,9 +239,13 @@
                 <span style="font-size: 14px;">👁️</span>
                 预览结果
               </button>
-              <button class="btn" :disabled="!resultWorkbook" @click="exportFile" style="width: 100%; justify-content: center; padding: 10px;">
+              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(false)" style="width: 100%; justify-content: center; padding: 10px;">
                 <span style="font-size: 14px;">⬇️</span>
-                导出 Excel
+                导出 {{ resultWorkbook ? '预览' : '原始' }} Excel
+              </button>
+              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(true)" style="width: 100%; justify-content: center; padding: 10px;">
+                <span style="font-size: 14px;">⬇️</span>
+                导出并美化 {{ resultWorkbook ? '预览' : '原始' }} Excel
               </button>
             </div>
           </div>
@@ -283,7 +287,7 @@
       </div>
     </div>
   </div>
-
+  <script src="theme.js"></script>
   <script>
     const { createApp, ref, watch, watchEffect } = Vue;
 
@@ -815,35 +819,48 @@
           }
         }
 
-        async function exportFile() {
-          if (!resultWorkbook.value) {
-            showToast('请先生成预览', 'error');
+        async function exportFile(beautify = false) {
+          // 优先用预览后的 workbook,没有预览就用原 workbook
+          const wb = resultWorkbook.value || workbook.value;
+          if (!wb) {
+            showToast('请先上传文件', 'error');
             return;
           }
-          try {
-            const buffer = await resultWorkbook.value.xlsx.writeBuffer();
-            const blob = new Blob([buffer], {
-              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const base = fileName.value.replace(/\.(xlsx|xls)$/i, '') || 'workbook';
-            a.href = url;
-            a.download = `${base}_merged_${ts}.xlsx`;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            // Give browser a moment to start download
-            setTimeout(() => {
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }, 100);
-            showToast('已导出文件', 'success');
-          } catch (err) {
-            console.error(err);
-            showToast('导出失败: ' + err.message, 'error');
+          if (!beautify) {
+            try {
+              const url = URL.createObjectURL(new Blob([(await wb.xlsx.writeBuffer())], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              }));
+              const ts = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+              const base = fileName.value.replace(/\.(xlsx|xls)$/i, '') || '导出表格';
+              const a = Object.assign(document.createElement('a'), {
+                href: url,
+                download: `${base}_${ts}.xlsx`,
+                style: 'display:none',
+              });
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }, 100);
+              showToast('已导出文件', 'success');
+            } catch (err) {
+              console.error(err);
+              showToast('导出失败: ' + err.message, 'error');
+            }
+            return;
           }
+          window.ExcelThemeDialog.exportWorkbook({
+            workbook: wb,
+            fileName: fileName.value,
+            onDone: (theme) => {
+              showToast('已导出(' + theme.name + ')', 'success');
+            },
+            onError: (err) => {
+              showToast('导出失败: ' + err.message, 'error');
+            },
+          });
         }
 
         function showToast(message, type = 'success') {
