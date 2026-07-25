@@ -84,6 +84,11 @@
     .col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
     .config-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-dim); cursor: pointer; user-select: none; font-weight: normal; }
     .config-toggle input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; width: 13px; height: 13px; }
+    .segmented { display: inline-flex; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px; gap: 2px; }
+    .segmented input[type="radio"] { display: none; }
+    .segmented label { padding: 4px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; color: var(--text-dim); font-weight: 600; transition: all 0.15s; user-select: none; }
+    .segmented label:hover { color: var(--text); }
+    .segmented input[type="radio"]:checked + label { background: var(--bg-elev); color: var(--accent); box-shadow: var(--shadow-sm); }
     .config-actions { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
     .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 8px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 8px; }
     .stat { display: flex; flex-direction: column; gap: 2px; }
@@ -173,7 +178,9 @@
             结果预览
           </div>
           <span v-if="mergeStats" style="font-size: 12px; color: var(--text-dim); font-family: Consolas, monospace; font-weight: 600;">
-            {{ mergeStats.mergedCells }} 个单元格已合并
+            {{ operationMode === 'merge'
+               ? `${mergeStats.cells} 个单元格已合并`
+               : `${mergeStats.regions} 个区域已拆分(共 ${mergeStats.cells} 个单元格)` }}
           </span>
         </div>
         <div class="panel-body" ref="resultBody">
@@ -211,10 +218,24 @@
               </select>
             </div>
             <div class="config-section">
-              <div class="config-label">合并列</div>
-              <div class="config-hint">
-                勾选需要合并的列。相同内容的相邻单元格将合并为一个单元格并居中显示。
+              <div class="config-label">
+                <span>{{ operationMode === 'merge' ? '合并列' : '拆分列' }}</span>
+                <div class="segmented">
+                  <input type="radio" id="mode-merge" value="merge" v-model="operationMode">
+                  <label for="mode-merge">合并</label>
+                  <input type="radio" id="mode-unmerge" value="unmerge" v-model="operationMode">
+                  <label for="mode-unmerge">拆分</label>
+                </div>
               </div>
+              <div class="config-hint">
+                {{ operationMode === 'merge'
+                  ? '勾选需要合并的列。相同内容的相邻单元格将合并为一个单元格并居中显示。'
+                  : '勾选需要拆分的列。该列上已合并的单元格会被还原为独立单元格,并保留原值与样式。' }}
+              </div>
+              <label v-if="operationMode === 'unmerge'" class="config-toggle" style="padding: 2px 4px;">
+                <input type="checkbox" v-model="fillMasterOnly">
+                <span>仅保留主格,清空下方单元格</span>
+              </label>
               <div v-if="!columns.length" style="padding: 24px; text-align: center; color: var(--text-faint); font-size: 12px; border: 1px dashed var(--border); border-radius: 6px;">
                 暂无列,请先导入文件
               </div>
@@ -229,8 +250,8 @@
 
             <div v-if="mergeStats" class="stats">
               <div class="stat">
-                <div class="stat-value">{{ mergeStats.mergedCells }}</div>
-                <div class="stat-label">合并单元格</div>
+                <div class="stat-value">{{ mergeStats.cells }}</div>
+                <div class="stat-label">{{ operationMode === 'merge' ? '合并单元格' : '已拆分单元格' }}</div>
               </div>
               <div class="stat">
                 <div class="stat-value">{{ mergeStats.columns }}</div>
@@ -291,6 +312,7 @@
       </div>
     </div>
   </div>
+  <script src="util.js"></script>
   <script src="theme.js"></script>
   <script src="md.js"></script>
   <script>
@@ -317,6 +339,12 @@
         const syncScroll = ref(true);
         const originalBody = ref(null);
         const resultBody = ref(null);
+        // 操作模式:'merge' 合并 / 'unmerge' 拆分
+        const operationMode = ref('merge');
+        // 拆分模式下的填值策略:
+        //   false(默认) — 把主格的值向下复制到所有被合并行,最符合"取消合并"直觉
+        //   true        — 只保留主格的值,下方单元格清空(样式仍复制,便于后续填新内容)
+        const fillMasterOnly = ref(false);
 
         const MAX_PREVIEW_ROWS = 500;
         const CACHE_KEY = '__excel_file_cache__';
@@ -793,10 +821,104 @@
             return null;
           }
 
+          // 低层工具:返回 worksheet 的所有合并区域(完整 {top,left,bottom,right}),
+          // 同时兼容 worksheet.model.merges 与内部 _merges,与 buildMergeMap/collectColumnMerges 走同一条解析路径
+          function getAllMergeRegions(worksheet) {
+            const regions = [];
+            const seen = new Set();
+            const push = (top, left, bottom, right) => {
+              if (typeof top !== 'number' || typeof left !== 'number' || typeof bottom !== 'number' || typeof right !== 'number') return;
+              const key = top + ',' + left + ',' + bottom + ',' + right;
+              if (seen.has(key)) return;
+              seen.add(key);
+              regions.push({ top, left, bottom, right });
+            };
+            const modelMerges = (worksheet.model && worksheet.model.merges) || [];
+            for (const m of modelMerges) {
+              if (m && typeof m.top === 'number') push(m.top, m.left, m.bottom, m.right);
+            }
+            const internalMerges = worksheet._merges || {};
+            for (const k of Object.keys(internalMerges)) {
+              const it = internalMerges[k];
+              if (!it) continue;
+              if (it.tl && typeof it.tl.row === 'number') {
+                const top = it.tl.row + 1;
+                const left = it.tl.col + 1;
+                const br = it.br || it.dimensions || it;
+                const bottom = (br && typeof br.row === 'number') ? br.row + 1 : top;
+                const right = (br && typeof br.col === 'number') ? br.col + 1 : left;
+                push(top, left, bottom, right);
+              } else if (typeof it.top === 'number') {
+                push(it.top, it.left, it.bottom, it.right);
+              }
+            }
+            regions.sort((a, b) => a.top - b.top);
+            return regions;
+          }
+
+          // 拆分指定列上所有相交合并区段,无侵入式:不动 mergeColumnInWorksheet / buildMergeMap / collectColumnMerges
+          // 行为:
+          //   1. 找到所有与该列相交的合并区段(含跨多列的合并,按完整区域处理)
+          //   2. 先调 unMergeCells 取消合并(必须先取消:合并态下子格 cell 引用的是 master,
+          //      此时写值会误改 master;且 unMergeCells 本身会清空子格值,所以顺序必须是 unmerge → 写值)
+          //   3. 写值:fillMasterOnly=true 时清空子格(仅主格保留值);否则把主格值复制到子格
+          //   4. 样式总是复制(两种策略都保留),保证视觉一致
+          // 返回 { regions: 取消的合并区段数, cells: 受影响的单元格总数 }
+          function unmergeColumnInWorksheet(worksheet, colNum, fillMasterOnly = false) {
+            const allRegions = getAllMergeRegions(worksheet);
+            const targets = allRegions.filter((r) => colNum >= r.left && colNum <= r.right);
+            if (!targets.length) return { regions: 0, cells: 0 };
+
+            let regions = 0;
+            let cells = 0;
+            for (const r of targets) {
+              // 1. 先读 master 的值与样式(此时还在合并态,必须先取)
+              const masterCell = worksheet.getRow(r.top).getCell(r.left);
+              const masterValue = masterCell.value;
+              const masterAlignment = masterCell.alignment;
+              const masterFont = masterCell.font;
+              const masterFill = masterCell.fill;
+              const masterBorder = masterCell.border;
+              const masterNumFmt = masterCell.numFmt;
+
+              // 2. 取消合并(子格从此成为独立 cell,引用与 master 解绑;同时子格的值被 ExcelJS 清空)
+              let unmerged = false;
+              try {
+                worksheet.unMergeCells(r.top, r.left, r.bottom, r.right);
+                unmerged = true;
+              } catch (e) {
+                console.warn('unMergeCells 失败', r, e);
+              }
+              if (!unmerged) continue;
+
+              // 3. 现在子格是独立 cell,可以安全写值与样式
+              for (let rr = r.top; rr <= r.bottom; rr++) {
+                for (let cc = r.left; cc <= r.right; cc++) {
+                  if (rr === r.top && cc === r.left) continue; // 主格不动
+                  const cell = worksheet.getRow(rr).getCell(cc);
+                  cell.value = fillMasterOnly ? null : masterValue;
+                  if (masterAlignment) cell.alignment = { ...masterAlignment };
+                  if (masterFont) cell.font = { ...masterFont };
+                  if (masterNumFmt) cell.numFmt = masterNumFmt;
+                  if (masterFill) {
+                    try { cell.fill = JSON.parse(JSON.stringify(masterFill)); } catch (e) {}
+                  }
+                  if (masterBorder) {
+                    try { cell.border = JSON.parse(JSON.stringify(masterBorder)); } catch (e) {}
+                  }
+                }
+              }
+
+              regions += 1;
+              cells += (r.bottom - r.top + 1) * (r.right - r.left + 1);
+            }
+            return { regions, cells };
+          }
+
         async function previewMerge() {
           if (!workbook.value || !activeSheet.value) return;
           if (!selectedColumns.value.length) {
-            showToast('请至少选择一列进行合并', 'error');
+            showToast(operationMode.value === 'merge' ? '请至少选择一列进行合并' : '请至少选择一列进行拆分', 'error');
             return;
           }
           try {
@@ -805,6 +927,32 @@
             await newWb.xlsx.load(buffer);
 
             const ws = newWb.getWorksheet(activeSheet.value);
+            if (operationMode.value === 'unmerge') {
+              let totalRegions = 0;
+              let totalCells = 0;
+              for (const letter of selectedColumns.value) {
+                const colNum = colLetterToNum(letter);
+                const { regions, cells } = unmergeColumnInWorksheet(ws, colNum, fillMasterOnly.value);
+                totalRegions += regions;
+                totalCells += cells;
+              }
+              resultWorkbook.value = newWb;
+              resultHtml.value = renderWorksheetToHtml(ws, { highlightNewMerges: false });
+              mergeStats.value = {
+                cells: totalCells,
+                regions: totalRegions,
+                columns: selectedColumns.value.length
+              };
+              if (totalRegions === 0) {
+                showToast('所选列没有可拆分的合并单元格', 'error');
+              } else {
+                const fillHint = fillMasterOnly.value ? '(仅主格保留值)' : '(已向下填值)';
+                showToast(`已拆分 ${totalRegions} 个区域${fillHint},共 ${totalCells} 个单元格`, 'success');
+              }
+              return;
+            }
+
+            // 合并模式:沿用旧逻辑
             let totalMerged = 0;
             for (const letter of selectedColumns.value) {
               const colNum = colLetterToNum(letter);
@@ -814,7 +962,7 @@
             resultWorkbook.value = newWb;
             resultHtml.value = renderWorksheetToHtml(ws, { highlightNewMerges: true });
             mergeStats.value = {
-              mergedCells: totalMerged,
+              cells: totalMerged,
               columns: selectedColumns.value.length
             };
             showToast(`已合并 ${totalMerged} 个单元格`, 'success');
@@ -908,6 +1056,7 @@
           fileInput, workbook, resultWorkbook, sheetNames, activeSheet, columns,
           originalHtml, resultHtml, selectedColumns, fileName, fileSize, fromCache, dragOver,
           mergeStats, currentSheetRowCount, toast, syncScroll, originalBody, resultBody,
+          operationMode, fillMasterOnly,
           formatFileSize,
           triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, reset,
           openMarkdownImport
