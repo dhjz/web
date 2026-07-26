@@ -185,7 +185,8 @@
           <div class="content-header">
             <div class="file-info">
               {{ currentFile?.name || '未命名文件' }} ({{ formatFileSize(currentFile?.size || 0) }})
-              <span class="cursor" @click="downloadFile" v-if="currentFile">⬇️</span>
+              <span class="cursor" @click="downloadFile" v-if="currentFile" title="下载原文">⬇️</span>
+              <span class="cursor" @click="copySource" v-if="currentFile" title="复制原文">📋</span>
             </div>
             <div class="file-stats" v-if="currentFile"><i>{{ totalChars }} 字符</i><i>{{ nonEmptyChars }} 非空</i></div>
           </div>
@@ -605,6 +606,16 @@
           this.displayMarkdown(content, file);
           this.currentHistoryId = 'temp_md';
           localStorage.setItem('markdownCurrentDoc', 'temp_md');
+        },
+        copySource() {
+          const item = this.displayHistoryList.find(h => h.id === this.currentHistoryId);
+          if (item && item.content) {
+            navigator.clipboard.writeText(item.content).then(() => {
+              this.showTooltip('已复制原文', window.innerWidth / 2, window.innerHeight / 2);
+            }).catch(err => {
+              this.showTooltip('复制失败', window.innerWidth / 2, window.innerHeight / 2);
+            });
+          }
         },
         downloadFile() {
           const item = this.displayHistoryList.find(h => h.id === this.currentHistoryId);
