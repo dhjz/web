@@ -35,6 +35,7 @@ window.config = {
         { name: '表格工具', short: 'Excel', url: './excel/index.html', color: '#077c32' },
         { name: '数据库管理', short: 'SQL', url: 'http://home.199311.xyz:40126', color: '#0f4104' },
         { name: '字体压缩', short: 'Font', url: 'http://home.199311.xyz:40050', color: '#610782' },
+        { name: 'New Api', short: 'Api', url: 'http://home.199311.xyz:40099', color: '#9d07d3' },
       ]
     },
     {
