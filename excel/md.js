@@ -158,7 +158,7 @@
    * - 按 aligns 设置水平对齐
    */
   function writeTableToWorksheet(workbook, table, sheetName) {
-    const finalName = makeUniqueSheetName(workbook, sheetName || 'Markdown');
+    const finalName = makeUniqueSheetName(workbook, sheetName || 'Sheet1');
     const ws = workbook.addWorksheet(finalName, {
       views: [{ state: 'frozen', ySplit: 1 }],
     });
@@ -350,10 +350,9 @@
     }
     .md-pane-actions { display: flex; align-items: center; gap: 6px; }
     .md-mini-btn {
-      padding: 5px 10px;
       border-radius: 5px;
-      border: 1px solid var(--border, #e2e8f0);
-      background: var(--bg-elev, #fff);
+      border: none;
+      background: none;
       color: var(--text-dim, #4a5568);
       font-size: 11px; font-weight: 600;
       cursor: pointer; transition: all .12s;
@@ -459,6 +458,30 @@
     .md-preview tbody tr.row-out td.md-row-num {
       background: rgba(220, 38, 38, .06);
       color: var(--danger, #dc2626);
+    }
+    /* 预览行可点击:指针 + 悬停高亮 */
+    .md-preview tbody tr {
+      cursor: pointer;
+      transition: background-color .1s;
+    }
+    .md-preview tbody tr:hover td:not(.md-row-num) {
+      background-color: rgba(37, 99, 235, .045);
+    }
+    .md-preview tbody tr:hover td.md-row-num {
+      background-color: rgba(37, 99, 235, .14);
+      color: var(--accent, #2563eb);
+    }
+    .md-preview tbody tr.row-out:hover td:not(.md-row-num) {
+      background-color: rgba(220, 38, 38, .06);
+    }
+    .md-preview tbody tr.row-out:hover td.md-row-num {
+      background-color: rgba(220, 38, 38, .16);
+      color: var(--danger, #dc2626);
+    }
+    /* 点击排除的行:行号加粗,作为与「手填排除 / 范围外」的视觉区分 */
+    .md-preview tbody tr.click-excluded td.md-row-num {
+      font-weight: 800;
+      box-shadow: inset 2px 0 0 var(--danger, #dc2626);
     }
     .md-preview td.align-left   { text-align: left; }
     .md-preview td.align-center { text-align: center; }
@@ -638,16 +661,25 @@
           <div class="md-pane">
             <div class="md-pane-head">
               <span class="md-pane-title">👀 实时预览</span>
-              <span style="font-size:11px;color:var(--text-faint,#718096);">
-                {{ parsed ? '已识别表格' : '等待识别' }}
-              </span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:11px;color:var(--text-faint,#718096);" title="单击行 = 切换排除">💡 单击行排除 / 再次点击取消</span>
+                <button
+                  v-if="clickExcludeCount > 0"
+                  class="md-mini-btn"
+                  @click="clearClickExcluded"
+                  title="清空通过点击排除的行(不影响手填排除)"
+                >清空点击 ({{ clickExcludeCount }})</button>
+                <span style="font-size:11px;color:var(--text-faint,#718096);">
+                  {{ parsed ? '已识别表格' : '等待识别' }}
+                </span>
+              </div>
             </div>
             <div class="md-pane-body md-pane-body--split">
               <!-- 上:预览(可滚动) -->
               <div class="md-preview-scroll">
                 <div v-if="errorMsg" class="md-error">{{ errorMsg }}</div>
 
-                <div v-if="parsed" class="md-preview" v-html="previewHtml"></div>
+                <div v-if="parsed" class="md-preview" v-html="previewHtml" @click="handlePreviewClick"></div>
                 <div v-else-if="!errorMsg" class="md-preview-empty">
                   <div style="font-size:36px;margin-bottom:8px;">📭</div>
                   粘贴或输入包含表格的 Markdown,右侧将自动预览
@@ -666,7 +698,7 @@
                   <div class="md-options-row" style="flex-wrap:wrap;">
                     <label style="flex:1;min-width:200px;">
                       <span style="min-width:80px;color:var(--text-dim,#4a5568);font-weight:600;">新 sheet 名</span>
-                      <input type="text" v-model="sheetName" maxlength="31" placeholder="Markdown" />
+                      <input type="text" v-model="sheetName" maxlength="31" placeholder="Sheetname" />
                     </label>
                     <label style="gap:4px;">
                       <span style="color:var(--text-dim,#4a5568);font-weight:600;">起始行</span>
@@ -758,7 +790,7 @@
     setup() {
       const visible = ref(false);
       const source = ref('');
-      const sheetName = ref('Markdown');
+      const sheetName = ref('Sheet1');
       const freezeHeader = ref(true);
       const applyStyles = ref(true);
       const busy = ref(false);
@@ -766,6 +798,8 @@
       const startRow = ref(null);
       const endRow = ref(null);
       const excludeText = ref('');   // 逗号分隔的待排除行号,如 "3,5,8-10" 或 "3, 5"
+      // 通过点击预览行排除的集合(独立于手填 excludeText,两者取并集)
+      const clickExcluded = ref(new Set());
 
       const parsed = computed(() => {
         errorMsg.value = '';
@@ -848,19 +882,13 @@
         return Math.max(0, b.end - b.start + 1);
       });
 
-      // 解析排除行号文本。
-      // 支持格式:
-      //   "3, 5, 8"          → [3,5,8]
-      //   "3 5 8"            → [3,5,8]      (空格 / 制表符也作分隔符)
-      //   "3, 8-10"          → [3,8,9,10]   (连字符表示区间)
-      //   "3, 8-10, 5"       → [3,5,8,9,10] (自动去重 + 升序)
-      // 越界(<1 或 >total)自动剔除。
-      const excludedSet = computed(() => {
+      // 解析手填排除文本 → Set<number>
+      // 单独的 computed,便于和 clickExcluded 取并集
+      const manualExcluded = computed(() => {
         const total = parsed.value ? parsed.value.rows.length : 0;
-        if (!total) return new Set();
-        const raw = (excludeText.value || '').trim();
-        if (!raw) return new Set();
         const out = new Set();
+        const raw = (excludeText.value || '').trim();
+        if (!raw) return out;
         // 同时支持中英文逗号
         const tokens = raw.split(/[,, \t\n\r;]+/).filter(Boolean);
         for (const t of tokens) {
@@ -876,6 +904,17 @@
             const n = parseInt(t, 10);
             if (!Number.isNaN(n) && n >= 1 && n <= total) out.add(n);
           }
+        }
+        return out;
+      });
+
+      // 最终排除集合 = 手填排除 ∪ 点击排除(越界自动剔除)
+      const excludedSet = computed(() => {
+        const total = parsed.value ? parsed.value.rows.length : 0;
+        if (!total) return new Set();
+        const out = new Set(manualExcluded.value);
+        for (const n of clickExcluded.value) {
+          if (n >= 1 && n <= total) out.add(n);
         }
         return out;
       });
@@ -938,8 +977,12 @@
           // 三种"出局"原因:超出区间 / 在排除列表
           const inRange = rowNo >= start && rowNo <= end;
           const isExcluded = ex.has(rowNo);
-          const cls = (inRange && !isExcluded) ? '' : ' class="row-out"';
-          html += `<tr${cls}>`;
+          // 单独标记"通过点击排除"的行,便于 UI 区分(不影响排除语义)
+          const isClickExcluded = clickExcluded.value.has(rowNo);
+          const cls = (inRange && !isExcluded)
+            ? ''
+            : ` class="row-out${isClickExcluded ? ' click-excluded' : ''}"`;
+          html += `<tr${cls} data-row-no="${rowNo}">`;
           html += `<td class="md-row-num">${rowNo}</td>`;
           for (let i = 0; i < t.header.length; i++) {
             html += `<td class="${alignClass(i)}">${esc(row[i] || '')}</td>`;
@@ -957,6 +1000,25 @@
         endRow.value = n;
       }
 
+      /* 点击预览行 → 切换 clickExcluded(再次点击取消) */
+      function handlePreviewClick(e) {
+        const tr = e.target && e.target.closest ? e.target.closest('tr[data-row-no]') : null;
+        if (!tr) return;
+        const rowNo = Number(tr.dataset.rowNo);
+        if (!Number.isInteger(rowNo) || rowNo < 1) return;
+        const total = parsed.value ? parsed.value.rows.length : 0;
+        if (rowNo > total) return;
+        const set = clickExcluded.value;
+        if (set.has(rowNo)) set.delete(rowNo);
+        else set.add(rowNo);
+      }
+
+      function clearClickExcluded() {
+        clickExcluded.value.clear();
+      }
+
+      const clickExcludeCount = computed(() => clickExcluded.value.size);
+
       function loadSample() {
         source.value = SAMPLE_MD;
       }
@@ -969,8 +1031,8 @@
         try {
           const text = await file.text();
           source.value = text;
-          if (!sheetName.value || sheetName.value === 'Markdown') {
-            sheetName.value = file.name.replace(/\.(md|markdown|txt)$/i, '') || 'Markdown';
+          if (!sheetName.value || sheetName.value === 'Sheet1') {
+            sheetName.value = file.name.replace(/\.(md|markdown|txt)$/i, '') || 'Sheet1';
           }
         } catch (err) {
           errorMsg.value = '读取文件失败: ' + err.message;
@@ -1002,7 +1064,7 @@
             aligns: fullTable.aligns,
           };
           const targetWb = pendingTask.workbook || new ExcelJS.Workbook();
-          const ws = writeTableToWorksheet(targetWb, table, sheetName.value || 'Markdown');
+          const ws = writeTableToWorksheet(targetWb, table, sheetName.value || 'Sheet1');
           if (!freezeHeader.value) {
             // writeTableToWorksheet 已经设了冻结;按用户选择覆盖
             ws.views = [];
@@ -1061,13 +1123,14 @@
             onError: opts.onError || null,
           };
           source.value = '';
-          sheetName.value = opts.sheetName || 'Markdown';
+          sheetName.value = opts.sheetName || 'Sheet1';
           freezeHeader.value = true;
           applyStyles.value = true;
           errorMsg.value = '';
           startRow.value = null;
           endRow.value = null;
           excludeText.value = '';
+          clickExcluded.value.clear();
           visible.value = true;
           // 第一次打开时给个示例,方便用户立刻看到效果
           if (!source.value) loadSample();
@@ -1087,6 +1150,7 @@
         visible, source, sheetName, freezeHeader, applyStyles, busy,
         startRow, endRow, actualImportCount, endIsAll,
         excludeText, excludedSet, actualImportCountAfterExclude, excludeValid,
+        clickExcludeCount, handlePreviewClick, clearClickExcluded,
         parsed, previewHtml, errorMsg,
         loadSample, clearInput, handleFilePick,
         resetRange,

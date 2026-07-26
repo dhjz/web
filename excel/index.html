@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Excel 合并工具</title>
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.17/vue.global.prod.js"></script> -->
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
   <script src="../static/vue.global.prod.js"></script>
   <style>
     :root {
@@ -260,17 +260,25 @@
             </div>
 
             <div class="config-actions">
-              <button class="btn btn-primary" :disabled="!workbook" @click="previewMerge" style="width: 100%; justify-content: center; padding: 10px;">
+              <button class="btn btn-primary" :disabled="!workbook" @click="previewMerge" style="width: 100%; justify-content: center; padding: 6px;">
                 <span style="font-size: 14px;">👁️</span>
                 预览结果
               </button>
-              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(false)" style="width: 100%; justify-content: center; padding: 10px;">
+              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(false)" style="width: 100%; justify-content: center; padding: 6px;">
                 <span style="font-size: 14px;">⬇️</span>
                 导出 {{ resultWorkbook ? '预览' : '原始' }} Excel
               </button>
-              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(true)" style="width: 100%; justify-content: center; padding: 10px;">
+              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportFile(true)" style="width: 100%; justify-content: center; padding: 6px;">
                 <span style="font-size: 14px;">⬇️</span>
                 导出并美化 {{ resultWorkbook ? '预览' : '原始' }} Excel
+              </button>
+              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="exportMarkdown" style="width: 100%; justify-content: center; padding: 6px;">
+                <span style="font-size: 14px;">📝</span>
+                导出 {{ resultWorkbook ? '预览' : '原始' }} Markdown
+              </button>
+              <button class="btn" :disabled="!resultWorkbook && !workbook" @click="copyMarkdown" style="width: 100%; justify-content: center; padding: 6px;">
+                <span style="font-size: 14px;">📋</span>
+                复制 {{ resultWorkbook ? '预览' : '原始' }} Markdown
               </button>
             </div>
           </div>
@@ -1016,6 +1024,131 @@
           });
         }
 
+        // 把当前工作表导出为 GFM 风格的 Markdown 表格。
+        // 行为与 exportFile 对齐:优先使用预览后的 workbook,没有就用原 workbook;
+        // 仅导出当前 activeSheet。合并单元格通过「主格值在合并区内重复」的方式表达(Markdown 没有原生合并)。
+        // 对齐:读取单元格的 horizontal 对齐属性,缺省视为 left。
+        // 抽出 buildActiveSheetMarkdown 给 exportMarkdown / copyMarkdown 共用。
+        async function buildActiveSheetMarkdown() {
+          const wb = resultWorkbook.value || workbook.value;
+          if (!wb) {
+            showToast('请先上传文件', 'error');
+            return null;
+          }
+          const ws = wb.getWorksheet(activeSheet.value);
+          if (!ws || ws.rowCount === 0 || ws.columnCount === 0) {
+            showToast('当前工作表为空', 'error');
+            return null;
+          }
+
+          const mergeMap = buildMergeMap(ws);
+          const colCount = ws.columnCount;
+          const rowCount = ws.rowCount;
+
+          // Markdown 单元格转义:反斜杠 / 管道符;换行替换为 <br> 保留可读性
+          const escMd = (s) => String(s ?? '')
+            .replace(/\\/g, '\\\\')
+            .replace(/\|/g, '\\|')
+            .replace(/\r?\n/g, '<br>');
+
+          // 读取单元格值:如果是合并区里的非主格,沿用主格的值
+          const cellValueAt = (r, c) => {
+            const merge = mergeMap[`${r},${c}`];
+            const row = merge ? merge.top : r;
+            const col = merge ? merge.left : c;
+            return cellValueToString(ws.getRow(row).getCell(col).value);
+          };
+
+          // 检测对齐:按表头行的 alignment.horizontal 推断,缺省 left
+          const headerRow = ws.getRow(1);
+          const aligns = [];
+          for (let c = 1; c <= colCount; c++) {
+            const a = headerRow.getCell(c).alignment;
+            if (a && a.horizontal === 'center') aligns.push('center');
+            else if (a && a.horizontal === 'right') aligns.push('right');
+            else aligns.push('left');
+          }
+
+          const lines = [];
+          // 表头
+          const headerCells = [];
+          for (let c = 1; c <= colCount; c++) headerCells.push(escMd(cellValueAt(1, c)));
+          lines.push('| ' + headerCells.join(' | ') + ' |');
+          // 分隔行
+          const sepCells = aligns.map((a) => {
+            if (a === 'center') return ':---:';
+            if (a === 'right') return '---:';
+            return ':---';
+          });
+          lines.push('| ' + sepCells.join(' | ') + ' |');
+          // 数据行:cellValueAt 已自动沿用主格值,无需按 hidden 特判
+          for (let r = 2; r <= rowCount; r++) {
+            const cells = [];
+            for (let c = 1; c <= colCount; c++) {
+              cells.push(escMd(cellValueAt(r, c)));
+            }
+            lines.push('| ' + cells.join(' | ') + ' |');
+          }
+
+          return {
+            md: lines.join('\n') + '\n',
+            baseName: fileName.value.replace(/\.(xlsx|xls)$/i, '') || '导出表格',
+            sheetName: activeSheet.value || 'sheet',
+            ts: new Date().toISOString().replace(/\D/g, '').slice(0, 14),
+          };
+        }
+
+        async function exportMarkdown() {
+          const built = await buildActiveSheetMarkdown();
+          if (!built) return;
+          try {
+            const blob = new Blob([built.md], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = Object.assign(document.createElement('a'), {
+              href: url,
+              download: `${built.baseName}_${built.sheetName}_${built.ts}.md`,
+              style: 'display:none',
+            });
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 100);
+            showToast('已导出 Markdown', 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('导出失败: ' + err.message, 'error');
+          }
+        }
+
+        // 把 Markdown 复制到剪贴板(复用 buildActiveSheetMarkdown)。
+        // 优先走 navigator.clipboard;非安全上下文降级到 textarea + execCommand('copy')。
+        async function copyMarkdown() {
+          const built = await buildActiveSheetMarkdown();
+          if (!built) return;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(built.md);
+            } else {
+              const ta = Object.assign(document.createElement('textarea'), {
+                value: built.md,
+                readOnly: true,
+                style: 'position:fixed;top:0;left:0;opacity:0',
+              });
+              document.body.appendChild(ta);
+              ta.select();
+              const ok = document.execCommand('copy');
+              document.body.removeChild(ta);
+              if (!ok) throw new Error('execCommand("copy") 失败');
+            }
+            showToast('已复制 Markdown 到剪贴板', 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('复制失败: ' + err.message, 'error');
+          }
+        }
+
         function showToast(message, type = 'success') {
           toast.value = { message, type };
           setTimeout(() => { toast.value = null; }, 2400);
@@ -1030,7 +1163,7 @@
           // 插件内部会自己 new ExcelJS.Workbook(),完成后我们把新 wb 接回来。
           window.ExcelMarkdownImport.open({
             workbook: workbook.value || null,
-            sheetName: 'Markdown',
+            sheetName: 'Sheet1',
             onDone: ({ workbook: wb, worksheet, importedRows, range }) => {
               workbook.value = wb;
               sheetNames.value = wb.worksheets.map((ws) => ws.name);
@@ -1058,7 +1191,7 @@
           mergeStats, currentSheetRowCount, toast, syncScroll, originalBody, resultBody,
           operationMode, fillMasterOnly,
           formatFileSize,
-          triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, reset,
+          triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, exportMarkdown, copyMarkdown, reset,
           openMarkdownImport
         };
       }
