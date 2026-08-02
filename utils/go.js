@@ -163,6 +163,62 @@ func FailMsg(w http.ResponseWriter, msg string) {
 	// w.Write(jsonData)
 }
 
+// @ 获取程序运行目录
+// GetAppDir 获取程序运行目录
+func GetAppDir() string {
+	exePath, err := os.Executable()
+	if err != nil {
+		wd, _ := os.Getwd()
+		return wd
+	}
+
+	exePath = filepath.Clean(exePath)
+	p := strings.ToLower(filepath.ToSlash(exePath))
+	tmp := strings.ToLower(filepath.ToSlash(os.TempDir()))
+
+	// 检查是否包含类似 go build 缓存的长哈希目录
+	hasGoCacheHash := func(path string) bool {
+		for _, part := range strings.Split(path, "/") {
+			if len(part) <= 30 {
+				continue
+			}
+			hexCount := 0
+			for _, c := range part {
+				if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') {
+					hexCount++
+				}
+			}
+			if hexCount*100 >= len(part)*80 {
+				return true
+			}
+		}
+		return false
+	}
+
+	isTempRun :=
+		strings.Contains(p, "go-build") ||
+			strings.Contains(p, "gocache") ||
+			strings.Contains(p, tmp) ||
+			(strings.Contains(p, "appdata") && strings.Contains(p, "local") && strings.Contains(p, "temp")) ||
+			hasGoCacheHash(p)
+
+	if isTempRun {
+		wd, _ := os.Getwd()
+		return wd
+	}
+	return filepath.Dir(exePath)
+}
+// GetDataDir 获取数据目录（基于程序运行目录）
+func GetDataDir() string {
+	appDir := GetAppDir()
+	dataDir := filepath.Join(appDir, "data")
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return filepath.Join(".", "data")
+	}
+	return dataDir
+}	
+
+
 // @ 读取JSON配置文件
 type Config struct {
 	Server struct {
