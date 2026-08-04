@@ -757,6 +757,33 @@ function decryptNum (val) {
   return parseInt(decryptedStr, 35);
 }
 
+// # 工具-加密解密字符串  [5位随机] + [截取的2字符(-4,-2)] + [9位随机] + [base剩余部分]
+function encStr(s){
+    let r= (n) =>Array.from({length:n},()=>String.fromCharCode((x=Math.random()*62|0,x<26?x+65:x<52?x+71:x-4))).join('');
+    let b=btoa(String.fromCharCode.apply(null,new TextEncoder().encode(s)));
+    return r(5)+b.slice(-4, -2)+r(9)+b.slice(0,-4) + b.slice(-2);
+  }
+function decStr(str){
+  let s2 = str.slice(5).slice(0,2);
+  let rp = str.slice(5).slice(11);
+  let rb = rp.length>=2 ? rp.slice(0,-2)+s2+rp.slice(-2) : s2+rp;
+  return new TextDecoder().decode(Uint8Array.from(atob(rb),c=>c.charCodeAt(0)));
+}
+// # 工具-加密变形, 校验域名和仅单次执行
+const testEnc = (() => {
+  let runFlag = false;
+  let _win = window;
+  let _lll = 'l'
+  return function (s,aa,bb,cc){
+    if (!_win[_lll +'oca' + 'tion']['hr' + 'ef'].includes('xxx' + '.gov' + '.cn') || runFlag) return '';
+    runFlag = true;
+    let e = aa+bb+cc;const f = s+aa+cc;
+    let r= (n) =>Array.from({length:n},()=>String.fromCharCode((x=Math.random()*62|0,x<26?x+65:x<52?x+71:x-4))).join('');
+    let b=btoa(String.fromCharCode.apply(null,new TextEncoder().encode(s)));
+    return r(5)+b.slice(-4, -2)+r(9)+b.slice(0,-4) + b.slice(-2);
+  }
+})();
+
 
 // # 工具-节流
 // 在一定时间内，只能触发一次
