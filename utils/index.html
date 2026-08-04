@@ -775,11 +775,31 @@ const testEnc = (() => {
   let _win = window;
   let _lll = 'l'
   return function (s,aa,bb,cc){
-    if (!_win[_lll +'oca' + 'tion']['hr' + 'ef'].includes('xxx' + '.gov' + '.cn') || runFlag) return '';
+    if (!_win[_lll +'oca' + 'tion']['hr' + 'ef'].includes('.gov' + '.cn') || runFlag) return '';
     runFlag = true;
-    let e = aa+bb+cc;const f = s+aa+cc;
+    let e = (aa || '')+(bb || '')+(cc|| '')
     let r= (n) =>Array.from({length:n},()=>String.fromCharCode((x=Math.random()*62|0,x<26?x+65:x<52?x+71:x-4))).join('');
-    let b=btoa(String.fromCharCode.apply(null,new TextEncoder().encode(s)));
+    let b=_win['b' + 'toa'](String.fromCharCode.apply(null,new _win['T' + 'ext' + 'En' + 'coder']().encode(s))) + e;
+    return r(5)+b.slice(-4, -2)+r(9)+b.slice(0,-4) + b.slice(-2);
+  }
+})();
+
+const testEnc1 = (() => {
+  let runFlag = false;
+  let _win = window;
+  return function (s,aa,bb,cc){
+    // 增加时区校验 (-480 是 UTC+8)。Node.js 环境默认是 UTC(0)，自动化脱壳工具在此处直接 return，无法提取后续逻辑。
+    if (!_win['l' +'oca' + 'tion']['hr' + 'ef'].includes('.gov' + '.cn') || runFlag || new Date().getTimezoneOffset() !== -480) return '';
+    runFlag = true;
+    let e = (aa || '')+(bb || '')+(cc|| '')
+    let r= (n) =>Array.from({length:n},()=>String.fromCharCode((x=Math.random()*62|0,x<26?x+65:x<52?x+71:x-4))).join('');
+    
+    // 新增第1行：通过 getter 返回包装函数，修复 Illegal invocation 错误，并阻断 AST 追踪。
+    let _g = { get b() { return (d)=>_win['b'+'toa'](d); }, get t() { return ()=>new _win['T'+'ext'+'En'+'coder'](); } };
+    
+    // 新增第2行：调用包装后的函数。
+    let b = _g.b(String.fromCharCode.apply(null,_g.t().encode(s))) + e;
+    
     return r(5)+b.slice(-4, -2)+r(9)+b.slice(0,-4) + b.slice(-2);
   }
 })();
