@@ -216,7 +216,11 @@ func GetDataDir() string {
 		return filepath.Join(".", "data")
 	}
 	return dataDir
-}	
+}
+// GetDBPath 获取数据库路径
+func GetDBPath() string {
+	return filepath.Join(GetDataDir(), "data.db")
+}
 
 
 // @ 读取JSON配置文件
