@@ -129,6 +129,17 @@ export function useFunASR(config: UseFunASRConfig = {}): UseFunASRReturn {
    */
   const lastBlobBase64: { value: string | null } = { value: null };
 
+  /**
+   * 清洗 FunASR 附带的标记 token (<|zh|> <|SAD|> <|Speech|> 等), 只保留纯文本;
+   * 并折叠 token 间可能产生的多余空白。
+   */
+  function cleanFunASRText(raw: string): string {
+    return (raw || '')
+      .replace(/<\|[^|]*\|>/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+  }
+
   const addLog = (type: string, text: string) => {
     let val = `[${new Date().toLocaleTimeString()}][${type}] ${text}`
     // console.log(val);
@@ -176,7 +187,8 @@ export function useFunASR(config: UseFunASRConfig = {}): UseFunASRReturn {
         addLog('error', '收到非 JSON 消息');
         return;
       }
-      const text = data.text || '';
+      // 清洗 FunASR 附加的情感/语言/声学标记 token, 例如 <|zh|><|SAD|><|Speech|>
+      const text = cleanFunASRText(data.text || '');
       // 2pass-offline 是修正后的整句, 视作 final; 2pass-online 是中间结果, 视作 partial;
       // is_final=true 表示这是最后一条(连接即将关闭), 也归 final
       const isOffline = data.mode === '2pass-offline';
