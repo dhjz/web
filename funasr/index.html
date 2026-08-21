@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FunASR 实时语音识别测试</title>
+    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+    <script src="./useFunAsr.js"></script>
+    <style>
+        :root {
+            --page-bg: linear-gradient(135deg, #0b1220 0%, #16233b 55%, #0b1220 100%);
+            --bg: #0b1220;
+            --card: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.10);
+            --accent: #22d3ee;
+            --accent2: #6366f1;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --ok: #34d399;
+            --danger: #f87171;
+            --input-bg: rgba(0, 0, 0, 0.25);
+            --panel-bg: rgba(0, 0, 0, 0.3);
+            --track-bg: rgba(255, 255, 255, 0.15);
+            --bar-bg: rgba(255, 255, 255, 0.1);
+            --btn-ghost-bg: rgba(255, 255, 255, 0.08);
+            --scroll-thumb: rgba(255, 255, 255, 0.15);
+            --scroll-thumb-hover: rgba(255, 255, 255, 0.25);
+        }
+        /* 白天模式 */
+        :root[data-theme="light"] {
+            --page-bg: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 55%, #e2e8f0 100%);
+            --bg: #f1f5f9;
+            --card: rgba(255, 255, 255, 0.75);
+            --card-border: rgba(15, 23, 42, 0.12);
+            --accent: #0891b2;
+            --accent2: #4f46e5;
+            --text: #1e293b;
+            --text-dim: #64748b;
+            --ok: #059669;
+            --danger: #dc2626;
+            --input-bg: rgba(255, 255, 255, 0.8);
+            --panel-bg: rgba(255, 255, 255, 0.72);
+            --track-bg: rgba(15, 23, 42, 0.18);
+            --bar-bg: rgba(15, 23, 42, 0.12);
+            --btn-ghost-bg: rgba(15, 23, 42, 0.06);
+            --scroll-thumb: rgba(15, 23, 42, 0.2);
+            --scroll-thumb-hover: rgba(15, 23, 42, 0.32);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        [v-cloak] { display: none; }
+        body {
+            font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+            background: var(--page-bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 24px;
+            transition: background .3s, color .3s;
+        }
+        .container { max-width: 1280px; margin: 0 auto; }
+
+        /* header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px 22px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+        }
+        .header .title { font-size: 21px; font-weight: 700; letter-spacing: .5px; }
+        .header .sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+        .status-wrap { display: flex; gap: 12px; }
+        .theme-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .theme-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 13px;
+            border-radius: 999px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--card-border);
+        }
+        .badge .circle { width: 9px; height: 9px; border-radius: 50%; background: #475569; transition: all .3s; }
+        .badge.on .circle { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+        .badge.off .circle { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+
+        /* layout */
+        .main { display: grid; grid-template-columns: 5fr 6fr; gap: 20px; align-items: start; }
+        @media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+            margin-bottom: 20px;
+        }
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .card-title .icon {
+            width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff; font-size: 14px;
+        }
+        .card-title .tip { font-size: 12px; font-weight: 400; color: var(--text-dim); }
+
+        /* form */
+        .form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .form-row:last-child { margin-bottom: 0; }
+        .form-row label { width: 128px; flex-shrink: 0; font-size: 13px; color: var(--text-dim); }
+        .form-row .label-tip { font-size: 12px; color: var(--text-dim); opacity: .75; }
+        input[type="text"], select {
+            flex: 1;
+            min-width: 0;
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 8px 12px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color .2s;
+        }
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+        .chunk-inputs { display: flex; align-items: center; gap: 6px; flex: 1; }
+        .chunk-inputs input {
+            width: 58px; text-align: center;
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 8px 6px;
+            font-size: 13px;
+            outline: none;
+        }
+        .chunk-inputs input:focus { border-color: var(--accent); }
+        .chunk-inputs span { color: var(--text-dim); }
+
+        /* switch */
+        .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 100%; height: 100%; position: absolute; cursor: pointer; z-index: 2; margin: 0; }
+        .switch .track {
+            position: absolute; inset: 0; border-radius: 999px;
+            background: var(--track-bg); transition: background .2s;
+        }
+        .switch .thumb {
+            position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; transition: transform .2s;
+        }
+        .switch input:checked + .track { background: var(--accent); }
+        .switch input:checked + .track + .thumb { transform: translateX(20px); }
+
+        /* buttons */
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .btn-group + .btn-group { margin-top: 10px; }
+        .btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: transform .1s, box-shadow .2s, opacity .2s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+        .btn-ok { background: linear-gradient(135deg, #34d399, #10b981); }
+        .btn-danger { background: linear-gradient(135deg, #f87171, #ef4444); }
+        .btn-ghost { background: var(--btn-ghost-bg); border: 1px solid var(--card-border); }
+
+        /* volume */
+        .volume { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+        .volume .bar { flex: 1; height: 8px; border-radius: 999px; background: var(--bar-bg); overflow: hidden; }
+        .volume .bar > div {
+            height: 100%; width: 0; border-radius: 999px;
+            background: linear-gradient(90deg, #34d399, #fbbf24, #f87171);
+            transition: width .1s;
+        }
+        .volume .val { width: 44px; text-align: right; font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+        /* result */
+        .result-box {
+            min-height: 150px;
+            background: var(--panel-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 16px;
+            line-height: 1.9;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .result-box.empty { color: var(--text-dim); font-size: 14px; }
+        .final-line { margin-top: 12px; font-size: 13px; color: var(--text-dim); line-height: 1.8; }
+        .final-line b { color: var(--accent); font-weight: 600; }
+
+        /* logs */
+        .logs-panel {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 130px);
+            min-height: 480px;
+            position: sticky;
+            top: 24px;
+        }
+        .logs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .logs-header .card-title { margin-bottom: 0; }
+        .logs-header .clear-btn {
+            background: none; border: 1px solid var(--card-border); color: var(--text-dim);
+            border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: all .2s;
+        }
+        .logs-header .clear-btn:hover { color: var(--text); border-color: var(--accent); }
+        .logs-body {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--panel-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.9;
+        }
+        .log-line { display: flex; gap: 8px; padding: 2px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); }
+        .log-time { color: #64748b; flex-shrink: 0; }
+        .log-type {
+            flex-shrink: 0; min-width: 50px; text-align: center;
+            border-radius: 4px; padding: 0 4px; font-size: 12px; line-height: 18px; height: 18px; margin-top: 3px;
+        }
+        .t-system { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+        .t-error { background: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+        .t-final { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; }
+        .t-partial { background: rgba(34, 211, 238, 0.2); color: #67e8f9; }
+        .log-msg { color: var(--text); word-break: break-all; }
+        .log-empty { color: var(--text-dim); text-align: center; padding: 30px 0; }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
+        ::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body>
+<div id="app" v-cloak>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <div>
+                <div class="title">🎙 FunASR 实时语音识别测试</div>
+                <div class="sub">FunASR 2pass 流式语音识别 · WebSocket + PCM</div>
+            </div>
+            <div class="status-wrap">
+                <button class="theme-btn" @click="toggleTheme" :title="theme === 'dark' ? '切换到白天模式' : '切换到黑夜模式'">
+                    {{ theme === 'dark' ? '☀️' : '🌙' }}
+                </button>
+                <span class="badge" :class="asr.connected.value ? 'on' : 'off'">
+                    <span class="circle"></span>{{ asr.connected.value ? '已连接' : '未连接' }}
+                </span>
+                <span class="badge" :class="asr.recording.value ? 'on' : 'off'">
+                    <span class="circle"></span>{{ asr.recording.value ? '录音中' : '未录音' }}
+                </span>
+            </div>
+        </div>
+
+        <div class="main">
+            <!-- 左侧: 参数设置 + 控制 + 识别结果 -->
+            <div class="left">
+                <div class="card">
+                    <div class="card-title"><span class="icon">⚙</span>参数设置</div>
+                    <div class="form-row">
+                        <label>WebSocket 地址</label>
+                        <input type="text" v-model="config.wsUrl" placeholder="ws://127.0.0.1:10095" />
+                    </div>
+                    <div class="form-row">
+                        <label>推理模式</label>
+                        <select v-model="config.mode">
+                            <option value="2pass">2pass · 实时 + 离线修正</option>
+                            <option value="online">online · 纯流式</option>
+                            <option value="offline">offline · 整句</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>ITN 数字规范化</label>
+                        <div class="switch">
+                            <input type="checkbox" v-model="config.itn" />
+                            <span class="track"></span>
+                            <span class="thumb"></span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>采样率 audio_fs</label>
+                        <select v-model.number="config.audioFs">
+                            <option :value="16000">16000 Hz (推荐)</option>
+                            <option :value="8000">8000 Hz</option>
+                            <option :value="44100">44100 Hz</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>wav 名称</label>
+                        <input type="text" v-model="config.wavName" placeholder="browser" />
+                    </div>
+                    <div class="form-row">
+                        <label>chunk_size <span class="label-tip">[左,当前,右] · 60ms/格</span></label>
+                        <div class="chunk-inputs">
+                            <input type="number" min="1" max="20" v-model.number="config.chunkSize[0]" />
+                            <span>·</span>
+                            <input type="number" min="1" max="40" v-model.number="config.chunkSize[1]" />
+                            <span>·</span>
+                            <input type="number" min="1" max="20" v-model.number="config.chunkSize[2]" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="icon">⏯</span>控制</div>
+                    <div class="btn-group">
+                        <button class="btn" :class="asr.connected.value ? 'btn-danger' : 'btn-primary'" @click="toggleConnect">
+                            {{ asr.connected.value ? '断开连接' : '连接服务' }}
+                        </button>
+                        <button class="btn" :class="asr.recording.value ? 'btn-danger' : 'btn-ok'" @click="toggleRecord" :disabled="!asr.connected.value">
+                            {{ asr.recording.value ? '停止识别' : '开始识别' }}
+                        </button>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-ghost" @click="asr.reset()">重置字幕</button>
+                    </div>
+                    <div class="volume">
+                        <span style="font-size:13px;color:var(--text-dim)">音量</span>
+                        <div class="bar"><div :style="{ width: asr.volume.value + '%' }"></div></div>
+                        <span class="val">{{ asr.volume.value }}</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="icon">💬</span>实时识别结果</div>
+                    <div class="result-box" :class="{ empty: !asr.result.value }">{{ asr.result.value || '等待识别...' }}</div>
+                    <div class="final-line">最终文本(已确认): <b>{{ asr.finalText.value || '—' }}</b></div>
+                </div>
+            </div>
+
+            <!-- 右侧: 日志(最新在最上面) -->
+            <div class="card logs-panel">
+                <div class="logs-header">
+                    <div class="card-title"><span class="icon">📋</span>日志 <span class="tip">(最新在前)</span></div>
+                    <button class="clear-btn" @click="clearLogs">清空</button>
+                </div>
+                <div class="logs-body">
+                    <div v-if="reversedLogs.length === 0" class="log-empty">暂无日志</div>
+                    <div v-for="(log, i) in reversedLogs" :key="i" class="log-line">
+                        <span class="log-time">{{ log.time }}</span>
+                        <span class="log-type" :class="'t-' + log.typeClass">{{ log.typeLabel }}</span>
+                        <span class="log-msg">{{ log.msg }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp, reactive, computed,  watch } = Vue
+
+// localStorage 键名
+const CONFIG_KEY = 'funasr-config'
+const THEME_KEY = 'funasr-theme'
+
+// 参数默认值
+const DEFAULT_CONFIG = {
+    wsUrl: 'ws://127.0.0.1:10095',
+    mode: '2pass',
+    itn: true,
+    audioFs: 16000,
+    wavName: 'browser',
+    chunkSize: [5, 10, 5],
+}
+
+const app = createApp({
+    setup() {
+        // 主题(白天/黑夜): 启动时从 localStorage 恢复, 切换时自动保存
+        const theme = ref(localStorage.getItem(THEME_KEY) || 'dark')
+        document.documentElement.dataset.theme = theme.value
+        watch(theme, (val) => {
+            localStorage.setItem(THEME_KEY, val)
+            document.documentElement.dataset.theme = val
+        })
+        function toggleTheme() {
+            theme.value = theme.value === 'dark' ? 'light' : 'dark'
+        }
+
+        // 参数设置: 启动时从 localStorage 恢复, 修改时自动保存(useFunASR 在 connect/startASR 时读取最新值)
+        let saved = {}
+        try { saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}') || {} } catch (e) { saved = {} }
+        const config = reactive(Object.assign({}, DEFAULT_CONFIG, saved))
+        if (!Array.isArray(config.chunkSize)) config.chunkSize = [...DEFAULT_CONFIG.chunkSize]
+        watch(config, (val) => {
+            localStorage.setItem(CONFIG_KEY, JSON.stringify(val))
+        }, { deep: true })
+
+        const asr = useFunASR(config)
+
+        // 日志类型 → 展示文案/样式
+        const TYPE_MAP = {
+            system: { label: '系统', cls: 'system' },
+            error: { label: '错误', cls: 'error' },
+            中间句: { label: '中间', cls: 'partial' },
+            最终句: { label: '最终', cls: 'final' },
+            收尾: { label: '收尾', cls: 'final' },
+        }
+
+        // 日志倒序: 最新的展示在最上面
+        const reversedLogs = computed(() =>
+            asr.logs.value.slice().reverse().map((raw) => {
+                const m = raw.match(/^\[(.+?)\]\[(.+?)\] (.*)$/)
+                const type = m ? m[2] : 'unknown'
+                const meta = TYPE_MAP[type] || { label: type, cls: 'system' }
+                return { time: m ? m[1] : '', typeLabel: meta.label, typeClass: meta.cls, msg: m ? m[3] : raw }
+            })
+        )
+
+        function clearLogs() {
+            asr.logs.value.length = 0
+        }
+
+        function toggleConnect() {
+            asr.connected.value ? asr.disconnect() : asr.connect()
+        }
+
+        function toggleRecord() {
+            asr.recording.value ? asr.stop() : asr.startASR()
+        }
+
+        return { config, asr, reversedLogs, clearLogs, toggleConnect, toggleRecord, theme, toggleTheme }
+    }
+})
+
+app.mount('#app')
+</script>
+</body>
+</html>

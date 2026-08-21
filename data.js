@@ -77,6 +77,7 @@ window.config = {
         { name: '图片压缩', short: '压缩', url: 'https://tiny.199311.xyz/', color: '#ff3385' },
         { name: 'SVG编辑', short: 'SVG', url: './svg/index.html', color: '#D4237A' },
         { name: '水印工具', short: '水印', url: './mark/index.html', color: '#111827' },
+        { name: 'FunAsr', short: 'ASR', url: './funasr/index.html', color: '#4565ac' },
       ]
     },
     {
