@@ -1,0 +1,817 @@
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOSS-TTS-Nano ONNX — OpenAI 兼容接口测试</title>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+  <style>
+    :root { color-scheme: light; --bg: #eef1f7; --bg-soft: #f7f8fc; --panel: #ffffff; --text: #1f2534; --muted: #647089; --line: #dbe2f0; --line-strong: #cfd8ea; --chip: #dfe5ff; --chip-text: #4f63d8; --accent: #6a6ef6; --accent-strong: #565cea; --accent-soft: rgba(106,110,246,.12); --danger: #ba1f46; --ok: #1a8f5a; --shadow: 0 14px 32px rgba(34,47,78,.06); }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(1100px 380px at 12% -10%, #fff 0%, transparent 70%), linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 54%); color: var(--text); font-family: "Plus Jakarta Sans", "Noto Sans SC", "Segoe UI", sans-serif; }
+    .page { max-width: 1080px; margin: 0 auto; padding: 24px 26px 40px; }
+    .hero { margin-bottom: 14px; }
+    .hero h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: -.03em; }
+    .hero .lead { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.55; }
+    .hero .hint { margin: 8px 0 0; font-size: 13px; color: #4f5d7c; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(320px, .94fr); gap: 14px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; box-shadow: var(--shadow); }
+    .panel h2 { margin: 0 0 12px; font-size: 16px; color: #2f3f65; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { margin-bottom: 11px; }
+    .field > label { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 13px; line-height: 1; font-weight: 700; color: var(--chip-text); background: var(--chip); border-radius: 6px; padding: 4px 8px; }
+    .field > label[data-opt="1"] { background: #ffe9c7; color: #a05c14; }
+    .field input, .field textarea, .field select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; color: var(--text); background: #fff; transition: border-color 140ms ease, box-shadow 140ms ease; }
+    .field input:focus, .field textarea:focus, .field select:focus { outline: 0; border-color: #aeb9f7; box-shadow: 0 0 0 3px rgba(106,110,246,.15); }
+    .field textarea { min-height: 96px; resize: vertical; }
+    .field .meta { margin-top: 5px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .inline-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; color: #2f3f65; }
+    .inline-check input { width: auto; accent-color: var(--accent); }
+    details { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin: 10px 0; background: #f9fafe; }
+    summary { cursor: pointer; font-weight: 600; color: #2f3f65; font-size: 14px; }
+    .buttons { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; margin-top: 12px; align-items: center; }
+    button:not(.secondary) { border: 0; border-radius: 8px; padding: 11px 16px; font-size: 14px; font-weight: 700; cursor: pointer; background: linear-gradient(90deg, #6469f6 0%, #636ef8 50%, #5f61f0 100%); color: #fff; transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease; }
+    button:not(.secondary):hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(97,101,242,.24); }
+    button.secondary { background: #edf1fb; color: #44527a; border: 1px solid var(--line-strong); }
+    button:disabled { opacity: .55; cursor: wait; transform: none; box-shadow: none; }
+    .status { white-space: pre-wrap; line-height: 1.5; font-size: 13px; color: var(--muted); min-height: 54px; border: 1px solid var(--line); border-radius: 8px; background: #fcfdff; padding: 10px 12px; margin-top: 12px; }
+    .status.error { color: var(--danger); border-color: rgba(186,31,70,.28); background: rgba(186,31,70,.06); }
+    .status.ok { color: var(--ok); border-color: rgba(26,143,90,.28); background: rgba(26,143,90,.06); }
+    audio { width: 100%; margin-top: 10px; border-radius: 8px; }
+    .progress { height: 8px; background: #eef1fb; border-radius: 999px; overflow: hidden; margin-top: 10px; }
+    .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, #6469f6, #8a7ef9); transition: width 180ms ease; }
+    .meta { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--chip-text); }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; } .page { padding: 16px 14px 24px; } .hero h1 { font-size: 26px; } }
+  </style>
+</head>
+<body>
+  <div id="app" class="page">
+    <div class="hero">
+      <h1>OpenAI 兼容接口测试</h1>
+      <p class="lead">针对 <code>POST /v1/audio/speech</code> 的测试页，支持<strong>非流式</strong>（一次性返回 WAV/PCM）与<strong>流式</strong>（实时播放 PCM）两种模式。</p>
+      <p class="hint">
+        服务入口：<code>app_onnx_v1.py</code>（含 <code>--api-key</code>）。
+        端点：<code>{{ endpoint }}</code> ｜ 认证：<code>Authorization: Bearer &lt;key&gt;</code>
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>请求配置</h2>
+
+        <div class="field">
+          <label>端点地址</label>
+          <input v-model.trim="endpoint" placeholder="http://127.0.0.1:18083/v1">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>API Key（留空则不传）</label>
+            <input v-model.trim="apiKey" placeholder="Bearer token（可选）">
+          </div>
+          <div class="field">
+            <label>model</label>
+            <input v-model.trim="body.model" placeholder="moss-tts-nano-onnx">
+          </div>
+        </div>
+
+        <div class="field">
+          <label data-opt="1">input（待合成文本）</label>
+          <textarea v-model="body.input" placeholder="输入要合成的文本..."></textarea>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>voice（音色 ID）</label>
+            <select v-model="body.voice">
+              <option value="">默认（留空）</option>
+              <optgroup v-for="group in voiceGroups" :key="group" :label="groupLabel(group)">
+                <option v-for="v in voicesByGroup(group)" :key="v.voice_id" :value="v.voice_id">{{ v.name }} ({{ v.voice_id }})</option>
+              </optgroup>
+            </select>
+            <div class="meta" v-if="selectedVoiceMeta">{{ selectedVoiceMeta }}</div>
+          </div>
+          <div class="field">
+            <label>response_format</label>
+            <select v-model="body.response_format">
+              <option value="wav">wav</option>
+              <option value="pcm">pcm</option>
+              <option value="mp3">mp3</option>
+              <option value="opus">opus</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>speed（语速 0.5-2.0）</label>
+            <input type="number" min="0.5" max="2.0" step="0.05" v-model.number="body.speed">
+          </div>
+          <div class="field">
+            <label>stream（流式）</label>
+            <div style="padding-top:8px;">
+              <label class="inline-check"><input type="checkbox" v-model="body.stream"> 开启实时流式</label>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="body.stream">
+          <div class="row">
+            <div class="field">
+              <label>stream_format</label>
+              <select v-model="body.stream_format">
+                <option value="audio">audio（纯音频 PCM）</option>
+                <option value="sse">sse（字级时间戳）</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>初始播放延迟（秒）</label>
+              <input type="number" min="0" step="0.01" v-model.number="playback.delay">
+            </div>
+          </div>
+          <div class="field">
+            <div class="meta">流式模式下，采样率/声道跟随下方 <code>extra_params.sampleRate / channels</code>，服务端返回 PCM16LE 原始字节（<code>audio</code>）或 SSE 事件（<code>sse</code>）。播放采用 Web Audio 实时调度。</div>
+          </div>
+        </template>
+
+        <details>
+          <summary>extra_params（高级参数，透传给合成引擎）</summary>
+          <div class="row" style="margin-top:10px;">
+            <div class="field"><label>max_new_frames</label><input type="number" min="16" step="1" v-model.number="extra.max_new_frames"></div>
+            <div class="field"><label>voice_clone_max_text_tokens</label><input type="number" min="10" step="1" v-model.number="extra.voice_clone_max_text_tokens"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>tts_max_batch_size (0=自动)</label><input type="number" min="0" step="1" v-model.number="extra.tts_max_batch_size"></div>
+            <div class="field"><label>codec_max_batch_size (0=自动)</label><input type="number" min="0" step="1" v-model.number="extra.codec_max_batch_size"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>cpu_threads (0=默认)</label><input type="number" min="0" step="1" v-model.number="extra.cpu_threads"></div>
+            <div class="field"><label>attn_implementation</label>
+              <select v-model="extra.attn_implementation">
+                <option value="model_default">model_default</option>
+                <option value="fixed">fixed</option>
+                <option value="full">full</option>
+                <option value="greedy">greedy</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field"><label>text_temperature</label><input type="number" min="0" step="0.05" v-model.number="extra.text_temperature"></div>
+            <div class="field"><label>text_top_p</label><input type="number" min="0" max="1" step="0.01" v-model.number="extra.text_top_p"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>text_top_k</label><input type="number" min="0" step="1" v-model.number="extra.text_top_k"></div>
+            <div class="field"><label>audio_temperature</label><input type="number" min="0" step="0.05" v-model.number="extra.audio_temperature"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>audio_top_p</label><input type="number" min="0" max="1" step="0.01" v-model.number="extra.audio_top_p"></div>
+            <div class="field"><label>audio_top_k</label><input type="number" min="0" step="1" v-model.number="extra.audio_top_k"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>audio_repetition_penalty</label><input type="number" min="0.5" step="0.05" v-model.number="extra.audio_repetition_penalty"></div>
+            <div class="field"><label>seed (0=随机)</label><input type="number" step="1" v-model.number="extra.seed"></div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>sampleRate（输出采样率）</label>
+              <select v-model.number="extra.sampleRate">
+                <option :value="0">默认（24000）</option>
+                <option :value="48000">48000</option>
+                <option :value="32000">32000</option>
+                <option :value="24000">24000</option>
+                <option :value="16000">16000</option>
+                <option :value="8000">8000</option>
+              </select>
+              <div class="meta">0=保持模型默认 24000Hz；可降采样省带宽。</div>
+            </div>
+            <div class="field">
+              <label>channels（输出声道）</label>
+              <select v-model.number="extra.channels">
+                <option :value="0">默认（1）</option>
+                <option :value="1">1（单声道）</option>
+                <option :value="2">2（立体声）</option>
+              </select>
+              <div class="meta">0=保持模型默认 1 声道；1 声道带宽减半。</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field"><label>prompt_audio_path（参考音频路径）</label><input v-model.trim="extra.prompt_audio_path" placeholder="服务器本地路径，可选"></div>
+            <div class="field"><label>enable_text_normalization</label>
+              <div style="padding-top:8px;"><label class="inline-check"><input type="checkbox" v-model="extra.enable_text_normalization"> WeTextProcessing</label></div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field"><label>do_sample</label>
+              <div style="padding-top:8px;"><label class="inline-check"><input type="checkbox" v-model="extra.do_sample"> 采样</label></div>
+            </div>
+            <div class="field"><label>enable_normalize_tts_text</label>
+              <div style="padding-top:8px;"><label class="inline-check"><input type="checkbox" v-model="extra.enable_normalize_tts_text"> 规范化</label></div>
+            </div>
+          </div>
+        </details>
+
+        <div class="buttons">
+          <button @click="generate" :disabled="busy">合成</button>
+          <button class="secondary" @click="stop" :disabled="!busy">停止</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>输出</h2>
+        <div class="chips">
+          <span class="chip">模式：{{ body.stream ? '流式' : '非流式' }}</span>
+          <span class="chip">格式：{{ body.response_format }}</span>
+          <span class="chip" v-if="receivedBytes">已接收：{{ receivedBytes }}</span>
+          <span class="chip" v-if="ttftText && body.stream">首字延迟：{{ ttftText }}</span>
+          <span class="chip" v-if="elapsedText">{{ elapsedText }}</span>
+        </div>
+        <div class="status" :class="{ error: statusIsError, ok: statusIsOk }">{{ statusText }}</div>
+        <div class="progress" v-if="busy && streaming"><div :style="{ width: progressPct + '%' }"></div></div>
+        <audio v-if="audioSrc" ref="audioOutputEl" controls :src="audioSrc"></audio>
+        <div v-if="downloadSrc" class="meta">
+          <a :href="downloadSrc" :download="downloadFilename">下载音频</a>
+          <span v-if="audioSize" style="margin-left:10px;">{{ audioSize }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const app = Vue.createApp({
+  data() {
+    return {
+      endpoint: "",
+      apiKey: "",
+      body: {
+        model: "moss-tts-nano-onnx",
+        input: "你好，hello，这是用于第三方对接的通用语音合成接口。",
+        voice: "",
+        response_format: "wav",
+        speed: 1.0,
+        stream: false,
+        stream_format: "audio"
+      },
+      extra: {
+        max_new_frames: 375,
+        voice_clone_max_text_tokens: 75,
+        tts_max_batch_size: 1,
+        codec_max_batch_size: 0,
+        enable_text_normalization: true,
+        enable_normalize_tts_text: true,
+        cpu_threads: 2,
+        attn_implementation: "fixed",
+        do_sample: true,
+        text_temperature: 1.0,
+        text_top_p: 1.0,
+        text_top_k: 50,
+        audio_temperature: 0.8,
+        audio_top_p: 0.95,
+        audio_top_k: 25,
+        audio_repetition_penalty: 1.2,
+        seed: 0,
+        prompt_audio_path: "",
+        sampleRate: 0,
+        channels: 0
+      },
+      playback: {
+        delay: 0.08
+      },
+      busy: false,
+      streaming: false,
+      statusText: "就绪。",
+      statusIsError: false,
+      statusIsOk: false,
+      receivedBytes: "",
+      elapsedText: "",
+      ttftText: "",
+      progressPct: 0,
+      audioSrc: "",
+      downloadFilename: "output.wav",
+      audioSize: "",
+      abortController: null,
+      audioContext: null,
+      nextPlaybackTime: 0,
+      playbackStartAt: null,
+      currentAudioObjectUrl: null,
+      currentMediaSource: null,
+      downloadSrc: "",
+      downloadBlobUrl: null,
+      voices: []
+    };
+  },
+  computed: {
+    voiceGroups() {
+      const groups = [];
+      for (const v of this.voices) {
+        const g = v.group || "其他";
+        if (!groups.includes(g)) groups.push(g);
+      }
+      return groups;
+    }
+  },
+  mounted() {
+    if (!this.endpoint) {
+      this.endpoint = localStorage.getItem("tts-endpoint") || (window.location.origin + "/v1");
+    }
+    this.loadVoices();
+  },
+  methods: {
+    voicesByGroup(group) {
+      return this.voices.filter(v => (v.group || "其他") === group);
+    },
+    groupLabel(group) {
+      if (group === "demo") return "Demo 参考音频";
+      if (group === "builtin") return "内置音色";
+      return group;
+    },
+    selectedVoiceMeta() {
+      const v = this.voices.find(x => x.voice_id === this.body.voice);
+      if (!v) return "";
+      let meta = `来源: ${v.source || "?"} ｜ group: ${v.group || "-"}`;
+      if (v.prompt_text) meta += " ｜ 示例文本: " + v.prompt_text.slice(0, 30) + (v.prompt_text.length > 30 ? "..." : "");
+      return meta;
+    },
+    async loadVoices() {
+      try {
+        const res = await fetch(`${this.endpoint}/voices`, { headers: this.buildHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          this.voices = data.data || data.voices || [];
+        }
+      } catch (e) {
+        // 加载音色失败不阻塞页面
+        console.warn("load voices failed", e);
+      }
+    },
+    mergeUint8(a, b) {
+      const m = new Uint8Array(a.length + b.length);
+      m.set(a, 0); m.set(b, a.length);
+      return m;
+    },
+    formatBytes(n) {
+      if (n === 0) return "0 B";
+      const k = 1024, s = ["B", "KB", "MB", "GB"];
+      const i = Math.floor(Math.log(n) / Math.log(k));
+      return parseFloat((n / Math.pow(k, i)).toFixed(2)) + " " + s[i];
+    },
+    setStatus(t, kind) {
+      this.statusText = t;
+      this.statusIsError = kind === "error";
+      this.statusIsOk = kind === "ok";
+    },
+    buildHeaders() {
+      const h = { "Content-Type": "application/json" };
+      if (this.apiKey) h["Authorization"] = "Bearer " + this.apiKey;
+      return h;
+    },
+    buildPayload() {
+      const p = {
+        model: this.body.model || "moss-tts-nano-onnx",
+        input: this.body.input,
+        voice: this.body.voice || undefined,
+        response_format: this.body.response_format || "wav",
+        speed: this.body.speed,
+        stream: !!this.body.stream
+      };
+      if (this.body.stream && this.body.stream_format) p.stream_format = this.body.stream_format;
+      const ex = {};
+      for (const k in this.extra) {
+        const v = this.extra[k];
+        if (k === "seed" && v === 0) { ex[k] = null; continue; }
+        if (k === "prompt_audio_path" && !v) continue;
+        if (typeof v === "boolean" || typeof v === "number" || (typeof v === "string" && v)) ex[k] = v;
+      }
+      p.extra_params = ex;
+      return p;
+    },
+    stop() {
+      if (this.abortController) this.abortController.abort();
+      if (this.audioContext) { try { this.audioContext.close(); } catch (e) {} }
+      this.audioContext = null;
+      this.closeMediaSource();
+      this.streaming = false;
+      this.busy = false;
+      this.setStatus("已停止。");
+    },
+    closeMediaSource() {
+      if (this.currentMediaSource) {
+        try { if (this.currentMediaSource.readyState === "open") this.currentMediaSource.endOfStream(); } catch (e) {}
+        try { this.currentMediaSource = null; } catch (e) {}
+      }
+    },
+    revokeObjectUrl() {
+      this.closeMediaSource();
+      if (this.currentAudioObjectUrl) { URL.revokeObjectURL(this.currentAudioObjectUrl); this.currentAudioObjectUrl = null; }
+      if (this.downloadBlobUrl) { URL.revokeObjectURL(this.downloadBlobUrl); this.downloadBlobUrl = null; }
+      this.downloadSrc = "";
+    },
+    setDownloadBlob(bytes, mime, ext) {
+      // 生成可稳定下载的 Blob URL（与播放的 audioSrc 分离，避免 MediaSource URL 失效）
+      if (this.downloadBlobUrl) URL.revokeObjectURL(this.downloadBlobUrl);
+      this.downloadBlobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+      this.downloadSrc = this.downloadBlobUrl;
+      this.downloadFilename = "output." + (ext || "bin");
+    },
+    async generate() {
+      if (!this.body.input.trim()) { this.setStatus("请输入文本。", "error"); return; }
+      if (!this.endpoint) { this.setStatus("请输入端点地址。", "error"); return; }
+      localStorage.setItem("tts-endpoint", this.endpoint);
+      this.revokeObjectUrl();
+      this.audioSrc = "";
+      this.audioSize = "";
+      this.receivedBytes = "";
+      this.elapsedText = "";
+      this.ttftText = "";
+      this.progressPct = 0;
+      this.abortController = new AbortController();
+      const startTime = performance.now();
+      try {
+        if (this.body.stream) await this.generateStreaming(startTime);
+        else await this.generateBuffered(startTime);
+      } catch (e) {
+        if (e.name === "AbortError") this.setStatus("已停止。");
+        else this.setStatus("错误: " + e, "error");
+      } finally {
+        this.busy = false;
+        this.streaming = false;
+        this.abortController = null;
+      }
+    },
+    async generateBuffered(startTime) {
+      this.busy = true;
+      this.streaming = false;
+      this.setStatus("正在合成（非流式）...");
+      const res = await fetch(`${this.endpoint}/audio/speech`, {
+        method: "POST",
+        headers: this.buildHeaders(),
+        body: JSON.stringify(this.buildPayload()),
+        signal: this.abortController.signal
+      });
+      if (!res.ok) { const t = await res.text(); throw new Error(t || ("HTTP " + res.status)); }
+      const buf = await res.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      this.receivedBytes = this.formatBytes(bytes.length);
+      this.audioSize = this.receivedBytes;
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      this.elapsedText = elapsed + "s";
+      const fmt = (this.body.response_format || "wav").toLowerCase();
+      const mime = fmt === "pcm" ? "application/octet-stream"
+        : fmt === "mp3" ? "audio/mpeg"
+        : fmt === "opus" ? "audio/webm"
+        : "audio/wav";
+      const blob = new Blob([bytes], { type: mime });
+      this.currentAudioObjectUrl = URL.createObjectURL(blob);
+      this.audioSrc = this.currentAudioObjectUrl;
+      this.setDownloadBlob(bytes, mime, fmt === "pcm" ? "pcm" : fmt);
+      this.progressPct = 100;
+      this.setStatus("完成。耗时 " + elapsed + "s，大小 " + this.receivedBytes + "。", "ok");
+      this.$nextTick(() => { const el = this.$refs.audioOutputEl; if (el) el.play().catch(() => {}); });
+    },
+    schedulePcmChunk(pcm, rate, ch) {
+      if (!this.audioContext || pcm.byteLength <= 0) return;
+      const bpf = ch * 2;
+      const frames = Math.floor(pcm.byteLength / bpf);
+      if (frames <= 0) return;
+      const buf = this.audioContext.createBuffer(ch, frames, rate);
+      const view = new DataView(pcm.buffer, pcm.byteOffset, frames * bpf);
+      for (let c = 0; c < ch; c++) {
+        const d = buf.getChannelData(c);
+        for (let f = 0; f < frames; f++) d[f] = view.getInt16((f * ch + c) * 2, true) / 32768.0;
+      }
+      const src = this.audioContext.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.audioContext.destination);
+      const now = this.audioContext.currentTime;
+      const start = Math.max(this.nextPlaybackTime || (now + this.playback.delay), now + 0.02);
+      src.start(start);
+      this.nextPlaybackTime = start + buf.duration;
+      if (this.playbackStartAt === null) this.playbackStartAt = start;
+    },
+    async generateStreaming(startTime) {
+      this.busy = true;
+      this.streaming = true;
+      const fmt = this.body.response_format || "wav";
+      this.setStatus("正在启动流式合成...");
+      const res = await fetch(`${this.endpoint}/audio/speech`, {
+        method: "POST",
+        headers: this.buildHeaders(),
+        body: JSON.stringify(this.buildPayload()),
+        signal: this.abortController.signal
+      });
+      if (!res.ok) { const t = await res.text(); throw new Error(t || ("HTTP " + res.status)); }
+      const ctype = (res.headers.get("Content-Type") || "").toLowerCase();
+      if (ctype.includes("event-stream") || ctype.includes("text/event-stream")) {
+        await this.consumeSse(res);
+        return;
+      }
+      if (fmt === "mp3" || fmt === "opus") {
+        await this.consumeEncodedStream(res, fmt, startTime);
+        return;
+      }
+      await this.consumePcm(res, startTime);
+    },
+    async consumePcm(res, startTime) {
+      // 采样率/声道统一取自 extra_params.sampleRate / channels（0 表示保持服务端默认）。
+      // 优先使用服务端实际输出的响应头值，保证与合成输出一致，避免按错误参数解码播放。
+      const headerRate = Number(res.headers.get("X-Audio-Sample-Rate"));
+      const headerCh = Number(res.headers.get("X-Audio-Channels"));
+      const exRate = Number(this.extra.sampleRate);
+      const exCh = Number(this.extra.channels);
+      // 服务端默认输出 24kHz/单声道（与后端 DEFAULT_OUTPUT_SAMPLE_RATE/CHANNELS 保持一致）
+      const rate = headerRate > 0 ? headerRate : (exRate > 0 ? exRate : 24000);
+      const ch = headerCh > 0 ? headerCh : (exCh > 0 ? exCh : 1);
+      console.log("consumePcm", rate, ch);
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) throw new Error("当前浏览器不支持 Web Audio 流式播放。");
+      // 用浏览器默认采样率创建 context（多数为 48000），避免部分浏览器不支持指定采样率导致异常/静音。
+      // 实际采样率经 createBuffer 传入，Web Audio 会自动重采样到 context 采样率播放。
+      this.audioContext = new AudioCtx();
+      await this.audioContext.resume();
+      this.nextPlaybackTime = this.audioContext.currentTime + (this.playback.delay || 0.08);
+      this.playbackStartAt = null;
+      if (!res.body) throw new Error("响应不支持 ReadableStream。");
+      const reader = res.body.getReader();
+      const bpf = ch * 2;
+      let rem = new Uint8Array(0);
+      let received = 0;
+      let firstAudioAt = null;
+      const downloadChunks = [];
+      const fmt = (this.body.response_format || "pcm").toLowerCase();
+      this.setStatus("正在流式播放（PCM）...");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value || value.length === 0) continue;
+        received += value.length;
+        downloadChunks.push(new Uint8Array(value));
+        if (firstAudioAt === null) {
+          firstAudioAt = performance.now();
+          this.ttftText = ((firstAudioAt - startTime) / 1000).toFixed(3) + "s";
+        }
+        this.receivedBytes = this.formatBytes(received);
+        const secs = (received / bpf / rate).toFixed(1);
+        this.elapsedText = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+        this.progressPct = Math.min(100, (received / bpf / rate) * 4);
+        this.setStatus("正在流式播放... " + this.receivedBytes + " (" + secs + "s)" + (this.ttftText ? " ｜ 首字=" + this.ttftText : ""));
+        const merged = this.mergeUint8(rem, value);
+        const aligned = Math.floor(merged.length / bpf) * bpf;
+        if (aligned <= 0) { rem = merged; continue; }
+        this.schedulePcmChunk(merged.subarray(0, aligned), rate, ch);
+        rem = merged.subarray(aligned);
+      }
+      // 生成可下载的 Blob（pcm 裸字节 / wav 加 RIFF 头）
+      const all = this.mergeUint8Array(downloadChunks);
+      if (fmt === "wav") {
+        const wavBytes = this.buildWavHeader(all.length, rate, ch);
+        const mergedWav = this.mergeUint8(wavBytes, all);
+        this.setDownloadBlob(mergedWav, "audio/wav", "wav");
+      } else {
+        this.setDownloadBlob(all, "application/octet-stream", "pcm");
+      }
+      this.audioSize = this.formatBytes(all.length);
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      this.elapsedText = elapsed + "s";
+      this.progressPct = 100;
+      this.setStatus("流式完成。耗时 " + elapsed + "s，大小 " + this.receivedBytes + "。", "ok");
+    },
+    mergeUint8Array(parts) {
+      let total = 0;
+      for (const p of parts) total += p.length;
+      const out = new Uint8Array(total);
+      let off = 0;
+      for (const p of parts) { out.set(p, off); off += p.length; }
+      return out;
+    },
+    buildWavHeader(dataLen, sampleRate, channels) {
+      const buf = new ArrayBuffer(44);
+      const dv = new DataView(buf);
+      const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+      const byteRate = sampleRate * channels * 2;
+      writeStr(0, "RIFF"); dv.setUint32(4, 36 + dataLen, true); writeStr(8, "WAVE");
+      writeStr(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+      dv.setUint16(22, channels, true); dv.setUint32(24, sampleRate, true);
+      dv.setUint32(28, byteRate, true); dv.setUint16(32, channels * 2, true); dv.setUint16(34, 16, true);
+      writeStr(36, "data"); dv.setUint32(40, dataLen, true);
+      return new Uint8Array(buf);
+    },
+    bufferSeconds() {
+      // 返回当前已缓冲可播放的时长（秒）；无缓冲则返回 0
+      const el = this.$refs.audioOutputEl;
+      if (!el || !el.buffered || el.buffered.length === 0) return 0;
+      let total = 0;
+      for (let i = 0; i < el.buffered.length; i++) {
+        total += (el.buffered.end(i) - el.buffered.start(i));
+      }
+      return total;
+    },
+    async consumeEncodedStream(res, fmt, startTime) {
+      // 用 MediaSource + <audio> 边收边播 opus/mp3 压缩音频流。
+      // 浏览器原生支持 audio/mpeg 与 audio/webm; codecs=opus，无需解码 PCM。
+      const mimeType = fmt === "mp3"
+        ? "audio/mpeg"
+        : (window.MediaSource && window.MediaSource.isTypeSupported('audio/webm; codecs="opus"')
+            ? 'audio/webm; codecs="opus"'
+            : null);
+      const msSupported = !!(window.MediaSource && window.MediaSource.isTypeSupported && mimeType
+        && window.MediaSource.isTypeSupported(mimeType));
+      if (!msSupported) {
+        // 降级：MediaSource 不支持（如 Safari 不支持 Ogg/Opus），改为完整累积后一次性播放
+        await this.consumeBufferedFallback(res, fmt, startTime);
+        return;
+      }
+
+      const mediaSource = new MediaSource();
+      this.currentMediaSource = mediaSource;
+      const objectUrl = URL.createObjectURL(mediaSource);
+      this.currentAudioObjectUrl = objectUrl;
+      this.audioSrc = objectUrl;
+      this.downloadFilename = "output." + fmt;
+      this.audioSize = "";
+      await this.$nextTick();
+
+      const audioEl = this.$refs.audioOutputEl;
+      if (!audioEl) throw new Error("缺少音频播放元素。");
+
+      // 首播缓冲阈值（秒）与单次追加上限，避免卡顿
+      const targetPrebuffer = 0.8;
+      let sourceBuffer = null;
+      let appending = false;
+      let received = 0;
+      let firstAudioAt = null;
+      let startedPlayback = false;
+      const pendingQueue = [];
+      const downloadChunks = [];
+
+      const tryAppend = () => {
+        if (appending || !sourceBuffer || pendingQueue.length === 0) return;
+        appending = true;
+        const buf = pendingQueue.shift();
+        try { sourceBuffer.appendBuffer(buf); }
+        catch (e) { appending = false; pendingQueue.unshift(buf); }
+      };
+      const maybeStartPlayback = () => {
+        if (startedPlayback || !sourceBuffer) return;
+        if (this.bufferSeconds() < targetPrebuffer) return;
+        startedPlayback = true;
+        audioEl.play().catch(() => {});
+      };
+
+      await new Promise((resolve, reject) => {
+        mediaSource.addEventListener("sourceopen", () => {
+          try {
+            sourceBuffer = mediaSource.addSourceBuffer(mimeType);
+            sourceBuffer.addEventListener("updateend", () => {
+              appending = false;
+              tryAppend();
+              maybeStartPlayback();
+            });
+            resolve();
+          } catch (e) { reject(e); }
+        }, { once: true });
+        mediaSource.addEventListener("error", () => reject(new Error("MediaSource 播放失败。")), { once: true });
+      });
+
+      if (!res.body) throw new Error("响应不支持 ReadableStream。");
+      const reader = res.body.getReader();
+      this.setStatus("正在缓冲 " + fmt + " 音频...");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value || value.length === 0) continue;
+        if (firstAudioAt === null) {
+          firstAudioAt = performance.now();
+          this.ttftText = ((firstAudioAt - startTime) / 1000).toFixed(3) + "s";
+        }
+        received += value.length;
+        downloadChunks.push(new Uint8Array(value));
+        this.receivedBytes = this.formatBytes(received);
+        this.elapsedText = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+        this.progressPct = Math.min(100, (received / 20000) * 20);
+        this.setStatus(
+          (startedPlayback ? "正在流式播放 " + fmt : "正在缓冲 " + fmt) + "... "
+          + this.receivedBytes + (this.ttftText ? " ｜ 首包=" + this.ttftText : "")
+        );
+        pendingQueue.push(new Uint8Array(value));
+        tryAppend();
+        maybeStartPlayback();
+      }
+      // 流结束：声明结束，等待播放器消费完剩余 buffer
+      const finishStream = () => {
+        try {
+          if (mediaSource.readyState === "open") mediaSource.endOfStream();
+        } catch (e) { /* ignore */ }
+        if (!startedPlayback) { try { audioEl.play().catch(() => {}); } catch (e) {} }
+      };
+      if (sourceBuffer && appending) {
+        sourceBuffer.addEventListener("updateend", finishStream, { once: true });
+      } else {
+        finishStream();
+      }
+      // 用独立 Blob 提供稳定下载（MediaSource URL 会失效）
+      const allBytes = this.mergeUint8Array(downloadChunks);
+      if (fmt === "mp3") this.setDownloadBlob(allBytes, "audio/mpeg", "mp3");
+      else this.setDownloadBlob(allBytes, "audio/webm", "opus");
+      this.audioSize = this.formatBytes(allBytes.length);
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      this.elapsedText = elapsed + "s";
+      this.progressPct = 100;
+      this.setStatus("流式完成（" + fmt + "）。耗时 " + elapsed + "s，大小 " + this.receivedBytes + "。", "ok");
+    },
+    async consumeBufferedFallback(res, fmt, startTime) {
+      // 降级方案：MediaSource 不支持该容器时，完整累积字节后一次性播放。
+      // 保证 opus/mp3 可用，代价是首包前有完整下载延迟。
+      if (!res.body) throw new Error("响应不支持 ReadableStream。");
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
+      let firstAudioAt = null;
+      this.setStatus("正在下载 " + fmt + " 音频（当前浏览器不支持边下边播，将整体下载后播放）...");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value || value.length === 0) continue;
+        if (firstAudioAt === null) {
+          firstAudioAt = performance.now();
+          this.ttftText = ((firstAudioAt - startTime) / 1000).toFixed(3) + "s";
+        }
+        chunks.push(new Uint8Array(value));
+        received += value.length;
+        this.receivedBytes = this.formatBytes(received);
+        this.elapsedText = ((performance.now() - startTime) / 1000).toFixed(1) + "s";
+        this.progressPct = Math.min(100, (received / 20000) * 20);
+        this.setStatus("正在下载 " + fmt + "... " + this.receivedBytes);
+      }
+      const merged = new Uint8Array(received);
+      let offset = 0;
+      for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+      const blobType = fmt === "mp3" ? "audio/mpeg" : "audio/webm";
+      const blob = new Blob([merged], { type: blobType });
+      this.currentAudioObjectUrl = URL.createObjectURL(blob);
+      this.audioSrc = this.currentAudioObjectUrl;
+      this.setDownloadBlob(merged, blobType, fmt);
+      this.audioSize = this.formatBytes(merged.length);
+      await this.$nextTick();
+      const audioEl = this.$refs.audioOutputEl;
+      if (audioEl) audioEl.play().catch(() => {});
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      this.elapsedText = elapsed + "s";
+      this.progressPct = 100;
+      this.setStatus("完成（" + fmt + "）。耗时 " + elapsed + "s，大小 " + this.receivedBytes + "。", "ok");
+    },
+    async consumeSse(res) {
+      if (!res.body) throw new Error("SSE 响应不支持 ReadableStream。");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      let audioChunks = [];
+      let received = 0;
+      this.setStatus("正在接收 SSE 事件...");
+      const handleData = (data) => {
+        try {
+          const obj = JSON.parse(data);
+          if (obj.audio) {
+            audioChunks.push(obj.audio);
+            received += obj.audio.length;
+            this.receivedBytes = this.formatBytes(received);
+            this.setStatus("SSE 事件: audio chunk，累计 " + this.receivedBytes);
+          } else if (obj.status === "finished" || obj.status === "done") {
+            this.setStatus("SSE 完成事件: " + JSON.stringify(obj), "ok");
+          } else if (obj.error) {
+            this.setStatus("SSE 错误: " + obj.error, "error");
+          }
+        } catch (e) { /* ignore partial */ }
+      };
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const block = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          for (const line of block.split("\n")) {
+            if (line.startsWith("data:")) handleData(line.slice(5).trim());
+          }
+        }
+      }
+      if (audioChunks.length) {
+        const b64 = audioChunks.join("");
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "application/octet-stream" });
+        this.currentAudioObjectUrl = URL.createObjectURL(blob);
+        this.audioSrc = this.currentAudioObjectUrl;
+        this.setDownloadBlob(bytes, "application/octet-stream", "pcm");
+        this.audioSize = this.formatBytes(bytes.length);
+        this.setStatus("SSE 接收完成，已聚合 " + this.audioSize + " PCM 数据。", "ok");
+      }
+    }
+  }
+});
+app.mount("#app");
+</script>
+</body>
+</html>
