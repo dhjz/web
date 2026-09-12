@@ -1,98 +1,766 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-  <style>
-    input, select { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 10px; outline: none; margin-right: 20px; }
-    button{ background: #409eff; border: none; color: #fff; line-height: 32px; padding: 0px 10px; border-radius: 4px; cursor: pointer; }
-    
-    .load-out { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; z-index: 999 }
-    .load-icon { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #3b82f6; border-radius: 50%; animation: s .6s linear infinite }
-    @keyframes s { to { transform: rotate(360deg) } }
-    p { margin-top: 16px; color: #666; font-size: 14px }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+<title>CNB 一键启动平台</title>
+<script>
+  /* 尽早应用主题，避免闪白 */
+  (function(){
+    try{
+      var raw = localStorage.getItem('cnb_platform_theme');
+      if(raw === 'light' || raw === '"light"'){ document.documentElement.setAttribute('data-theme','light'); }
+    }catch(e){}
+  })();
+</script>
+<style>
+  :root{
+    --bg:#070a12;
+    --panel:rgba(255,255,255,.045);
+    --panel-2:rgba(255,255,255,.07);
+    --border:rgba(255,255,255,.09);
+    --border-strong:rgba(255,255,255,.16);
+    --text:#e9edf6;
+    --muted:#8d97ad;
+    /* CNB 品牌色 */
+    --brand-color-4:#ff8a3d;
+    --brand-color-5:#ff6200;
+    --brand-color-6:#d94800;
+    --brand-color-7:#b83e00;
+    --accent:var(--brand-color-5);
+    --accent-2:var(--brand-color-4);
+    --ok:#34d399;
+    --warn:#fbbf24;
+    --err:#fb7185;
+    --radius:16px;
+    --primary-fg:#fff;
+    --title-grad:linear-gradient(135deg,#fff,#ffb27a);
+    --card-bg:linear-gradient(160deg,rgba(255,255,255,.062),rgba(255,255,255,.022));
+    --shadow-card:0 22px 48px -24px rgba(0,0,0,.9);
+    --shadow-modal:0 40px 90px -30px rgba(0,0,0,.95);
+    --shadow-toast:0 18px 40px -18px rgba(0,0,0,.9);
+    --tag-bg:rgba(255,255,255,.06);
+    --tag-color:#b9c4d8;
+    --pill-bg:rgba(255,255,255,.05);
+    --pill-idle:#93a0b8;
+    --spinner-border:rgba(255,255,255,.22);
+    --mask-bg:rgba(4,7,14,.72);
+    --modal-bg:linear-gradient(160deg,rgba(24,30,44,.96),rgba(14,18,28,.97));
+    --input-bg:rgba(255,255,255,.05);
+    --option-bg:#141a26;
+    --cfg-bg:rgba(255,255,255,.04);
+    --toast-bg:rgba(22,28,42,.95);
+    --scroll-thumb:rgba(255,255,255,.14);
+  }
+
+  /* 白天模式 */
+  html[data-theme="light"]{
+    --bg:#eef2f9;
+    --panel:rgba(255,255,255,.74);
+    --panel-2:rgba(255,255,255,.96);
+    --border:rgba(15,23,42,.1);
+    --border-strong:rgba(15,23,42,.2);
+    --text:#111a2b;
+    --muted:#5b6880;
+    --accent:#d94800;
+    --accent-2:#ff8a3d;
+    --ok:#059669;
+    --warn:#d97706;
+    --err:#e11d48;
+    --title-grad:linear-gradient(135deg,#1f2937,#c2410c);
+    --card-bg:linear-gradient(160deg,rgba(255,255,255,.94),rgba(255,255,255,.74));
+    --shadow-card:0 22px 48px -28px rgba(30,41,59,.34);
+    --shadow-modal:0 40px 90px -34px rgba(30,41,59,.42);
+    --shadow-toast:0 18px 40px -20px rgba(30,41,59,.34);
+    --tag-bg:rgba(15,23,42,.05);
+    --tag-color:#40506a;
+    --pill-bg:rgba(15,23,42,.05);
+    --pill-idle:#64748b;
+    --spinner-border:rgba(15,23,42,.16);
+    --mask-bg:rgba(226,232,240,.62);
+    --modal-bg:linear-gradient(160deg,#ffffff,#f4f7fc);
+    --input-bg:rgba(15,23,42,.04);
+    --option-bg:#ffffff;
+    --cfg-bg:rgba(15,23,42,.035);
+    --toast-bg:rgba(255,255,255,.97);
+    --scroll-thumb:rgba(15,23,42,.2);
+  }
+  html[data-theme="light"] .grid-mask{
+    background-image:linear-gradient(rgba(15,23,42,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.045) 1px,transparent 1px)}
+  html[data-theme="light"] .tag.acc{color:#c2410c;border-color:rgba(255,98,0,.3);background:rgba(255,98,0,.1)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  [v-cloak]{display:none!important}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;
+    color:var(--text);
+    background:var(--bg);
+    min-height:100vh;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    transition:background .35s ease,color .35s ease;
+  }
+  @keyframes float{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(4vw,-3vw,0) scale(1.08)}66%{transform:translate3d(-3vw,3vw,0) scale(.94)}}
+  .grid-mask{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+    background-size:52px 52px;
+    mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 30%,transparent 78%);
+    -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 30%,transparent 78%);
+  }
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:38px 22px 80px}
+
+  /* 顶栏 */
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:30px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:19px;color:var(--primary-fg);
+    background:linear-gradient(135deg,var(--accent-2),var(--accent));box-shadow:0 10px 30px -8px rgba(255,98,0,.55)}
+  .brand h1{font-size:20px;letter-spacing:.3px;font-weight:700}
+  .brand p{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+  /* 按钮 */
+  .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    height:38px;padding:0 16px;border-radius:11px;border:1px solid var(--border);cursor:pointer;
+    background:var(--panel);color:var(--text);font-size:13.5px;font-weight:600;font-family:inherit;
+    transition:.22s cubic-bezier(.4,0,.2,1);white-space:nowrap;user-select:none}
+  .btn:hover{background:var(--panel-2);border-color:var(--border-strong);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0) scale(.985)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btn.primary{border:none;color:var(--primary-fg);background:linear-gradient(135deg,var(--brand-color-5),var(--brand-color-6));
+    box-shadow:0 10px 26px -10px rgba(255,98,0,.7)}
+  .btn.primary:hover{box-shadow:0 14px 32px -10px rgba(255,98,0,.9)}
+  .btn.deep{border:none;color:#fff;background:linear-gradient(135deg,var(--brand-color-6),var(--brand-color-7));
+    box-shadow:0 10px 26px -10px rgba(217,72,0,.55)}
+  .btn.ghost{background:transparent}
+  .btn.icon{width:38px;padding:0;font-size:15px}
+  .btn.sm{height:34px;padding:0 13px;font-size:13px;border-radius:10px}
+
+  /* 统计条 */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+  .stat b{display:block;font-size:24px;font-weight:750;letter-spacing:.5px;background:var(--title-grad);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat span{font-size:12px;color:var(--muted);letter-spacing:.4px}
+
+  /* 卡片列表 */
+  .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+  .card{position:relative;border-radius:var(--radius);border:1px solid var(--border);padding:14px;
+    background:var(--card-bg);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    transition:.28s cubic-bezier(.4,0,.2,1);overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    opacity:0;transition:.3s;box-shadow:inset 0 0 0 1px transparent}
+  .card:hover{transform:translateY(-3px);border-color:var(--border-strong);
+    box-shadow:var(--shadow-card)}
+  .card[data-status="ready"]{border-color:rgba(52,211,153,.42);box-shadow:0 20px 20px -26px rgba(52,211,153,.2)}
+  .card[data-status="ready"]::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--ok),transparent)}
+  .card[data-status="error"]{border-color:rgba(251,113,133,.4)}
+  .card[data-status="polling"]::before,.card[data-status="starting"]::before{
+    content:"";position:absolute;top:0;left:0;height:2px;width:40%;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:slide 1.5s linear infinite}
+  @keyframes slide{from{transform:translateX(-120%)}to{transform:translateX(340%)}}
+
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .card-title{font-size:16px;font-weight:700;letter-spacing:.2px;word-break:break-all}
+  .card-repo{font-size:12.5px;color:var(--muted);margin-top:5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+  .card-meta{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 12px}
+  .tag{font-size:11.5px;padding:3px 9px;border-radius:7px;background:var(--tag-bg);
+    border:1px solid var(--border);color:var(--tag-color);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tag.acc{color:#ffd9bf;border-color:rgba(255,98,0,.32);background:rgba(255,98,0,.12)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:650;
+    padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--pill-bg);color:var(--muted);
+    white-space:nowrap}
+  .pill i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+  .pill.idle{color:var(--pill-idle)}
+  .pill.starting{color:var(--warn);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+  .pill.polling{color:var(--accent);border-color:rgba(255,98,0,.35);background:rgba(255,98,0,.1)}
+  .pill.ready{color:var(--ok);border-color:rgba(52,211,153,.38);background:rgba(52,211,153,.1)}
+  .pill.error{color:var(--err);border-color:rgba(251,113,133,.38);background:rgba(251,113,133,.1)}
+  .pill.starting i,.pill.polling i{animation:blink 1s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.25;transform:scale(.7)}}
+
+  .card-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .elapsed{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .spinner{width:13px;height:13px;border:2px solid var(--spinner-border);border-top-color:var(--accent);
+    border-radius:50%;animation:s .7s linear infinite;display:inline-block}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .err-msg{font-size:12px;color:var(--err);margin-top:10px;word-break:break-all}
+
+  /* 空状态 */
+  .empty{grid-column:1/-1;text-align:center;padding:70px 20px;border:1px dashed var(--border-strong);
+    border-radius:var(--radius);background:var(--panel);color:var(--muted)}
+  .empty b{display:block;color:var(--text);font-size:16px;margin-bottom:8px}
+
+  /* 弹窗 */
+  .mask{position:fixed;inset:0;z-index:50;background:var(--mask-bg);backdrop-filter:blur(8px);
+    display:none;align-items:center;justify-content:center;padding:20px;animation:fade .2s ease}
+  .mask.show{display:flex}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{width:100%;max-width:680px;max-height:88vh;overflow:auto;border-radius:20px;padding:26px;
+    background:var(--modal-bg);
+    border:1px solid var(--border-strong);box-shadow:var(--shadow-modal);animation:pop .26s cubic-bezier(.2,1,.3,1)}
+  @keyframes pop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+  .modal h2{font-size:18px;margin-bottom:6px}
+  .modal .sub{font-size:12.5px;color:var(--muted);margin-bottom:20px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px;letter-spacing:.3px}
+  input,select{width:100%;height:40px;padding:0 13px;border-radius:11px;border:1px solid var(--border);
+    background:var(--input-bg);color:var(--text);font-size:13.5px;outline:none;font-family:inherit;transition:.2s}
+  input:focus,select:focus{border-color:rgba(255,98,0,.55);background:rgba(255,98,0,.06);
+    box-shadow:0 0 0 3px rgba(255,98,0,.15)}
+  select option{background:var(--option-bg);color:var(--text)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .sec-title{font-size:13px;font-weight:700;margin:24px 0 12px;padding-top:20px;border-top:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .cfg-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
+    background:var(--cfg-bg);border:1px solid var(--border);margin-bottom:10px}
+  .cfg-item .info{flex:1;min-width:0}
+  .cfg-item .info b{display:block;font-size:13.5px}
+  .cfg-item .info span{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    word-break:break-all}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+
+  /* toast */
+  .toasts{position:fixed;right:22px;bottom:22px;z-index:99;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+  .toast{padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;color:var(--text);
+    background:var(--toast-bg);border:1px solid var(--border-strong);backdrop-filter:blur(14px);
+    box-shadow:var(--shadow-toast);animation:in .3s cubic-bezier(.2,1,.3,1);max-width:340px}
+  .toast.ok{border-color:rgba(52,211,153,.5)}
+  .toast.err{border-color:rgba(251,113,133,.5)}
+  .toast.out{animation:out .3s ease forwards}
+  @keyframes in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+  @keyframes out{to{opacity:0;transform:translateX(24px)}}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @media(max-width:560px){.row,.row3{grid-template-columns:1fr}.wrap{padding:24px 14px 60px}}
+</style>
 </head>
 <body>
-  <button onclick="go()">开始</button>
-  <button onclick="start()">重新生成</button>
-  <button onclick="clear1()">清除缓存</button>
-  <div class="load-out"><div class="load-icon"></div><p>加载中...</p></div>
+<div class="grid-mask"></div>
 
-  <div id="urls"></div>
-  <script>
-    const CACHE_TIME = 60 * 20 // 20分钟
-    let obj = url2Obj()
-    let authkey = '0161eUh0D5Gc8mQ9wAqfQMeZQVdTVByJN'.replace(obj.key, '')
-    console.log('authkey', authkey);
+<div id="app" v-cloak>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">CNB</div>
+        <div>
+          <h1>一键启动 & 监控平台</h1>
+          <p>配置多个仓库 · 手动启动 · 5 秒自动探测就绪</p>
+        </div>
+      </div>
+      <div class="tools">
+        <button class="btn ghost sm" @click="toggleTheme">{{ theme === 'light' ? '夜间模式' : '白天模式' }}</button>
+        <button class="btn ghost sm" @click="openToken">密钥</button>
+        <button class="btn ghost sm" @click="clearAll">清空缓存</button>
+        <button class="btn deep sm" @click="showRepo = true">管理仓库</button>
+      </div>
+    </header>
 
-    (function(){
-      go()
-    })()
+    <div class="stats">
+      <div class="stat"><b>{{ stats.total }}</b><span>仓库总数</span></div>
+      <div class="stat"><b>{{ stats.ready }}</b><span>已就绪</span></div>
+      <div class="stat"><b>{{ stats.polling }}</b><span>启动中 / 探测中</span></div>
+      <div class="stat"><b>{{ stats.idle }}</b><span>未启动</span></div>
+    </div>
 
-    function clear1() {
-      console.log(getStorageExp('cnb_hub_proxy'));
-      localStorage.removeItem('cnb_hub_proxy')
-    }
+    <div class="list">
+      <div class="empty" v-if="!repos.length">
+        <b>还没有配置任何仓库</b>点击右上角「管理仓库」添加你的第一个 CNB 仓库
+      </div>
+      <template v-else>
+        <div class="card" v-for="r in repos" :key="r.id" :data-status="st(r.id).status">
+          <div class="card-head">
+            <div style="min-width:0">
+              <div class="card-title">{{ r.name || r.repo }}</div>
+              <div class="card-repo">{{ r.repo }}</div>
+            </div>
+            <span class="pill" :class="st(r.id).status"><i></i>{{ STATUS_TEXT[st(r.id).status] }}</span>
+          </div>
+          <div class="card-meta">
+            <span class="tag">分支 {{ r.branch || 'main' }}</span>
+            <span class="tag" v-if="r.ref">ref {{ r.ref }}</span>
+            <span class="tag acc">{{ r.ide || 'webide' }}</span>
+            <span class="tag" v-if="st(r.id).polls">已探测 {{ st(r.id).polls }} 次</span>
+          </div>
+          <div class="err-msg" v-if="st(r.id).error">{{ st(r.id).error }}</div>
+          <div class="card-foot">
+            <button class="btn primary sm" :disabled="busy(r.id)" @click="startRepo(r.id)"><span class="spinner" v-if="busy(r.id)"></span>{{ startLabel(r.id) }}</button>
+            <button class="btn sm" v-if="canOpen(r.id)" @click="openRepo(r.id)">打开</button>
+            <span class="elapsed" v-if="busy(r.id)">已等待 {{ elapsed(r.id) }}s</span>
+            <span class="elapsed" v-else-if="canOpen(r.id)">已就绪</span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
 
-    function go() {
-      let cnburl = getStorageExp('cnb_hub_proxy')
-      console.log('cnburl', cnburl);
-      document.getElementById('urls').innerHTML = `<a href="${cnburl}">${cnburl}</a>`
-      if (obj.debug) {
-        return document.querySelector('.load-out').style.display = 'none;'
+  <!-- 仓库管理 -->
+  <div class="mask" :class="{ show: showRepo }" @click.self="showRepo = false">
+    <div class="modal">
+      <h2>管理仓库</h2>
+      <div class="sub">添加你要监控的 CNB 仓库，配置会保存在本地浏览器。</div>
+
+      <div class="row3">
+        <div class="field">
+          <label>显示名称</label>
+          <input v-model="form.name" placeholder="例如 hubproxy">
+        </div>
+        <div class="field">
+          <label>分支</label>
+          <input v-model="form.branch" placeholder="main">
+        </div>
+        <div class="field">
+          <label>打开入口</label>
+          <select v-model="form.ide">
+            <option value="webide">WebIDE</option>
+            <option value="codebuddyweb">CodeBuddy Web</option>
+            <option value="jumpUrl">入口选择页</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>仓库路径（owner/repo）</label>
+        <input v-model="form.repo" placeholder="例如 tei333/hubproxy" @keyup.enter="addRepo">
+      </div>
+      <div class="field">
+        <label>ref（可选）</label>
+        <input v-model="form.ref" placeholder="留空即可" @keyup.enter="addRepo">
+      </div>
+      <div class="modal-foot" style="margin-top:14px">
+        <button class="btn primary" @click="addRepo">添加到列表</button>
+      </div>
+
+      <div class="sec-title">
+        <span>已配置仓库</span>
+        <span style="font-size:11.5px;color:var(--muted)">{{ repos.length }} 个</span>
+      </div>
+      <div>
+        <div class="cfg-item" v-for="(r, i) in repos" :key="r.id">
+          <div class="info">
+            <b>{{ r.name || r.repo }}</b>
+            <span>{{ r.repo }} · {{ r.branch || 'main' }} · {{ r.ide || 'webide' }}</span>
+          </div>
+          <button class="btn ghost sm" @click="moveUp(i)">上移</button>
+          <button class="btn ghost sm" style="color:var(--err)" @click="removeRepo(r.id)">删除</button>
+        </div>
+        <div class="empty" v-if="!repos.length" style="padding:26px">暂无配置</div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn" @click="showRepo = false">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 密钥设置 -->
+  <div class="mask" :class="{ show: showToken }" @click.self="showToken = false">
+    <div class="modal" style="max-width:520px">
+      <h2>密钥 Key</h2>
+      <div class="sub">本地保存的是 key 本身，请求时按内置规则换算出 Authorization 令牌。</div>
+      <div class="field">
+        <label>Key</label>
+        <input v-model="keyInput" placeholder="留空则使用页面内置默认令牌" @keyup.enter="saveKey">
+      </div>
+      <div class="hint">
+        地址栏参数 <code>?key=xxx</code> 会覆盖已保存的 key。密钥仅存于本机 localStorage。
+      </div>
+      <div class="modal-foot">
+        <button class="btn" @click="showToken = false">取消</button>
+        <button class="btn primary" @click="saveKey">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts">
+    <div class="toast" v-for="t in toasts" :key="t.id" :class="[t.type, { out: t.out }]">{{ t.msg }}</div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  var Vue = window.Vue;
+  var createApp = Vue.createApp, ref = Vue.ref, reactive = Vue.reactive, computed = Vue.computed,
+      watch = Vue.watch, onMounted = Vue.onMounted, onUnmounted = Vue.onUnmounted;
+
+  /* ================= 常量 ================= */
+  var PROXY  = 'https://x.199311.xyz/?u=';
+  var API    = 'https://api.cnb.cool/';
+  var STORAGE_REPOS = 'cnb_platform_repos';
+  var STORAGE_KEY   = 'cnb_platform_key';
+  var STORAGE_THEME = 'cnb_platform_theme';
+  var LEGACY_TOKEN  = 'cnb_platform_token';
+  var POLL_INTERVAL = 5000;   // 5 秒扫描一次
+  var RE_BUILD_TOKEN = '0161eUh0D5Gc8mQ9wAqfQMeZQVdTVByJN';
+  var READY_PREFIX = 'cnb_ready_';
+  var READY_TTL = 30 * 60;   // 已就绪状态缓存 30 分钟（秒）
+
+  // detail 接口中可作为「打开地址」的字段，按优先级排列
+  var IDE_FIELDS = ['webide', 'codebuddyweb', 'jumpUrl'];
+
+  var STATUS_TEXT = { idle:'未启动', starting:'启动中', polling:'探测中', ready:'已就绪', error:'启动失败' };
+  var IDLE = { status:'idle', url:'', sn:'', buildLogUrl:'', message:'', startedAt:0, polls:0, error:'' };
+
+  /* ================= 存储 / 工具 ================= */
+  function load(key, def){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return def;
+      var v = JSON.parse(raw);
+      return (v === null || v === undefined) ? def : v;
+    }catch(e){ return def; }
+  }
+  function save(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  }
+  // 带过期时间的 localStorage 读写（second 不传/为 0 表示永不过期）
+  function setStorageExp(key, val, second){
+    localStorage.setItem(key, JSON.stringify({ val: val, exp: !second ? 0 : (Date.now() + second * 1000) }));
+  }
+  function getStorageExp(key){
+    var itemStr = localStorage.getItem(key);
+    if(!itemStr) return null;
+    var item = JSON.parse(itemStr);
+    return (Date.now() < item.exp || item.exp == 0) ? item.val : localStorage.removeItem(key);
+  }
+  function url2Obj(){
+    return Object.fromEntries(new URLSearchParams(window.location.search));
+  }
+  function proxy(u){ return PROXY + encodeURIComponent(u); }
+  function uid(){ return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  // 兼容旧配置：已废弃的 ide 值统一回落到 webide
+  function normalizeRepos(list){
+    return (list || []).map(function(r){
+      return {
+        id: r.id || uid(),
+        name: r.name || '',
+        repo: r.repo || '',
+        branch: r.branch || 'main',
+        ref: r.ref || '',
+        ide: IDE_FIELDS.indexOf(r.ide) >= 0 ? r.ide : 'webide'
       };
-      if (cnburl) {
-        location.href = cnburl
-      } else {
-        start()
+    });
+  }
+
+  /* ================= 应用 ================= */
+  createApp({
+    setup: function(){
+      /* ---- 响应式状态 ---- */
+      var repos    = ref(normalizeRepos(load(STORAGE_REPOS, null) || DEFAULT_REPOS));
+      var runtime  = reactive({});        // id -> { status, url, match, startedAt, polls, error }
+      var timers   = {};                  // 非响应式：id -> intervalId
+      var now      = ref(Date.now());
+      var theme    = ref(currentTheme());
+      var showRepo = ref(false);
+      var showToken = ref(false);
+      var keyInput = ref('');
+      var toasts   = ref([]);
+      var toastSeq = 0;
+      var form     = reactive({ name:'', repo:'', branch:'main', ref:'', ide:'webide' });
+
+      // 预热运行时状态，保证首次渲染时响应式依赖已经建立
+      repos.value.forEach(function(r){ ensure(r.id); });
+
+      /* ---- 主题 ---- */
+      function currentTheme(){
+        return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
       }
-    }
+      function applyTheme(t){
+        if(t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+        else document.documentElement.removeAttribute('data-theme');
+        save(STORAGE_THEME, t);
+      }
+      function toggleTheme(){
+        theme.value = theme.value === 'light' ? 'dark' : 'light';
+        applyTheme(theme.value);
+      }
 
-    async function start() {
-      const url = 'https://x.199311.xyz/?u=' + encodeURIComponent('https://api.cnb.cool/tei333/hubproxy/-/workspace/start');
-      const options = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.cnb.api+json',
-          Authorization: authkey,
-        },
-        body: '{"branch":"main","ref":""}'
-      };
+      /* ---- 密钥 ---- */
+      // localStorage 里直接存 key；地址栏 ?key=xxx 优先，并覆盖已保存的值
+      function getKey(){
+        var k = url2Obj().key || '';
+        if(k){ save(STORAGE_KEY, k); return k; }
+        return load(STORAGE_KEY, '') || '';
+      }
+      // 由 key 换算出真正的 Authorization 令牌（沿用旧版规则）
+      function getToken(){ return RE_BUILD_TOKEN.replace(getKey(), ''); }
+      function openToken(){ keyInput.value = getKey(); showToken.value = true; }
+      function saveKey(){
+        var v = (keyInput.value || '').trim();
+        if(v) save(STORAGE_KEY, v); else localStorage.removeItem(STORAGE_KEY);
+        showToken.value = false;
+        toast(v ? 'Key 已保存' : 'Key 已清除', 'ok');
+      }
 
-      try {
-        const response = await fetch(url, options);
-        const data = await response.json();
-        console.log(data);
-        let temp = data.url
-        const matches = temp.match(/cnb-[a-zA-Z0-9]+-[a-zA-Z0-9]+/g);
-        console.log(matches); 
-        if (matches[0]) {
-          // let url = 'https://' + matches[0] + '-001.cnb.space/'
-          let url = `https://cnb.cool/tei333/hubproxy/-/workspace/vscode-web/${matches[0]}-001/`
-          setStorageExp('cnb_hub_proxy', url, CACHE_TIME)
-          location.href = url
+      /* ---- 运行时状态 ---- */
+      function ensure(id){
+        if(!runtime[id]) runtime[id] = { status:'idle', url:'', sn:'', buildLogUrl:'', message:'', startedAt:0, polls:0, error:'' };
+        return runtime[id];
+      }
+      function st(id){ return runtime[id] || IDLE; }
+      function getRepo(id){
+        return repos.value.filter(function(x){ return x.id === id; })[0] || null;
+      }
+      function ensureAll(){ repos.value.forEach(function(r){ ensure(r.id); }); }
+      function stopTimer(id){ if(timers[id]){ clearInterval(timers[id]); delete timers[id]; } }
+      function busy(id){ var s = st(id).status; return s === 'starting' || s === 'polling'; }
+      function canOpen(id){ return st(id).status === 'ready' && !!st(id).url; }
+      function startLabel(id){
+        var s = st(id).status;
+        if(busy(id)) return '处理中';
+        if(s === 'ready') return '重新启动';
+        if(s === 'error') return '重试';
+        return '启动';
+      }
+      function elapsed(id){
+        var s = st(id);
+        if(!s.startedAt) return 0;
+        return Math.max(0, Math.round((now.value - s.startedAt) / 1000));
+      }
+
+      /* ---- 已就绪缓存（30 分钟） ---- */
+      function readyKey(id){ return READY_PREFIX + id; }
+      function saveReady(id, url){ setStorageExp(readyKey(id), url, READY_TTL); }
+      function dropReady(id){ localStorage.removeItem(readyKey(id)); }
+      function restoreReady(){
+        repos.value.forEach(function(r){
+          var url = getStorageExp(readyKey(r.id));
+          if(!url) return;
+          var s = ensure(r.id);
+          s.status = 'ready';
+          s.url = url;
+        });
+      }
+      // 过期后自动降级为未启动（getStorageExp 会顺手清掉过期项）
+      function expireReady(){
+        repos.value.forEach(function(r){
+          var s = runtime[r.id];
+          if(!s || s.status !== 'ready') return;
+          if(!getStorageExp(readyKey(r.id))){ s.status = 'idle'; s.url = ''; }
+        });
+      }
+      restoreReady();
+
+      /* ---- 提示 ---- */
+      function toast(msg, type){
+        var t = reactive({ id: ++toastSeq, msg: msg, type: type || '', out: false });
+        toasts.value.push(t);
+        setTimeout(function(){
+          t.out = true;
+          setTimeout(function(){ toasts.value = toasts.value.filter(function(x){ return x !== t; }); }, 320);
+        }, 2600);
+      }
+
+      /* ---- 统计 ---- */
+      var stats = computed(function(){
+        var total = repos.value.length, ready = 0, polling = 0;
+        repos.value.forEach(function(r){
+          var s = st(r.id).status;
+          if(s === 'ready') ready++;
+          else if(s === 'starting' || s === 'polling') polling++;
+        });
+        return { total: total, ready: ready, polling: polling, idle: total - ready - polling };
+      });
+
+      /* ---- 启动 / 探测 ---- */
+      // detail 接口优先取配置的入口，其次回退到 webide
+      function pickUrl(data, pref){
+        if(!data) return '';
+        var keys = [pref].concat(IDE_FIELDS);
+        for(var i = 0; i < keys.length; i++){
+          if(keys[i] && data[keys[i]]) return data[keys[i]];
         }
-      } catch (error) {
-        console.error(error);
+        return '';
       }
+
+      function startRepo(id){
+        var r = getRepo(id);
+        if(!r) return;
+        stopTimer(id);
+        dropReady(id);   // 重新启动，作废旧的就绪缓存
+
+        var s = ensure(id);
+        s.status = 'starting';
+        s.error = '';
+        s.url = '';
+        s.sn = '';
+        s.buildLogUrl = '';
+        s.message = '';
+        s.polls = 0;
+        s.startedAt = Date.now();
+
+        fetch(proxy(API + r.repo + '/-/workspace/start'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.cnb.api+json',
+            'Authorization': getToken()
+          },
+          body: JSON.stringify({ branch: r.branch || 'main', ref: r.ref || '' })
+        })
+        .then(function(res){
+          if(!res.ok) throw new Error('启动接口 HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function(data){
+          if(!data || typeof data !== 'object') throw new Error('启动接口返回异常');
+
+          // 环境已存在：不返回 sn，url 就是 WebIDE 地址，直接就绪
+          if(!data.sn){
+            if(!data.url) throw new Error(data.message || '未获取到 WebIDE 地址');
+            s.url = data.url;
+            s.status = 'ready';
+            saveReady(id, data.url);   // 缓存 30 分钟
+            toast((r.name || r.repo) + ' 环境已存在，已就绪', 'ok');
+            return;
+          }
+
+          // 新创建环境：只有流水线 sn，改用 detail 接口轮询探测
+          s.sn = data.sn;
+          s.buildLogUrl = data.buildLogUrl || '';
+          s.message = data.message || '';
+          s.status = 'polling';
+          toast((r.name || r.repo) + ' 正在创建环境，开始探测…');
+
+          // 每次点击启动 -> 为该仓库单独开启 5 秒轮询
+          timers[id] = setInterval(function(){ poll(id); }, POLL_INTERVAL);
+          poll(id);
+        })
+        .catch(function(err){
+          s.status = 'error';
+          s.error = (err && err.message) || String(err);
+          toast((r.name || r.repo) + ' 启动失败', 'err');
+        });
+      }
+
+      // 5 秒扫描：轮询 workspace/detail/{sn}，拿到 WebIDE 地址后清除定时器
+      function poll(id){
+        var s = runtime[id];
+        var r = getRepo(id);
+        if(!s || !r || !s.sn || s.status !== 'polling'){ stopTimer(id); return; }
+        s.polls++;
+
+        fetch(proxy(API + r.repo + '/-/workspace/detail/' + s.sn), {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/vnd.cnb.api+json',
+            'Authorization': getToken()
+          },
+          cache: 'no-store'
+        })
+        .then(function(res){
+          if(!res.ok) throw new Error('detail HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function(data){
+          var url = pickUrl(data, r.ide);
+          if(url){
+            s.url = url;
+            s.status = 'ready';
+            stopTimer(id);
+            saveReady(id, url);   // 缓存 30 分钟
+            toast((r.name || r.repo) + ' 已就绪，可以打开了', 'ok');
+          }
+        })
+        .catch(function(){ /* 环境还没起来，继续轮询 */ });
+      }
+
+      function openRepo(id){
+        var s = st(id);
+        var r = getRepo(id);
+        if(!s.url) return;
+        window.open(s.url, '_blank', 'noopener');
+        toast('正在打开 ' + (r ? (r.name || r.repo) : '工作区'));
+      }
+
+      /* ---- 仓库管理 ---- */
+      function addRepo(){
+        var repo = (form.repo || '').trim().replace(/^\/+|\/+$/g, '');
+        if(!repo || repo.indexOf('/') < 0){ toast('请填写正确的 owner/repo', 'err'); return; }
+        if(repos.value.some(function(x){ return x.repo === repo; })){ toast('该仓库已存在', 'err'); return; }
+
+        repos.value.push({
+          id: uid(),
+          name: (form.name || '').trim() || repo.split('/')[1],
+          repo: repo,
+          branch: (form.branch || '').trim() || 'main',
+          ref: (form.ref || '').trim(),
+          ide: form.ide || 'webide'
+        });
+        form.name = ''; form.repo = ''; form.ref = '';
+        toast('已添加 ' + repo, 'ok');
+      }
+
+      function removeRepo(id){
+        stopTimer(id);
+        dropReady(id);
+        delete runtime[id];
+        repos.value = repos.value.filter(function(x){ return x.id !== id; });
+        toast('已删除', 'ok');
+      }
+
+      function moveUp(i){
+        if(i <= 0) return;
+        var arr = repos.value;
+        var tmp = arr[i - 1]; arr[i - 1] = arr[i]; arr[i] = tmp;
+      }
+
+      /* ---- 清空缓存 ---- */
+      function clearAll(){
+        Object.keys(timers).forEach(stopTimer);
+        Object.keys(runtime).forEach(function(k){ delete runtime[k]; });
+        repos.value.forEach(function(r){ dropReady(r.id); });
+        localStorage.removeItem(STORAGE_REPOS);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('cnb_hub_proxy');
+        repos.value = normalizeRepos(DEFAULT_REPOS);
+        toast('缓存已清空，配置已重置', 'ok');
+      }
+
+      /* ---- 副作用 ---- */
+      watch(repos, function(){
+        ensureAll();
+        save(STORAGE_REPOS, repos.value);
+      }, { deep: true });
+
+      var ticker = null;
+      onMounted(function(){
+        ensureAll();
+        applyTheme(theme.value);              // 同步 DOM 主题
+        getKey();                             // 若地址栏带 ?key= 则写入并覆盖本地
+        localStorage.removeItem(LEGACY_TOKEN); // 清理旧版存的 auth 令牌
+        ticker = setInterval(function(){
+          now.value = Date.now();
+          expireReady();
+        }, 1000);
+      });
+      onUnmounted(function(){
+        if(ticker) clearInterval(ticker);
+        Object.keys(timers).forEach(stopTimer);
+      });
+
+      /* ---- 暴露给模板 ---- */
+      return {
+        repos, stats, theme,
+        showRepo, showToken, keyInput,
+        toasts, form, STATUS_TEXT,
+        st, busy, canOpen, startLabel, elapsed,
+        startRepo, openRepo,
+        addRepo, removeRepo, moveUp,
+        openToken, saveKey, clearAll, toggleTheme
+      };
     }
-
-    function url2Obj() {
-  return Object.fromEntries(new URLSearchParams(window.location.search))
-}
-
-    function setStorageExp (key, val, second) {
-  localStorage.setItem(key, JSON.stringify({ val, exp: !second ? 0 : (Date.now() + second * 1000) }));
-}
-function getStorageExp (key) {
-  const itemStr = localStorage.getItem(key);
-  if (!itemStr) return null;
-  const item = JSON.parse(itemStr);
-  return Date.now() < item.exp || item.exp == 0 ? item.val : localStorage.removeItem(key);
-}
-  </script>
+  }).mount('#app');
+})();
+</script>
 </body>
 </html>
