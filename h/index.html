@@ -135,6 +135,15 @@
   .btn.ghost{background:transparent}
   .btn.icon{width:38px;padding:0;font-size:15px}
   .btn.sm{height:34px;padding:0 13px;font-size:13px;border-radius:10px}
+  /* 顶栏下拉 */
+  .select-wrap{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 10px 0 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--panel);color:var(--muted);
+    font-size:13px;font-weight:600;white-space:nowrap;transition:.22s cubic-bezier(.4,0,.2,1)}
+  .select-wrap:hover{background:var(--panel-2);border-color:var(--border-strong)}
+  .select-wrap select{width:auto;height:26px;padding:0 4px 0 0;border:none;background:transparent;
+    color:var(--text);font-size:13px;font-weight:600;outline:none;cursor:pointer;box-shadow:none}
+  .select-wrap select:focus{border:none;background:transparent;box-shadow:none}
+  .select-wrap select option{background:var(--option-bg);color:var(--text)}
 
   /* 统计条 */
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px}
@@ -260,6 +269,14 @@
         <button class="btn ghost sm" @click="openToken">密钥</button>
         <button class="btn ghost sm" @click="clearAll">清空缓存</button>
         <button class="btn deep sm" @click="showRepo = true">管理仓库</button>
+        <label class="select-wrap" title="探测就绪后自动打开">
+          <span>就绪后</span>
+          <select v-model="autoOpenMode">
+            <option value="off">不自动打开</option>
+            <option value="origin">打开原始</option>
+            <option value="custom">打开自定义</option>
+          </select>
+        </label>
       </div>
     </header>
 
@@ -293,6 +310,7 @@
           <div class="card-foot">
             <button class="btn primary sm" :disabled="busy(r.id)" @click="startRepo(r.id)"><span class="spinner" v-if="busy(r.id)"></span>{{ startLabel(r.id) }}</button>
             <button class="btn sm" v-if="canOpen(r.id)" @click="openRepo(r.id)">打开</button>
+            <button class="btn sm" v-if="canCustom(r.id)" @click="openCustom(r.id)">开自定义</button>
             <span class="elapsed" v-if="busy(r.id)">已等待 {{ elapsed(r.id) }}s</span>
             <span class="elapsed" v-else-if="canOpen(r.id)">已就绪</span>
           </div>
@@ -333,6 +351,10 @@
         <label>ref（可选）</label>
         <input v-model="form.ref" placeholder="留空即可" @keyup.enter="addRepo">
       </div>
+      <div class="field">
+        <label>自定义 URL（可选，$sn 会替换为流水线 sn）</label>
+        <input v-model="form.custom" placeholder="例如 http://192.168.3.222:20001?name=$sn" @keyup.enter="addRepo">
+      </div>
       <div class="modal-foot" style="margin-top:14px">
         <button class="btn primary" @click="addRepo">添加到列表</button>
       </div>
@@ -345,7 +367,8 @@
         <div class="cfg-item" v-for="(r, i) in repos" :key="r.id">
           <div class="info">
             <b>{{ r.name || r.repo }}</b>
-            <span>{{ r.repo }} · {{ r.branch || 'main' }} · {{ r.ide || 'webide' }}</span>
+            <span v-if="r.custom">{{ r.repo }} · {{ r.branch || 'main' }} · 自定义 {{ r.custom }}</span>
+            <span v-else>{{ r.repo }} · {{ r.branch || 'main' }} · {{ r.ide || 'webide' }}</span>
           </div>
           <button class="btn ghost sm" @click="moveUp(i)">上移</button>
           <button class="btn ghost sm" style="color:var(--err)" @click="removeRepo(r.id)">删除</button>
@@ -398,6 +421,7 @@
   var STORAGE_REPOS = 'cnb_platform_repos';
   var STORAGE_KEY   = 'cnb_platform_key';
   var STORAGE_THEME = 'cnb_platform_theme';
+  var STORAGE_AUTO  = 'cnb_platform_auto_open';
   var LEGACY_TOKEN  = 'cnb_platform_token';
   var POLL_INTERVAL = 5000;   // 5 秒扫描一次
   var RE_BUILD_TOKEN = '0161eUh0D5Gc8mQ9wAqfQMeZQVdTVByJN';
@@ -437,6 +461,14 @@
   }
   function proxy(u){ return PROXY + encodeURIComponent(u); }
   function uid(){ return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  // 就绪后自动打开的方式：off 不打开 / origin 打开原始 / custom 打开自定义
+  // 兼容旧版布尔值（true -> origin，false -> off）
+  function loadAutoMode(){
+    var v = load(STORAGE_AUTO, 'origin');
+    if(v === true) return 'origin';
+    if(v === false) return 'off';
+    return (v === 'off' || v === 'custom') ? v : 'origin';
+  }
   // 兼容旧配置：已废弃的 ide 值统一回落到 webide
   function normalizeRepos(list){
     return (list || []).map(function(r){
@@ -446,7 +478,8 @@
         repo: r.repo || '',
         branch: r.branch || 'main',
         ref: r.ref || '',
-        ide: IDE_FIELDS.indexOf(r.ide) >= 0 ? r.ide : 'webide'
+        ide: IDE_FIELDS.indexOf(r.ide) >= 0 ? r.ide : 'webide',
+        custom: r.custom || ''
       };
     });
   }
@@ -460,12 +493,13 @@
       var timers   = {};                  // 非响应式：id -> intervalId
       var now      = ref(Date.now());
       var theme    = ref(currentTheme());
+      var autoOpenMode = ref(loadAutoMode());   // off | origin | custom，默认 origin
       var showRepo = ref(false);
       var showToken = ref(false);
       var keyInput = ref('');
       var toasts   = ref([]);
       var toastSeq = 0;
-      var form     = reactive({ name:'', repo:'', branch:'main', ref:'', ide:'webide' });
+      var form     = reactive({ name:'', repo:'', branch:'main', ref:'', ide:'webide', custom:'' });
 
       // 预热运行时状态，保证首次渲染时响应式依赖已经建立
       repos.value.forEach(function(r){ ensure(r.id); });
@@ -529,15 +563,19 @@
 
       /* ---- 已就绪缓存（30 分钟） ---- */
       function readyKey(id){ return READY_PREFIX + id; }
-      function saveReady(id, url){ setStorageExp(readyKey(id), url, READY_TTL); }
+      // 缓存里存 { url, sn }，兼容旧版直接存 url 字符串
+      function saveReady(id, url, sn){ setStorageExp(readyKey(id), { url: url, sn: sn || '' }, READY_TTL); }
       function dropReady(id){ localStorage.removeItem(readyKey(id)); }
       function restoreReady(){
         repos.value.forEach(function(r){
-          var url = getStorageExp(readyKey(r.id));
+          var v = getStorageExp(readyKey(r.id));
+          if(!v) return;
+          var url = typeof v === 'string' ? v : (v.url || '');
           if(!url) return;
           var s = ensure(r.id);
           s.status = 'ready';
           s.url = url;
+          s.sn = typeof v === 'string' ? '' : (v.sn || '');
         });
       }
       // 过期后自动降级为未启动（getStorageExp 会顺手清掉过期项）
@@ -545,7 +583,7 @@
         repos.value.forEach(function(r){
           var s = runtime[r.id];
           if(!s || s.status !== 'ready') return;
-          if(!getStorageExp(readyKey(r.id))){ s.status = 'idle'; s.url = ''; }
+          if(!getStorageExp(readyKey(r.id))){ s.status = 'idle'; s.url = ''; s.sn = ''; }
         });
       }
       restoreReady();
@@ -619,8 +657,9 @@
             if(!data.url) throw new Error(data.message || '未获取到 WebIDE 地址');
             s.url = data.url;
             s.status = 'ready';
-            saveReady(id, data.url);   // 缓存 30 分钟
+            saveReady(id, data.url, s.sn);   // 缓存 30 分钟（url + sn）
             toast((r.name || r.repo) + ' 环境已存在，已就绪', 'ok');
+            autoOpenIfNeeded(id);
             return;
           }
 
@@ -664,14 +703,50 @@
         .then(function(data){
           var url = pickUrl(data, r.ide);
           if(url){
+            console.log('ready', id, 'url', url)
             s.url = url;
             s.status = 'ready';
             stopTimer(id);
-            saveReady(id, url);   // 缓存 30 分钟
+            saveReady(id, url, s.sn);   // 缓存 30 分钟（url + sn）
             toast((r.name || r.repo) + ' 已就绪，可以打开了', 'ok');
+            autoOpenIfNeeded(id);
           }
         })
         .catch(function(){ /* 环境还没起来，继续轮询 */ });
+      }
+
+      // 自定义地址：把 $sn 替换成流水线 sn
+      function buildCustom(r){
+        if(!r || !r.custom) return '';
+        return r.custom.replace(/\$sn/g, st(r.id).sn || '');
+      }
+      function canCustom(id){
+        var r = getRepo(id);
+        if(!r || !r.custom) return false;
+        if(r.custom.indexOf('$sn') < 0) return true;
+        return !!st(id).sn;
+      }
+
+      // 探测到地址后，按顶栏选择的方式自动打开
+      function autoOpenIfNeeded(id){
+        console.log('autoOpenIfNeeded', id, autoOpenMode.value)
+        var mode = autoOpenMode.value;
+        var r = getRepo(id);
+        if(mode === 'off') return;
+        // 选了自定义但该仓库没配 custom（或 sn 还没解析出来）时，回退到原始地址
+        if(mode === 'custom'){
+          var c = canCustom(id) ? buildCustom(r) : '';
+          if(c){
+            window.open(c, '_blank');
+            toast('已自动打开自定义 ' + (r ? (r.name || r.repo) : '地址'));
+            return;
+          }
+        }
+        var s = st(id);
+        if(!s.url) return;
+        console.log('autoOpenIfNeeded', id, autoOpenMode.value, s.url)
+        window.open(s.url, '_blank');
+        toast('已自动打开 ' + (r ? (r.name || r.repo) : '工作区'));
       }
 
       function openRepo(id){
@@ -680,6 +755,14 @@
         if(!s.url) return;
         window.open(s.url, '_blank', 'noopener');
         toast('正在打开 ' + (r ? (r.name || r.repo) : '工作区'));
+      }
+
+      function openCustom(id){
+        var r = getRepo(id);
+        var url = buildCustom(r);
+        if(!url) return;
+        window.open(url, '_blank', 'noopener');
+        toast('正在打开 ' + (r ? (r.name || r.repo) : '') + ' 自定义地址');
       }
 
       /* ---- 仓库管理 ---- */
@@ -694,9 +777,10 @@
           repo: repo,
           branch: (form.branch || '').trim() || 'main',
           ref: (form.ref || '').trim(),
-          ide: form.ide || 'webide'
+          ide: form.ide || 'webide',
+          custom: (form.custom || '').trim()
         });
-        form.name = ''; form.repo = ''; form.ref = '';
+        form.name = ''; form.repo = ''; form.ref = ''; form.custom = '';
         toast('已添加 ' + repo, 'ok');
       }
 
@@ -732,6 +816,8 @@
         save(STORAGE_REPOS, repos.value);
       }, { deep: true });
 
+      watch(autoOpenMode, function(v){ save(STORAGE_AUTO, v || 'origin'); });
+
       var ticker = null;
       onMounted(function(){
         ensureAll();
@@ -750,11 +836,11 @@
 
       /* ---- 暴露给模板 ---- */
       return {
-        repos, stats, theme,
+        repos, stats, theme, autoOpenMode,
         showRepo, showToken, keyInput,
         toasts, form, STATUS_TEXT,
-        st, busy, canOpen, startLabel, elapsed,
-        startRepo, openRepo,
+        st, busy, canOpen, canCustom, startLabel, elapsed,
+        startRepo, openRepo, openCustom,
         addRepo, removeRepo, moveUp,
         openToken, saveKey, clearAll, toggleTheme
       };
