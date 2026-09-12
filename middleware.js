@@ -76,6 +76,7 @@ function isAllowedGeo(geo) {
   if (canonicalRegionCode(geo.countryCodeAlpha2) !== canonicalRegionCode(ALLOWED_COUNTRY_CODE)) {
     return false;
   }
+  return true
 
 //   // 2. 行政区划代码命中白名单（官方数据中最可靠的字段）
 //   if (ALLOWED_REGION_CODES.has(canonicalRegionCode(geo.regionCode))) {
