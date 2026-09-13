@@ -174,7 +174,7 @@
 
   .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
   .card-title{font-size:16px;font-weight:700;letter-spacing:.2px;word-break:break-all}
-  .card-repo{font-size:12.5px;color:var(--muted);margin-top:5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+  .card-repo{font-size:12.5px;color:var(--brand-color-4);margin-top:5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;cursor: pointer;}
   .card-meta{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 12px}
   .tag{font-size:11.5px;padding:3px 9px;border-radius:7px;background:var(--tag-bg);
     border:1px solid var(--border);color:var(--tag-color);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -296,7 +296,7 @@
           <div class="card-head">
             <div style="min-width:0">
               <div class="card-title">{{ r.name || r.repo }}</div>
-              <div class="card-repo">{{ r.repo }}</div>
+              <div class="card-repo" @click="openOriRepo(r.repo)">{{ r.repo }}</div>
             </div>
             <span class="pill" :class="st(r.id).status"><i></i>{{ STATUS_TEXT[st(r.id).status] }}</span>
           </div>
@@ -753,15 +753,19 @@
         var s = st(id);
         var r = getRepo(id);
         if(!s.url) return;
-        window.open(s.url, '_blank', 'noopener');
+        window.open(s.url, '_blank');
         toast('正在打开 ' + (r ? (r.name || r.repo) : '工作区'));
+      }
+
+      function openOriRepo(val) {
+        window.open(`https://cnb.cool/${val}`, '_blank');
       }
 
       function openCustom(id){
         var r = getRepo(id);
         var url = buildCustom(r);
         if(!url) return;
-        window.open(url, '_blank', 'noopener');
+        window.open(url, '_blank');
         toast('正在打开 ' + (r ? (r.name || r.repo) : '') + ' 自定义地址');
       }
 
@@ -840,7 +844,7 @@
         showRepo, showToken, keyInput,
         toasts, form, STATUS_TEXT,
         st, busy, canOpen, canCustom, startLabel, elapsed,
-        startRepo, openRepo, openCustom,
+        startRepo, openRepo, openCustom, openOriRepo,
         addRepo, removeRepo, moveUp,
         openToken, saveKey, clearAll, toggleTheme
       };
