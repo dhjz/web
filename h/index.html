@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
-<title>CNB 一键启动平台</title>
+<title>CNB控台</title>
 <script>
   /* 尽早应用主题，避免闪白 */
   (function(){
@@ -261,7 +261,7 @@
         <div class="logo">CNB</div>
         <div>
           <h1>一键启动 & 监控平台</h1>
-          <p>配置多个仓库 · 手动启动 · 5 秒自动探测就绪</p>
+          <p>配置多个仓库 · 手动启动 · {{ pollSec }} 秒自动探测就绪</p>
         </div>
       </div>
       <div class="tools">
@@ -275,6 +275,12 @@
             <option value="off">不自动打开</option>
             <option value="origin">打开原始</option>
             <option value="custom">打开自定义</option>
+          </select>
+        </label>
+        <label class="select-wrap" title="探测间隔（秒），保存到本地，刷新页面后生效">
+          <span>刷新时间</span>
+          <select v-model.number="pollSec" @change="savePollSec">
+            <option v-for="s in POLL_OPTIONS" :key="s" :value="s">{{ s }} 秒</option>
           </select>
         </label>
       </div>
@@ -423,7 +429,9 @@
   var STORAGE_THEME = 'cnb_platform_theme';
   var STORAGE_AUTO  = 'cnb_platform_auto_open';
   var LEGACY_TOKEN  = 'cnb_platform_token';
-  var POLL_INTERVAL = 5000;   // 5 秒扫描一次
+  var STORAGE_POLL  = 'cnb_platform_poll';
+  var POLL_OPTIONS  = [5, 8, 10, 12, 15, 20];   // 可选探测间隔（秒）
+  var POLL_DEFAULT  = 5;
   var RE_BUILD_TOKEN = '0161eUh0D5Gc8mQ9wAqfQMeZQVdTVByJN';
   var READY_PREFIX = 'cnb_ready_';
   var READY_TTL = 30 * 60;   // 已就绪状态缓存 30 分钟（秒）
@@ -469,6 +477,11 @@
     if(v === false) return 'off';
     return (v === 'off' || v === 'custom') ? v : 'origin';
   }
+  // 探测间隔（秒），非法值回落到默认值
+  function loadPollSec(){
+    var v = parseInt(load(STORAGE_POLL, POLL_DEFAULT), 10);
+    return POLL_OPTIONS.indexOf(v) >= 0 ? v : POLL_DEFAULT;
+  }
   // 兼容旧配置：已废弃的 ide 值统一回落到 webide
   function normalizeRepos(list){
     return (list || []).map(function(r){
@@ -494,6 +507,8 @@
       var now      = ref(Date.now());
       var theme    = ref(currentTheme());
       var autoOpenMode = ref(loadAutoMode());   // off | origin | custom，默认 origin
+      var pollSec  = ref(loadPollSec());        // 探测间隔（秒），保存到 localStorage
+      var pollInterval = pollSec.value * 1000;  // 本次会话实际使用的间隔（页面刷新才更新）
       var showRepo = ref(false);
       var showToken = ref(false);
       var keyInput = ref('');
@@ -651,7 +666,7 @@
         })
         .then(function(data){
           if(!data || typeof data !== 'object') throw new Error('启动接口返回异常');
-
+          console.log('start', r.name, data)
           // 环境已存在：不返回 sn，url 就是 WebIDE 地址，直接就绪
           if(!data.sn){
             if(!data.url) throw new Error(data.message || '未获取到 WebIDE 地址');
@@ -670,8 +685,8 @@
           s.status = 'polling';
           toast((r.name || r.repo) + ' 正在创建环境，开始探测…');
 
-          // 每次点击启动 -> 为该仓库单独开启 5 秒轮询
-          timers[id] = setInterval(function(){ poll(id); }, POLL_INTERVAL);
+          // 每次点击启动 -> 为该仓库单独开启轮询（间隔取页面加载时的设置）
+          timers[id] = setInterval(function(){ poll(id); }, pollInterval);
           poll(id);
         })
         .catch(function(err){
@@ -732,6 +747,7 @@
         console.log('autoOpenIfNeeded', id, autoOpenMode.value)
         var mode = autoOpenMode.value;
         var r = getRepo(id);
+        setTitle(r ? ((r.name || r.repo) + '已就绪') : '')
         if(mode === 'off') return;
         // 选了自定义但该仓库没配 custom（或 sn 还没解析出来）时，回退到原始地址
         if(mode === 'custom'){
@@ -747,6 +763,16 @@
         console.log('autoOpenIfNeeded', id, autoOpenMode.value, s.url)
         window.open(s.url, '_blank');
         toast('已自动打开 ' + (r ? (r.name || r.repo) : '工作区'));
+      }
+
+      function setTitle(val) {
+        let title = document.title;
+        if (val) {
+          document.title = `${title} - ${val}`;
+          setTimeout(() => {
+            document.title = 'CNB控台';
+          }, 3000);
+        }
       }
 
       function openRepo(id){
@@ -822,6 +848,13 @@
 
       watch(autoOpenMode, function(v){ save(STORAGE_AUTO, v || 'origin'); });
 
+      // 探测间隔变更：仅保存到 localStorage，页面刷新后生效
+      function savePollSec(){
+        var sec = parseInt(pollSec.value, 10);
+        if(POLL_OPTIONS.indexOf(sec) < 0) return;
+        save(STORAGE_POLL, sec);
+      }
+
       var ticker = null;
       onMounted(function(){
         ensureAll();
@@ -841,6 +874,7 @@
       /* ---- 暴露给模板 ---- */
       return {
         repos, stats, theme, autoOpenMode,
+        pollSec, POLL_OPTIONS, savePollSec,
         showRepo, showToken, keyInput,
         toasts, form, STATUS_TEXT,
         st, busy, canOpen, canCustom, startLabel, elapsed,
