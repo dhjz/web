@@ -6,6 +6,7 @@
     <title>FunASR 实时语音识别测试</title>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
     <script src="./useFunAsr.js"></script>
+    <script src="./useFunAsrFile.js"></script>
     <style>
         :root {
             --page-bg: linear-gradient(135deg, #0b1220 0%, #16233b 55%, #0b1220 100%);
@@ -392,6 +393,10 @@
                 <div class="sub">FunASR 2pass 流式语音识别 · WebSocket + PCM  <a target="_blank" href="tts.html">tts.html</a></div>
             </div>
             <div class="status-wrap">
+                <button class="theme-btn" @click="onFileBtn"
+                        :title="fileAsr.recognizing.value ? ('文件识别中 ' + fileAsr.fileProgress.value + '% · 点击取消') : '上传音频文件识别'">
+                    {{ fileAsr.recognizing.value ? '⏳' : '📁' }}
+                </button>
                 <button class="theme-btn" @click="toggleTheme" :title="theme === 'dark' ? '切换到白天模式' : '切换到黑夜模式'">
                     {{ theme === 'dark' ? '☀️' : '🌙' }}
                 </button>
@@ -401,7 +406,12 @@
                 <span class="badge" :class="asr.recording.value ? 'on' : 'off'">
                     <span class="circle"></span>{{ asr.recording.value ? '录音中' : '未录音' }}
                 </span>
+                <span class="badge on" v-if="fileAsr.recognizing.value">
+                    <span class="circle"></span>文件 {{ fileAsr.fileProgress.value }}%
+                </span>
             </div>
+            <input id="funasr-file-input" type="file" style="display:none"
+                   accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.webm,.flac,.pcm" @change="onFileChange" />
         </div>
 
         <div class="main">
@@ -540,7 +550,9 @@ const app = createApp({
             localStorage.setItem(CONFIG_KEY, JSON.stringify(val))
         }, { deep: true })
 
-        const asr = useFunASR(config)
+        const asr = useFunASR(config)   // 实时识别(原有 hook, 未做任何改动)
+        // 文件识别: 独立 hook(useFunAsrFile.js), 复用实时识别的 logs / result / finalText, 两者互不影响
+        const fileAsr = useFunAsrFile(config, { logs: asr.logs, result: asr.result, finalText: asr.finalText })
 
         // 历史 WebSocket 地址: 启动时从 localStorage 恢复, 点击连接服务时写入
         function loadHistory() {
@@ -615,8 +627,27 @@ const app = createApp({
             asr.recording.value ? asr.stop() : asr.startASR()
         }
 
-        return { config, asr, reversedLogs, clearLogs, toggleConnect, toggleRecord, theme, toggleTheme,
-            historyList, historyOpen, useHistory, removeHistory, clearHistory }
+        /** 上传文件按钮: 识别中再点一次 = 取消, 否则打开文件选择框 */
+        function onFileBtn() {
+            if (fileAsr.recognizing.value) { fileAsr.cancel(); return }
+            document.getElementById('funasr-file-input')?.click()
+        }
+
+        /**
+         * 选择音频文件后直接识别.
+         * recognizeFile 用一条独立连接, 无需先点"连接服务", 也不影响麦克风的实时识别。
+         */
+        function onFileChange(e) {
+            const file = e.target.files && e.target.files[0]
+            e.target.value = ''   // 清空, 允许重复选择同一个文件
+            if (!file) return
+            // 麦克风正在录时先停掉, 避免两路音频混进同一份字幕
+            if (asr.recording.value) asr.stop()
+            fileAsr.recognizeFile(file)
+        }
+
+        return { config, asr, fileAsr, reversedLogs, clearLogs, toggleConnect, toggleRecord, onFileBtn, onFileChange,
+            theme, toggleTheme, historyList, historyOpen, useHistory, removeHistory, clearHistory }
     }
 })
 
