@@ -210,7 +210,7 @@
 
         /* result */
         .result-box {
-            min-height: 150px;
+            min-height: 250px;
             background: var(--panel-bg);
             border: 1px solid var(--card-border);
             border-radius: 12px;
@@ -228,10 +228,8 @@
         .logs-panel {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 130px);
+            height: calc(100vh - 370px);
             min-height: 480px;
-            position: sticky;
-            top: 24px;
         }
         .logs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .logs-header .card-title { margin-bottom: 0; }
@@ -464,6 +462,14 @@
                 </div>
 
                 <div class="card">
+                    <div class="card-title"><span class="icon">💬</span>实时识别结果</div>
+                    <div class="result-box" :class="{ empty: !asr.result.value }">{{ asr.result.value || '等待识别...' }}</div>
+                    <div class="final-line">最终文本(已确认): <b>{{ asr.finalText.value || '—' }}</b></div>
+                </div>
+            </div>
+
+            <div class="right">
+                <div class="card">
                     <div class="card-title"><span class="icon">⏯</span>控制</div>
                     <div class="btn-group">
                         <button class="btn" :class="asr.connected.value ? 'btn-danger' : 'btn-primary'" @click="toggleConnect">
@@ -482,29 +488,23 @@
                         <span class="val">{{ asr.volume.value }}</span>
                     </div>
                 </div>
-
-                <div class="card">
-                    <div class="card-title"><span class="icon">💬</span>实时识别结果</div>
-                    <div class="result-box" :class="{ empty: !asr.result.value }">{{ asr.result.value || '等待识别...' }}</div>
-                    <div class="final-line">最终文本(已确认): <b>{{ asr.finalText.value || '—' }}</b></div>
-                </div>
-            </div>
-
-            <!-- 右侧: 日志(最新在最上面) -->
-            <div class="card logs-panel">
-                <div class="logs-header">
-                    <div class="card-title"><span class="icon">📋</span>日志 <span class="tip">(最新在前)</span></div>
-                    <button class="clear-btn" @click="clearLogs">清空</button>
-                </div>
-                <div class="logs-body">
-                    <div v-if="reversedLogs.length === 0" class="log-empty">暂无日志</div>
-                    <div v-for="(log, i) in reversedLogs" :key="i" class="log-line">
-                        <span class="log-time">{{ log.time }}</span>
-                        <span class="log-type" :class="'t-' + log.typeClass">{{ log.typeLabel }}</span>
-                        <span class="log-msg">{{ log.msg }}</span>
+                <!-- 右侧: 日志(最新在最上面) -->
+                <div class="card logs-panel">
+                    <div class="logs-header">
+                        <div class="card-title"><span class="icon">📋</span>日志 <span class="tip">(最新在前)</span></div>
+                        <button class="clear-btn" @click="clearLogs">清空</button>
+                    </div>
+                    <div class="logs-body">
+                        <div v-if="reversedLogs.length === 0" class="log-empty">暂无日志</div>
+                        <div v-for="(log, i) in reversedLogs" :key="i" class="log-line">
+                            <span class="log-time">{{ log.time }}</span>
+                            <span class="log-type" :class="'t-' + log.typeClass">{{ log.typeLabel }}</span>
+                            <span class="log-msg">{{ log.msg }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
