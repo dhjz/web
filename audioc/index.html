@@ -1,169 +1,2099 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>音频格式转换</title>
-  <meta name="keywords" content="MP3转换器,音频转换器,音频转换">
-  <meta name="description" content="在线音频转换器软件.可一键实现MP3,APE,FLAC,ACC,M4A,WMA,OGG,AC3,M4R等格式的音频转换.">
-  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
-  <link rel="stylesheet" href="css/index.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FFmpeg 音频转换器 · 纯浏览器 · WebAssembly</title>
+<style>
+  /* 默认白天；夜间由 html[data-theme="dark"] 覆盖，选择存 localStorage */
+  :root {
+    color-scheme: light;
+    --bg: #f6f8fa;
+    --panel: #ffffff;
+    --panel2: #f2f4f8;
+    --line: #d7dee7;
+    --fg: #1f2328;
+    --muted: #5b6673;
+    --accent: #0969da;
+    --accent2: #0550ae;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --err: #cf222e;
+    --log-bg: #f2f4f8;
+    --log-fg: #24292f;
+    --on-accent: #ffffff;
+    --warn-bg: rgba(154, 103, 0, .08);
+    --hover-bg: rgba(9, 105, 218, .06);
+    --radius: 10px;
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel2: #1c2230;
+    --line: #2a3240;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2f81f7;
+    --accent2: #1f6feb;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --log-bg: #0b0e13;
+    --log-fg: #b9c4d0;
+    --on-accent: #ffffff;
+    --warn-bg: rgba(210, 153, 34, .08);
+    --hover-bg: rgba(47, 129, 247, .06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+  body {
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  [v-cloak] { display: none; }
+  .wrap { width: 90%; max-width: 1600px; margin: 0 auto; padding: 12px 18px 20px; }
+  header h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .2px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .badge {
+    font-size: 12px; color: var(--muted); border: 1px solid var(--line);
+    padding: 2px 8px; border-radius: 999px; background: var(--panel);
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 12px; font-weight: 600; letter-spacing: .2px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  select, input[type="text"], input[type="number"], textarea {
+    width: 100%; background: var(--panel2); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    font: inherit; font-size: 13px; outline: none;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  select:disabled, input:disabled, textarea:disabled { opacity: .45; cursor: not-allowed; }
+  textarea { resize: vertical; min-height: 54px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 0; min-width: 120px; }
+  button {
+    background: var(--accent); color: var(--on-accent); border: 0; border-radius: 8px;
+    padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent2); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500; }
+  button.ghost:hover:not(:disabled) { background: var(--panel2); }
+  button.small { padding: 5px 12px; font-size: 12.5px; }
+  #themeBtn { margin-left: auto; white-space: nowrap; }
+  #reloadBtn { white-space: nowrap; }
+  .drop {
+    border: 1.5px dashed var(--line); border-radius: var(--radius);
+    padding: 22px; text-align: center; color: var(--muted); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--hover-bg); }
+  .drop strong { color: var(--fg); display: block; margin-bottom: 4px; }
+  .drop span { font-size: 12.5px; }
+  /* 已选文件列表：序号 = 合并顺序，路径 = 命令行里要写的虚拟路径 */
+  .filelist { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .file-row {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    background: var(--panel2); border-bottom: 1px solid var(--line); font-size: 12.5px;
+  }
+  .file-row:last-child { border-bottom: 0; }
+  .file-row .idx {
+    flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--panel);
+    border: 1px solid var(--line); color: var(--muted); font-size: 11.5px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .file-row .fname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .file-row .fmeta { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .file-row code.fpath { flex: none; background: none; padding: 0; color: var(--muted); font-size: 11.5px; }
+  .file-row button.small { padding: 2px 7px; }
+  .filelist-foot {
+    display: flex; align-items: center; gap: 12px; padding: 6px 10px;
+    font-size: 12px; color: var(--muted); background: var(--panel);
+  }
+  .filelist-foot button { margin-left: auto; }
+  pre#log {
+    background: var(--log-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; margin: 0; max-height: 300px; overflow: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+    color: var(--log-fg);
+  }
+  .bar { height: 4px; background: var(--panel2); border-radius: 999px; overflow: hidden; margin: 12px 0 8px; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .bar.indet > i { width: 35%; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0%{margin-left:0} 100%{margin-left:100%} }
+  .out-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; margin-top: 8px; font-size: 13px;
+  }
+  .out-item .out-name { font-weight: 600; word-break: break-all; }
+  .out-item .meta { color: var(--muted); font-size: 12px; }
+  .out-item a { color: var(--on-accent); background: var(--ok); padding: 5px 12px; border-radius: 7px; text-decoration: none; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  .out-actions { display: flex; align-items: center; gap: 8px; flex: none; white-space: nowrap; }
+  .out-actions .noplay { font-size: 11.5px; color: var(--muted); cursor: help; }
+  /* 媒体信息：源文件卡片 + 产物标签 */
+  .mediacard { margin-top: 10px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .mediacard .mc-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .mediacard dl { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; }
+  .mediacard dl > div { display: flex; gap: 6px; font-size: 12.5px; }
+  .mediacard dt { color: var(--muted); }
+  .mediacard dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .tags span {
+    font-size: 11.5px; color: var(--muted); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .tags span.strong { color: var(--fg); font-weight: 600; }
+  /* 裁剪：波形拖动条 */
+  .trim { margin-top: 8px; }
+  canvas.trim-canvas {
+    display: block; width: 100%; height: 72px; border-radius: 8px;
+    border: 1px solid var(--line); cursor: crosshair; touch-action: none;
+    user-select: none;
+  }
+  .trim-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  .trim-row b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .trim-row input[type="number"] { width: 82px; padding: 4px 6px; font-size: 12.5px; }
+  .trim-row label.chk { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); margin: 0; }
+  .trim-row label.chk input { width: auto; margin: 0; }
+  .trim-actions { display: flex; gap: 6px; margin-left: auto; }
+  /* 实时命令预览 */
+  .cmdbox {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: var(--log-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .cmdbox code.cmd {
+    flex: 1; min-width: 0; background: none; padding: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all;
+    color: var(--log-fg);
+  }
+  .cmdbox button { flex: none; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .presets button { font-size: 12px; padding: 4px 10px; background: var(--panel2); border: 1px solid var(--line); color: var(--fg); font-weight: 500; }
+  .presets button:hover { border-color: var(--accent); background: var(--hover-bg); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  /* 图形模式里的独立开关（如「不重编码」）；条件不满足时置灰 */
+  label.chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg); margin: 0; }
+  label.chk input { width: auto; margin: 0; }
+  label.chk.off { color: var(--muted); }
+  /* 和目标格式同排：不要被 .row > * 拉宽，和 select 等高 */
+  label.chk-inline { flex: 0 0 auto; min-width: 0; white-space: nowrap; padding: 0 2px; }
+  label.chk-inline code { font-size: 11.5px; }
+  .status { font-size: 12.5px; margin-top: 8px; }
+  .qbadge { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); } .status.run { color: var(--warn); }
+  .spin { display:inline-block; width:10px; height:10px; border:2px solid var(--muted); border-top-color: transparent; border-radius:50%; animation: rot .8s linear infinite; vertical-align:-1px; margin-right:4px; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+  .kv { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  code { background: var(--log-bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .warnbar {
+    border: 1px solid var(--warn); border-left-width: 4px; border-radius: var(--radius);
+    background: var(--warn-bg); color: var(--fg);
+    padding: 10px 14px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.7;
+  }
+  .warnbar strong { color: var(--warn); }
+</style>
+<!-- 主题：默认白天，选择存 localStorage。放在 <head> 最前面，避免刷新时闪一下错误配色 -->
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('ffmpeg-wasm-theme');
+      document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+    } catch (e) {
+      document.documentElement.dataset.theme = 'light';
+    }
+  })();
+</script>
+<!--
+  Vue 3（UMD 全局构建）。注意 crossorigin="anonymous" 是必须的：
+  页面在跨域隔离下（COEP: require-corp），跨域脚本按 no-cors 拉取会被拦，
+  只有走 CORS 且响应带 Access-Control-Allow-Origin 才放行 —— 该镜像有 `ACAO: *`。
+-->
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- 静态托管（dufs / nginx 默认配置 / GitHub Pages 等）拿不到响应头控制权，
+     由它用 Service Worker 补 COOP/COEP 凑出跨域隔离；服务器已配好则自动跳过。 -->
+<script src="coi-serviceworker.js"></script>
 </head>
-
 <body>
-  <div id="app" class="main-container" v-cloak>
-    <h1 class="mainIndex_title">
-      音频格式转换
-      <span>（本工具支持以下音频文件格式的转换：MP3、WAV、OGG、AAC、M4A、M4R、FLAC、WMA、OPUS、AIFF、MMF）</span>
-    </h1>
-    <div id="bbody">
-      <div id="bmain">
-        <div id="convert_work">
-          <div id="setp1">
-            <div class="bcol-12">
-              <div class="loadfile">
-                <div 
-                  id="filedropzone" 
-                  class="dragdoparea" 
-                  :class="{ dragover: isDragging }"
-                  @click="triggerFileInput" 
-                  @dragover.prevent="isDragging = true" 
-                  @dragleave.prevent="isDragging = false"
-                  @drop.prevent="handleFileDrop"
-                >
-                  <input type="file" ref="fileInput" @change="handleFileSelect" accept="audio/*" multiple hidden>
-                  <p>选择或拖拽文件</p>
-                </div>
-              </div>
-            </div>
+<div id="app" v-cloak>
+  <div class="wrap">
+    <header>
+      <h1>FFmpeg 音频转换器</h1>
+      <span class="badge">纯浏览器 · WebAssembly · 不上传服务器</span>
+      <span class="badge" :title="isolationTitle">{{ hasSab ? '跨域隔离 ✓' : '跨域隔离 ✗' }}</span>
+      <span class="badge">引擎：{{ engine }}</span>
+      <button id="themeBtn" class="ghost small" type="button"
+        :title="theme === 'dark' ? '切换到白天模式' : '切换到夜间模式'"
+        @click="toggleTheme">{{ theme === 'dark' ? '白天模式' : '夜间模式' }}</button>
+      <button class="ghost small" onclick="window.open('./ffmpeg-wasm.zip')">下载包</button>
+      <button id="resetBtn" class="ghost small" type="button"
+              title="把格式参数恢复默认（目标格式/音质/采样率/声道/码率/音量/倍速/附加参数/多文件处理/不重编码）；已选文件和产物列表保留"
+              @click="resetParams">重置参数</button>
+      <button id="reloadBtn" class="ghost small" type="button"
+              title="重新加载页面（会清空已选文件和产物列表）"
+              @click="reloadPage">刷新</button>
+    </header>
+
+    <div class="warnbar" v-if="!hasSab">
+      <strong>当前页面缺少 SharedArrayBuffer（未跨域隔离），转换一定会失败。</strong>
+      <code>ffmpeg-core.wasm</code> 是多线程（pthreads）构建，FFmpeg 6.1 的 CLI 每条输入流都要起一个解码线程，
+      Emscripten 的线程依赖 <code>SharedArrayBuffer</code>，而浏览器只在<strong>跨域隔离</strong>的页面里提供它
+      （响应头 <code>COOP: same-origin</code> + <code>COEP: require-corp</code>）。
+      本目录的 <code>coi-serviceworker.js</code> 会用 Service Worker 自动补上这两个头，
+      <strong>首次访问会自己刷新一次</strong>（静态托管 dufs / nginx 默认配置 / GitHub Pages 都适用）。
+      <br />仍然看到这条提示，通常是：
+      ① 地址不是安全上下文 —— 需要 <code>https://</code> 或 <code>http://localhost</code> /
+      <code>http://127.0.0.1</code>，局域网 IP 的 http 不行（既没有 Service Worker 也没有 SharedArrayBuffer）；
+      ② 浏览器禁用/不支持 Service Worker；
+      ③ 页面嵌在 iframe 里，而顶层页面没有隔离。
+      日志里出现 <code>pthread_create() failed: Resource temporarily unavailable</code> 就是这个原因。
+      <br /><strong>Service Worker 状态：{{ coiStatus }}</strong>
+      <span v-if="coiStatus === 'still-not-isolated'">
+        —— SW 已启用，但这份文档的响应没有隔离头，手动刷新（F5）一次即可（SW 只在重新加载文档后才生效）。
+      </span>
+      <span v-else-if="coiStatus === 'reloading'">
+        —— 正在启用跨域隔离，页面马上会自动刷新一次…
+      </span>
+      <span v-else-if="coiStatus === 'no-service-worker' || coiStatus.indexOf('register-failed') === 0">
+        —— Service Worker 不可用（多半不是安全上下文），只能靠服务器直接配 COOP/COEP。
+      </span>
+    </div>
+
+    <div class="grid">
+      <!-- ============ 左：输入 & 参数 ============ -->
+      <div class="card">
+        <h2>1. 选择音频 / 设置参数</h2>
+
+        <div class="drop" :class="{ over: dragging }"
+             @click="pickFile"
+             @dragenter.prevent="dragging = true" @dragover.prevent="dragging = true"
+             @dragleave.prevent="dragging = false" @drop.prevent="onDrop">
+          <strong>点击选择，或把音频文件拖到这里（可多选；再次拖入会<u>追加</u>，顺序 = 合并顺序）</strong>
+          <span>支持 wav / mp3 / aac(m4a) / flac / ogg / opus / amr / wma / aiff / au / webm</span>
+          <input ref="fileInput" id="fileInput" type="file" hidden multiple @change="onFileChange" @click.stop
+                 accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.amr,.wma,.aiff,.aif,.au,.webm,.mkv,.mp4,.mov,.asf" />
+        </div>
+
+        <div class="filelist" v-if="fileRows.length">
+          <div class="file-row" v-for="(it, i) in fileRows" :key="it.id">
+            <span class="idx">{{ i + 1 }}</span>
+            <span class="fname">{{ it.name }}</span>
+            <span class="fmeta">{{ fmtSize(it.size) }}<template v-if="it.duration"> · {{ fmtDuration(it.duration) }}</template></span>
+            <code class="fpath">{{ it.path }}</code>
+            <button type="button" class="ghost small" :disabled="i === 0" title="上移"
+                    @click="moveFile(i, -1)">↑</button>
+            <button type="button" class="ghost small" :disabled="i === fileRows.length - 1" title="下移"
+                    @click="moveFile(i, 1)">↓</button>
+            <button type="button" class="ghost small" title="移除"
+                    @click="removeFile(i)">×</button>
           </div>
-          <div id="setp2">
-            <div class="bcol-12">
-              <div class="optionarea">
-                <div>
-                  <div class="brow">
-                    <p class="tips_audio">温馨提示：单个文件尽量小于100MB,如转换大音频文件失败，请刷新页面重新转换</p>
-                    <div class="optionitem">
-                      <span class="optionlabel">输出文件格式:</span>
-                      <div class="optioninput" id="format-opts">
-                        <label class='container' v-for="format in available.formats" :key="format">
-                          {{ format }}
-                          <input type='radio' name='format' :value='format' v-model="options.format">
-                          <span class='checkmark'></span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="audio_container">
-                    <div class="brow">
-                      <div class="optionitem">
-                        <span class="optionlabel">编码器:</span>
-                        <select class="optioninput" v-model="options.encoder">
-                          <option v-for="opt in available.encoders" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="brow">
-                      <div class="optionitem">
-                        <span class="optionlabel">质量:</span>
-                        <select class="optioninput" v-model="options.bitrate">
-                           <option v-for="rate in available.bitrates" :key="rate" :value="rate">{{ rate }}</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="brow">
-                      <div class="optionitem">
-                        <span class="optionlabel">采样率:</span>
-                        <select class="optioninput" v-model="options.sampleRate">
-                          <option v-for="rate in available.sampleRates" :key="rate" :value="rate">{{ rate }}</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="brow">
-                      <div class="optionitem">
-                        <span class="optionlabel">声道:</span>
-                        <select class="optioninput" v-model="options.channels">
-                          <option v-for="ch in available.channels" :key="ch.value" :value="ch.value">{{ ch.text }}</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="bcontent">
-                      <div 
-                        class="bbutton ols_exchange_btn" 
-                        :class="{ disabled: !canConvert }" 
-                        @click="startConversion"
-                      >
-                        {{ isConverting ? '转换中...' : '转换' }}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="file_container">
-                    <div class="file_container_left">
-                      <ul v-if="inputFiles && inputFiles.length > 0">
-                        <li v-for="(file, index) in inputFiles" :key="file.name + index">
-                          <span class="cursor" @click="showInfo(file)">{{ file.name }}</span>
-                          <span>{{ formatBytes(file.size) }}</span>
-                          <div>
-                            <i class="fileDelete" @click="removeFile(index)">删除</i>
-                            <span class="cursor" @click="playAudio(file)">▶️</span>
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
-                    
-                    <div class="file_container_middle">
-                      <div class="file_container_middle_process">
-                        {{ convertMsg }}
-                      </div>
-                    </div>
-                    
-                    <div class="file_container_right">
-                      <ul  v-if="outFiles && outFiles.length > 0">
-                        <li v-for="(file, index) in outFiles" :key="file.name + index">
-                          <span>{{ file.name }}</span>
-                          <span>{{ formatBytes(file.size) }}</span>
-                          <span>
-                            <a :download="file.name" :href="file.url">下载</a>
-                            <a class="delete" @click="removeOutFile(index)">删除</a>
-                            <span class="cursor" @click="playAudio(file)">▶️</span>
-                          </span>
-                        </li>
-                      </ul>
-                      <div class="file_container_last" v-if="outFiles && outFiles.length > 1">
-                        <span class="file_zip_download" @click="downloadAllAsZip">
-                          {{ isPackaging ? '打包中...' : '打包下载' }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="step3" v-if="info && info.duration">
-            <span>时长: {{ info.duration }}</span>
-            <span>比特率: ~{{ info.bitrate }}kbps</span>
-            <span>采样率: {{ info.sampleRate }}</span>
-            <span>声道: {{ info.channels == 'stereo' ? '立体声' : '单声道' }}</span>
-            <span v-show="info.size">大小: {{ info.size }}</span>
-            <span v-show="info.title">歌名: {{ info.title }}</span>
-            <span v-show="info.artist">歌手: {{ info.artist }}</span>
-            <span v-show="info.album">专辑: {{ info.album }}</span>
+          <div class="filelist-foot">
+            <span>共 {{ fileRows.length }} 个文件</span>
+            <span v-if="totalDuration">合计时长 {{ fmtDuration(totalDuration) }}</span>
+            <button type="button" class="ghost small" @click="clearFiles">清空</button>
           </div>
         </div>
+
+        <div v-if="!advMode && fileRows.length > 1" style="margin-top:12px">
+          <label for="mergeMode">多文件处理（已选 {{ fileRows.length }} 个）</label>
+          <select id="mergeMode" v-model="mergeMode">
+            <option value="concat">按顺序拼接成一条（concat）</option>
+            <option value="amix">混音叠加成一条（amix，时长取最长）</option>
+            <option value="none">逐个转换（每个文件各出一个产物）</option>
+          </select>
+          <div class="hint">
+            拼接就是首尾相接（顺序可同列表里的 ↑↓ 调整）；混音是几条同时播放。
+            各路参数（采样率/声道/编码）不一致时 FFmpeg 会在滤镜图里自动转换，不用手工处理。
+            多文件模式下不套用上面的裁剪条，需要剪就在「附加参数」里写
+            <code>-ss</code> / <code>-t</code>。
+          </div>
+        </div>
+        <div class="mediacard" v-if="file && !inputInfo">
+          <div class="mc-title">源文件信息读取中…（用 ffmpeg 探一次，大约 1~3 秒）</div>
+        </div>
+        <div class="mediacard" v-else-if="inputInfo">
+          <div class="mc-title">源文件信息{{ fileRows.length > 1 ? '（第 1 个文件）' : '' }}</div>
+          <dl>
+            <div><dt>格式</dt><dd>{{ inputInfo.format || '—' }}</dd></div>
+            <div><dt>时长</dt><dd>{{ fmtDuration(inputInfo.duration) }}</dd></div>
+            <div><dt>采样率</dt><dd>{{ inputInfo.sampleRate ? inputInfo.sampleRate + ' Hz' : '—' }}</dd></div>
+            <div><dt>声道</dt><dd>{{ channelsText(inputInfo.channels) }}</dd></div>
+            <div><dt>编码</dt><dd>{{ inputInfo.codec || '—' }}</dd></div>
+            <div><dt>码率</dt><dd>{{ inputInfo.bitrate ? inputInfo.bitrate + ' kb/s' : '—' }}</dd></div>
+            <div><dt>大小</dt><dd>{{ fmtSize(file.size) }}</dd></div>
+          </dl>
+        </div>
+
+        <!-- 裁剪：波形拖动条（两端手柄拖区间，空白处拖动=重新框选，可试听）
+             波形/试听/裁剪都是「单文件」的事，多文件合并时不套用，所以只在选中 1 个文件时给 -->
+        <div class="trim" v-if="!advMode && fileRows.length === 1 && mediaDuration > 0">
+          <label style="display:block">裁剪范围（拖动波形两端手柄；空白处拖动 = 重新框选）</label>
+          <canvas ref="trimCanvas" class="trim-canvas"
+                  @pointerdown="onTrimDown" @pointermove="onTrimMove"
+                  @pointerup="onTrimUp" @pointercancel="onTrimUp" @lostpointercapture="onTrimUp"></canvas>
+          <div class="trim-row">
+            <span>起点
+              <input type="number" min="0" step="0.1" :value="round1(trimStart)"
+                     @change="onTrimInput('start', $event)" /> 秒
+            </span>
+            <span>终点
+              <input type="number" min="0" step="0.1" :value="round1(trimEnd)"
+                     @change="onTrimInput('end', $event)" /> 秒
+            </span>
+            <span>保留 <b>{{ fmtDuration(trimDuration) }}</b></span>
+            <span v-if="trimActive" style="color:var(--warn)">转换时会裁剪</span>
+            <span class="trim-actions">
+              <button type="button" class="ghost small" @click="togglePreview">{{ playing ? '停止' : '试听选中片段' }}</button>
+              <button type="button" class="ghost small" @click="resetTrim" :disabled="!trimActive">重置</button>
+              <label class="chk"><input type="checkbox" v-model="trimLoop" /> 循环</label>
+            </span>
+          </div>
+          <div class="hint">
+            <span v-if="playing">正在试听 {{ fmtDuration(trimStart) }} → {{ fmtDuration(trimEnd) }}{{ trimLoop ? '（循环）' : '（到终点自停）' }}</span>
+            <span v-else-if="waveReady">手柄之间是保留区间；试听的是原声，不含音量/倍速等滤镜。</span>
+            <span v-else>没有波形（文件过大或浏览器解不了这种格式）——仍可拖动或直接填秒数试听；浏览器都放不了的格式（如 amr/wma）试听会失败，但转换不受影响。</span>
+          </div>
+        </div>
+
+        <div class="hint" v-if="advMode && trimActive" style="color:var(--warn)">
+          注意：自定义模式不会自动套用上面的裁剪，请自己写 <code>-ss</code> / <code>-t</code>。
+        </div>
+
+        <!-- 批量裁剪：多个文件 + 逐个转换时，用同一组起止时间分别裁每个文件 -->
+        <div class="trim" v-if="!advMode && fileRows.length > 1 && mergeMode === 'none'">
+          <label style="display:block">批量裁剪（对上面每个文件都套同一段区间；留空 = 不裁）</label>
+          <div class="trim-row">
+            <span>起点
+              <input type="number" min="0" step="0.1" placeholder="留空=从 0" v-model="batchStart" /> 秒
+            </span>
+            <span>终点
+              <input type="number" min="0" step="0.1" placeholder="留空=到各自结尾" v-model="batchEnd" /> 秒
+            </span>
+            <span v-if="batchTrimActive">保留 <b>{{ batchKeepText }}</b></span>
+            <span class="trim-actions">
+              <button type="button" class="ghost small" @click="batchStart = ''; batchEnd = '30'">裁前 30 秒</button>
+              <button type="button" class="ghost small" :disabled="!batchStart && !batchEnd"
+                      @click="batchStart = ''; batchEnd = ''">重置</button>
+            </span>
+          </div>
+          <div class="hint">
+            各文件时长不同，终点超过某个文件的长度时那一条自动截到结尾。
+            <span v-if="batchTrimWarn" style="color:var(--warn)">{{ batchTrimWarn }}</span>
+            <span v-else-if="batchTrimActive && copyMode">配合「不重编码」就是各自快速裁剪（只搬字节）。</span>
+            <span v-else-if="batchTrimActive">每个文件各自跑一条 <code>-ss … -t …</code>。</span>
+          </div>
+        </div>
+
+        <div class="hint" v-if="fileRows.length > 1 && mergeMode !== 'none'">
+          合并（拼接 / 混音）时不裁剪；要剪就切到「逐个转换」，或在「附加参数」里自己写
+          <code>-ss</code> / <code>-t</code>。
+        </div>
+
+        <label for="target">目标格式</label>
+        <div class="row">
+          <select id="target" v-model="target" :disabled="copyMode">
+            <option v-for="(f, key) in formats" :key="key" :value="key">{{ f.label }}</option>
+          </select>
+          <select id="quality" v-model="quality" :disabled="copyMode">
+            <option value="high">高音质</option>
+            <option value="std">标准</option>
+            <option value="low">小体积</option>
+          </select>
+          <label class="chk chk-inline" :class="{ off: !copyPlan.ok && !copyMode }">
+            <input type="checkbox" v-model="copyMode" :disabled="!copyMode && !copyPlan.ok" />
+            不重编码 <code>-c copy</code>
+          </label>
+        </div>
+        <div class="hint" v-if="copyMode">
+          <span v-if="copyPlan.join">{{ copyPlan.reason }}。</span>
+          <template v-if="copyPlan.byId">
+            <strong>每个文件各自保持原格式输出</strong>（mp3→.mp3、wav→.wav、m4a→.m4a…；逐个转换下可以混格式），
+            所以右边的「目标格式」不参与本次转换。
+          </template>
+          <template v-else>目标格式已对齐成与输入一致的格式并锁住；</template>
+          采样率/声道/码率/音量/倍速也不参与 copy（已清空并置灰），附加参数里别写滤镜。
+          <template v-if="!copyPlan.join">切点会吸附到编码帧边界（mp3 约 26ms），时长可能有几十毫秒误差。</template>
+        </div>
+        <div class="hint" v-else-if="!copyPlan.ok">「不重编码」现在不可用：{{ copyPlan.reason }}</div>
+
+        <div class="row">
+          <div>
+            <label for="sr">采样率 (Hz)</label>
+            <select id="sr" v-model="sr" :disabled="copyMode">
+              <option value="">保持原样</option>
+              <option v-for="v in sampleRates" :key="v" :value="String(v)">{{ v }}</option>
+            </select>
+          </div>
+          <div>
+            <label for="ch">声道</label>
+            <select id="ch" v-model="ch" :disabled="copyMode">
+              <option value="">保持原样</option>
+              <option value="1">单声道 (ASR 常用)</option>
+              <option value="2">立体声</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="bitrate">码率 (kbps，有损格式)</label>
+            <input id="bitrate" type="number" min="8" max="320" step="8" placeholder="留空=按音质档"
+                   :disabled="copyMode" v-model="bitrate" />
+          </div>
+          <div>
+            <label for="gain">音量 (倍率)</label>
+            <input id="gain" type="number" min="0.05" max="10" step="0.05" placeholder="1.0 = 不变"
+                   :disabled="copyMode" v-model="gain" />
+          </div>
+          <div>
+            <label for="speed">倍速 (atempo)</label>
+            <input id="speed" type="number" min="0.25" max="4" step="0.05" placeholder="1.0 = 不变"
+                   :disabled="copyMode" v-model="speed" />
+          </div>
+        </div>
+        <div class="hint">
+          倍速只变速不变调：<code>0.5~2</code> 直接用 atempo，超范围自动串联多个 atempo；
+          音量与倍速会合并成一条 <code>-af</code> 滤镜链。
+        </div>
+
+        <label>快捷预设</label>
+        <div class="presets">
+          <button v-for="p in uiPresets" :key="p.key" type="button" @click="applyPreset(p.key)">{{ p.label }}</button>
+        </div>
+
+        <label for="extra" style="margin-top:14px">附加 FFmpeg 参数（原样追加到命令行）</label>
+        <textarea id="extra" v-model="extra" placeholder='-af "atrim=0:10,volume=2" 或 -ss 5 -t 10'></textarea>
+        <div class="hint">想完全手写就跑「自定义模式」，见右侧。</div>
+
+        <label style="margin-top:14px">将要执行的命令（随上面所有参数实时更新）</label>
+        <div class="cmdbox">
+          <code class="cmd">{{ commandPreview }}</code>
+          <button type="button" class="ghost small" @click="copyCommand">{{ copied ? '已复制' : '复制' }}</button>
+        </div>
+        <div class="hint">
+          输入是 wasm 里的虚拟路径（<code>/input/input.bin</code>；多文件时第 2 个起是
+          <code>/input/f2.bin</code>、<code>/input/f3.bin</code>…，见文件列表里的标注），
+          产物写在 <code>/output/</code> 下；
+          想在本机 ffmpeg 上用，把这些路径换成真实文件路径即可（其余参数可直接照抄）。
+        </div>
+      </div>
+
+      <!-- ============ 右：执行 & 结果 ============ -->
+      <div class="card">
+        <h2>2. 转换与下载</h2>
+
+        <div class="row" style="margin-bottom:6px">
+          <button v-if="!advMode" type="button" :disabled="!canRun" @click="run">开始转换</button>
+          <button type="button" class="ghost" @click="advMode = !advMode">
+            {{ advMode ? '返回图形模式' : '自定义参数模式' }}
+          </button>
+        </div>
+
+        <div v-if="advMode">
+          <label for="advArgs">完整 FFmpeg 参数（分号或换行分隔，自动补 -y）</label>
+          <textarea id="advArgs" style="min-height:64px" v-model="advArgs"></textarea>
+          <div class="hint">
+            输入是已选文件对应的虚拟路径：第 1 个 <code>/input/input.bin</code>，
+            第 2 个起 <code>/input/f2.bin</code>、<code>/input/f3.bin</code> …（见左侧文件列表）。
+            产物请写到 <code>/output/</code> 下。
+            支持多产物，见「常见命令」。产物名默认跟随输入文件：写
+            <code>/output/out.mp3</code> 会下载成 <code>输入名.mp3</code>；
+            自己起的名字（如 <code>a_0-2s.wav</code>）则原样保留。
+            一次转很多文件时，建议自己加上 <code>-filter_threads 1</code>（有
+            <code>-filter_complex</code> 时再加 <code>-filter_complex_threads 1</code>）：
+            图形模式会自动加，它能避免浏览器同时启动一堆 wasm 线程 worker 而卡住。
+          </div>
+          <label>内置常见音频命令</label>
+          <div class="presets">
+            <button v-for="c in cmdPresets" :key="c.label" type="button" @click="advArgs = c.args">{{ c.label }}</button>
+          </div>
+          <button type="button" style="margin-top:8px;width:100%" :disabled="!canRun" @click="runAdv">按自定义参数执行</button>
+        </div>
+
+        <div class="bar" :class="{ indet: busy }"><i></i></div>
+        <div class="status" :class="statusKind">
+          <span v-if="statusKind === 'run'" class="spin"></span>{{ statusText }}
+          <span v-if="queueInfo" class="qbadge">队列 {{ queueInfo }}（一个跑完才起下一个）</span>
+        </div>
+
+        <div style="margin-top:10px">
+          <!-- 产物列表是累积的：重跑不会清掉之前的结果，刷新页面才清空 -->
+          <div class="out-item" v-for="o in outputs" :key="o.url">
+            <div class="out-main">
+              <div class="out-name">{{ o.name }}</div>
+              <div class="tags">
+                <span v-if="o.info && o.info.format" class="strong">{{ o.info.format }}</span>
+                <span v-if="o.info && o.info.duration != null">时长 {{ fmtDuration(o.info.duration) }}</span>
+                <span v-if="o.info && o.info.sampleRate">{{ o.info.sampleRate }} Hz</span>
+                <span v-if="o.info && o.info.channels">{{ channelsText(o.info.channels) }}</span>
+                <span v-if="o.info && o.info.codec">{{ o.info.codec }}</span>
+                <span v-if="o.info && o.info.bitrate">{{ o.info.bitrate }} kb/s</span>
+                <span>{{ fmtSize(o.size) }}</span>
+                <span v-if="o.cost != null">耗时 {{ fmtCost(o.cost) }}</span>
+                <span v-if="o.at">{{ o.at }}</span>
+              </div>
+            </div>
+            <span class="out-actions">
+              <button v-if="o.playable" type="button" class="ghost small"
+                      :title="outPlayingUrl === o.url ? '停止试听' : '在浏览器里直接试听这个产物（用浏览器内置解码器播放）'"
+                      @click="toggleOutputAudio(o)">{{ outPlayingUrl === o.url ? '■' : '▶' }}</button>
+              <span v-else class="noplay"
+                    :title="'浏览器解不了 .' + (o.ext || '?') + '（WMA / AMR / ADTS 这类都不支持），下载后用本地播放器听'">不可试听</span>
+              <a :href="o.url" :download="o.name">下载</a>
+            </span>
+          </div>
+        </div>
+
+        <details open>
+          <summary>FFmpeg 输出日志</summary>
+          <pre id="log" ref="logEl">{{ log }}</pre>
+        </details>
+        <div class="kv">本页在本地跑 <code>ffmpeg.wasm</code>，文件不会离开你的设备。</div>
       </div>
     </div>
-    <div class="refresh" onclick="location.reload()">刷新</div>
-    <div class="refresh single" :class="{ on: singleFileMode }" @click="toggleSingleFileMode">保留模式</div>
   </div>
+</div>
 
-   <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.17/vue.global.min.js"></script> -->
-  <script src="js/vue.global.prod.min.js"></script>
-  <script src="js/jszip.min.js"></script>
-  <script src="js/filesaver.min.js"></script>
-  <script src="js/index.js"></script>
+<!-- Vue 没加载出来时的兜底说明（例如 CDN 被 COEP 拦、断网） -->
+<div id="bootFail" class="wrap" style="display:none">
+  <div class="warnbar">
+    <strong>Vue 3 没能加载，页面无法渲染。</strong>
+    本页从 <code>mirrors.sustech.edu.cn</code> 外链 Vue。页面运行在<strong>跨域隔离</strong>
+    （COEP: require-corp）下，跨域脚本必须满足其一才会被放行：
+    ① 走 CORS 且响应带 <code>Access-Control-Allow-Origin</code>（脚本标签需带
+    <code>crossorigin</code>，本页已带，该镜像有 <code>ACAO: *</code>）；
+    ② 响应带 <code>Cross-Origin-Resource-Policy: cross-origin</code>。
+    请检查网络/镜像可用性，或把 <code>vue.global.prod.js</code> 放到本目录后改成本地引用。
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Vue 来自 CDN：加载失败（离线 / 被 COEP 拦）时给出明确提示，而不是白屏
+  if (!window.Vue) {
+    var fail = document.getElementById('bootFail');
+    if (fail) fail.style.display = 'block';
+    return;
+  }
+
+  var createApp = Vue.createApp, ref = Vue.ref, computed = Vue.computed;
+  var watch = Vue.watch, nextTick = Vue.nextTick, onMounted = Vue.onMounted;
+
+  // =====================================================================
+  //  配置：目标格式 → (扩展名, 编码参数)
+  // =====================================================================
+  var FORMATS = {
+    mp3:  { ext: 'mp3',  mux: '',      codec: 'libmp3lame', br: { high: 320, std: 192, low: 96 }, label: 'MP3 (libmp3lame)' },
+    wav:  { ext: 'wav',  mux: 'wav',   codec: 'pcm_s16le',  lossless: true, label: 'WAV (PCM)' },
+    flac: { ext: 'flac', mux: 'flac',  codec: 'flac',       lossless: true, label: 'FLAC (无损)' },
+    m4a:  { ext: 'm4a',  mux: 'ipod',  codec: 'aac',        br: { high: 256, std: 128, low: 64 }, label: 'M4A / AAC' },
+    aac:  { ext: 'aac',  mux: 'adts',  codec: 'aac',        br: { high: 256, std: 128, low: 64 }, label: 'AAC (ADTS)' },
+    ogg:  { ext: 'ogg',  mux: 'ogg',   codec: 'libvorbis',  q: { high: 8, std: 5, low: 2 }, label: 'OGG (Vorbis)' },
+    opus: { ext: 'opus', mux: 'opus',  codec: 'libopus',    br: { high: 128, std: 64, low: 32 }, label: 'Opus (libopus)' },
+    // WebM 容器里只能装 Opus / Vorbis（容器限制），所以它实际就是「WebM + Opus」。
+    // 想压体积又不在乎容器的话，直接选上面的 Opus 更通用（浏览器兼容性反而更好）。
+    webm: { ext: 'webm', mux: 'webm',  codec: 'libopus',    br: { high: 128, std: 64, low: 32 }, label: 'WebM (Opus)' },
+    wma:  { ext: 'wma',  mux: 'asf',   codec: 'wmav2', label: 'WMA v2' },
+    aiff: { ext: 'aiff', mux: 'aiff',  codec: 'pcm_s16be', lossless: true, label: 'AIFF' },
+    au:   { ext: 'au',   mux: 'au',    codec: 'pcm_s16be', lossless: true, label: 'AU' }
+  };
+  // AMR 只支持解码（能读 .amr），不支持编码：FFmpeg 没有原生 AMR 编码器。
+
+  // 「不重编码」+ 裁剪在这些格式上不可靠 —— 值就是置灰时给出的原因（都带实测数据）。
+  // mp3 / wav / m4a / ogg(vorbis) / opus 实测正常（要 10 秒得 10.01~10.03，属帧边界吸附）。
+  var COPY_TRIM_UNSAFE = {
+    flac: '实测内容 10 秒、头里仍写 40 秒（容器头里的采样数不随 copy 更新）',
+    webm: '实测要 4 秒却得到 5.98 秒（Matroska 按簇对齐，时长写在头部）',
+    aiff: '时长写在容器头里，copy 后不会更新',
+    au:   '时长写在容器头里，copy 后不会更新',
+    wma:  '时长写在容器头里，copy 后不会更新'
+  };
+
+  // 输入编码族（探测到的解码器名经 copyFamily 归一）→ 「不重编码」时该输出成哪个格式。
+  // 勾上「不重编码」后页面会按它把目标格式自动对齐，用户不用自己猜该选什么。
+  var FAMILY_TARGET = {
+    libmp3lame: 'mp3', pcm_s16le: 'wav', flac: 'flac', aac: 'm4a',
+    libvorbis: 'ogg', libopus: 'opus', wmav2: 'wma', pcm_s16be: 'aiff'
+  };
+
+  var CMDS = [
+    { label: '16k 单声道 WAV', args: '-i /input/input.bin -ar 16000 -ac 1 -c:a pcm_s16le /output/out.wav' },
+    { label: 'MP3 128k',       args: '-i /input/input.bin -c:a libmp3lame -b:a 128k /output/out.mp3' },
+    { label: 'FLAC',           args: '-i /input/input.bin -c:a flac /output/out.flac' },
+    { label: 'Opus 64k',       args: '-i /input/input.bin -c:a libopus -b:a 64k -f opus /output/out.opus' },
+    { label: 'WebM Opus 64k',  args: '-i /input/input.bin -c:a libopus -b:a 64k -f webm /output/out.webm' },
+    { label: '裁剪 10s',       args: '-i /input/input.bin -t 10 -c:a libmp3lame -b:a 192k /output/out.mp3' },
+    { label: '音量 ×2',        args: '-i /input/input.bin -af "volume=2.0" -c:a libmp3lame -b:a 192k /output/out.mp3' },
+    { label: '去首尾静音',      args: '-i /input/input.bin -af "silenceremove=start_periods=1:start_threshold=-45dB" -c:a libmp3lame -b:a 192k /output/out.mp3' },
+    { label: '倍速 1.5x',      args: '-i /input/input.bin -af "atempo=1.5" -c:a libmp3lame -b:a 192k /output/out.mp3' },
+    { label: '8k 电话音',       args: '-i /input/input.bin -ar 8000 -ac 1 -c:a pcm_s16le /output/out.wav' },
+    { label: '裁 0-2s 与 2-4s', args: '-i /input/input.bin -t 2 -c:a pcm_s16le /output/a_0-2s.wav -ss 2 -t 2 -c:a pcm_s16le /output/b_2-4s.wav' },
+    // 下面两条需要选中 ≥2 个文件（第 2 个起是 /input/f2.bin、/input/f3.bin…）
+    { label: '合并：顺序拼接', args: '-i /input/input.bin -i /input/f2.bin -filter_complex "[0:a][1:a]concat=n=2:v=0:a=1[out]" -map "[out]" -c:a libmp3lame -b:a 192k /output/out.mp3' },
+    { label: '合并：混音叠加', args: '-i /input/input.bin -i /input/f2.bin -filter_complex "[0:a][1:a]amix=inputs=2:duration=longest:normalize=0[out]" -map "[out]" -c:a libmp3lame -b:a 192k /output/out.mp3' }
+  ];
+
+  var UI_PRESETS = [
+    { key: 'asr16k', label: 'ASR 16k 单声道' },
+    { key: 'trim', label: '裁剪前 30 秒' },
+    { key: 'normalize', label: '响度拉齐' },
+    { key: 'mono', label: '转单声道' },
+    { key: 'loud', label: '音量 ×1.5' },
+    { key: 'fastforward', label: '2 倍速' },
+    { key: 'slow', label: '0.75 倍速' }
+  ];
+
+  var THEME_KEY = 'ffmpeg-wasm-theme';
+  var PARAM_KEY = 'ffmpeg-wasm-params-v1';   // 上次用过的格式参数（见 setup 里的 loadParams/saveParams）
+  var SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
+  // worker 带版本号：改了 worker 脚本就把 v 加一，否则浏览器可能拿缓存里的旧文件
+  var WORKER_URL = 'ffmpeg-worker.js?v=9';
+
+  createApp({
+    setup: function () {
+      // ---------------- 状态 ----------------
+      // 已选文件列表。每份都留住 File 引用：读出的字节 transfer 给 worker 后会被 detach，
+      // 需要时按 File 重新读（否则第二次转换会写进空输入）。
+      // 第 1 个同时是「主文件」——波形/试听/裁剪、产物名都跟随它。
+      var files = ref([]);           // [{ id, file: File, buf: ArrayBuffer|null, info: obj|null }]
+      var fileSeq = 0;               // 每份文件一个稳定 id，给列表当 key（排序/删除后不错位）
+      var mergeMode = ref('concat'); // 多文件：concat=首尾拼接 / amix=混音叠加 / none=逐个转换
+      var copyMode = ref(false);     // 不重编码（-c copy）：只搬字节，能否用由 copyPlan 判定
+
+      // ---------------- 参数持久化 ----------------
+      // 只存"格式参数"（下次打开还在）：目标格式 / 音质 / 采样率 / 声道 / 码率 / 音量 / 倍速 /
+      // 附加参数 / 多文件处理方式 / 不重编码。**不存**裁剪区间（单文件波形选区、批量框）——
+      // 它们和具体文件的时长绑得太紧，恢复回来往往是错的；也不存已选文件、自定义模式的命令、
+      // 当前主题（主题有自己单独的 key）。
+      function loadParams() {
+        var d = null;
+        try { d = JSON.parse(localStorage.getItem(PARAM_KEY) || 'null'); } catch (e) { return; }
+        if (!d || typeof d !== 'object') return;
+        // 逐项校验：格式必须存在、采样率必须在候选里 —— 旧版本存下的或手工改坏的值都兜得住
+        if (d.target && FORMATS[d.target]) target.value = d.target;
+        if (/^(high|std|low)$/.test(d.quality)) quality.value = d.quality;
+        if (SAMPLE_RATES.map(String).indexOf(String(d.sr)) >= 0) sr.value = String(d.sr);
+        if (d.ch === '1' || d.ch === '2') ch.value = d.ch;
+        ['bitrate', 'gain', 'speed'].forEach(function (k) {
+          if (typeof d[k] === 'string' || typeof d[k] === 'number') {
+            var v = String(d[k]);
+            if (/^\d*\.?\d*$/.test(v)) { if (k === 'bitrate') bitrate.value = v; else if (k === 'gain') gain.value = v; else speed.value = v; }
+          }
+        });
+        if (typeof d.extra === 'string') extra.value = d.extra;
+        if (d.mergeMode === 'concat' || d.mergeMode === 'amix' || d.mergeMode === 'none') mergeMode.value = d.mergeMode;
+        // copyMode 恢复成勾选时先不校验（还没文件）；等选了文件再按 copyPlan 自动开/关
+        if (d.copyMode === true) copyMode.value = true;
+      }
+      var paramTimer = 0;
+      function saveParams() {
+        clearTimeout(paramTimer);
+        paramTimer = setTimeout(function () {
+          try {
+            localStorage.setItem(PARAM_KEY, JSON.stringify({
+              target: target.value, quality: quality.value, sr: sr.value, ch: ch.value,
+              bitrate: bitrate.value, gain: gain.value, speed: speed.value, extra: extra.value,
+              mergeMode: mergeMode.value, copyMode: copyMode.value
+            }));
+          } catch (e) { /* 隐私模式 / 配额满：忽略，不影响使用 */ }
+        }, 200);
+      }
+      // 右上角「重置参数」：回到默认值（文件和产物列表不动）
+      function resetParams() {
+        copyRestore = null;    // 先清掉"还原快照"，否则关掉 copyMode 会把旧值写回来
+        if (copyMode.value) copyMode.value = false;
+        target.value = 'mp3'; quality.value = 'std';
+        sr.value = ''; ch.value = ''; bitrate.value = ''; gain.value = ''; speed.value = '';
+        extra.value = ''; mergeMode.value = 'concat';
+        saveParams();
+        appendLog('[params] 已重置：目标格式 MP3 / 标准音质 / 采样率与声道保持原样 / '
+          + '码率·音量·倍速清空 / 附加参数清空 / 多文件处理＝顺序拼接 / 不重编码取消');
+        setStatus('', '参数已重置（已选文件与产物列表保留）');
+      }
+      var activeJob = false;         // 是否有任务在跑（保证串行，不重叠）
+      var queueInfo = ref('');       // 队列进度：如 "2/3"（逐个转换时显示）
+      var file = computed(function () { return files.value.length ? files.value[0].file : null; });
+      var dragging = ref(false);
+      var target = ref('mp3');
+      var quality = ref('std');
+      var sr = ref('');
+      var ch = ref('');
+      var bitrate = ref('');
+      var gain = ref('');
+      var speed = ref('');
+      var extra = ref('');
+      var advMode = ref(false);
+      var advArgs = ref('-i /input/input.bin -ar 16000 -ac 1 -c:a pcm_s16le /output/out.wav');
+      var busy = ref(false);
+      var engine = ref('未加载');
+      var theme = ref(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+      var statusKind = ref('');
+      var statusText = ref('等待选择文件…');
+      var log = ref('（暂无）');
+      var outputs = ref([]);
+      var inputInfo = ref(null);     // 源文件信息（选文件时用 ffmpeg 探一次）
+      var logEl = ref(null);
+      var fileInput = ref(null);
+
+      // 裁剪（秒）+ 试听
+      var trimStart = ref(0);
+      var trimEnd = ref(0);
+      var trimLoop = ref(false);
+      // 批量裁剪（多文件 + 逐个转换）：同一组起止时间套到每个文件；空字符串 = 不设
+      var batchStart = ref('');
+      var batchEnd = ref('');
+      var playing = ref(false);
+      var playhead = ref(0);
+      var waveReady = ref(false);
+      var trimCanvas = ref(null);
+
+      // 裁剪/试听的内部状态（不需要响应式）
+      var peaks = null;              // { min, max, cols } 波形
+      var previewUrl = null;         // 原文件的 Blob URL（<audio> 用它试听）
+      var previewAudio = null;
+      var previewRaf = 0;
+      var dragMode = null;           // 'start' | 'end' | 'new'
+      var dragAnchor = 0;
+
+      // 恢复上次的参数。必须放在所有 ref 声明之后、所有 watch 注册之前：
+      //   · 早于声明 → 那些 ref 还是 undefined（崩）；
+      //   · 晚于 watch → 刚恢复的 copyMode 会因为"还没选文件、copyPlan 不成立"被立刻关掉。
+      loadParams();
+
+      var hasSab = typeof SharedArrayBuffer !== 'undefined';
+      var coiStatus = window.__coiStatus || 'unknown';
+      // 隔离是怎么来的、SW 有没有接管 —— 悬停徽标可见。这类「要不要刷新」的问题一眼就能判断：
+      // 已隔离 = 不用刷；未隔离 + 「SW 接管=是」= 刷一次；未隔离 + 「接管=否」= SW 还没生效。
+      var isolationTitle = computed(function () {
+        return 'crossOriginIsolated=' + !!globalThis.crossOriginIsolated
+          + ' · SharedArrayBuffer=' + (hasSab ? '有' : '无')
+          + ' · Service Worker 状态：' + coiStatus
+          + ' · SW 接管本次文档：' + (window.__coiHasController ? '是' : '否');
+      });
+      var enginePromise = null;
+      var seq = 0;
+      // 文件列表（模板用）：序号、文件名、大小、探到的时长、对应的输入虚拟路径
+      var fileRows = computed(function () {
+        return files.value.map(function (it, i) {
+          return { id: it.id, name: it.file.name, size: it.file.size,
+                   path: inputPathOf(i), duration: (it.info && it.info.duration) || null };
+        });
+      });
+      var totalDuration = computed(function () {
+        var t = 0;
+        files.value.forEach(function (it) { if (it.info && it.info.duration) t += it.info.duration; });
+        return t || null;
+      });
+      var canRun = computed(function () { return files.value.length > 0 && !busy.value; });
+      var mediaDuration = computed(function () {
+        var d = inputInfo.value && inputInfo.value.duration;
+        return (d && d > 0) ? d : 0;
+      });
+      var trimDuration = computed(function () { return Math.max(0, trimEnd.value - trimStart.value); });
+      var trimActive = computed(function () {
+        var d = mediaDuration.value;
+        if (!d) return false;
+        // trimEnd 为 0 说明还没有拿到时长（探测没回来 / 刚换文件），这时不能当成「整段裁掉」，
+        // 否则会生成 -t 0 把产物截空
+        if (!(trimEnd.value > 0)) return false;
+        return trimStart.value > 0.01 || trimEnd.value < d - 0.01;
+      });
+
+      // ---- 批量裁剪（多文件 + 逐个转换）----
+      var batchTrimActive = computed(function () {
+        return batchStart.value !== '' || batchEnd.value !== '';
+      });
+      // 这次转换到底裁不裁、按什么区间：
+      //   1 个文件 → 波形选区；多个文件 + 逐个转换 → 批量区间；合并（拼接/混音）→ 不裁
+      //   start / end 为 null 表示「不设这一头」（end 为 null = 到各自结尾）
+      var trimSpec = computed(function () {
+        if (files.value.length === 1) {
+          return trimActive.value
+            ? { on: true, start: trimStart.value, end: trimEnd.value }
+            : { on: false, start: null, end: null };
+        }
+        if (files.value.length > 1 && mergeMode.value === 'none' && batchTrimActive.value) {
+          var s = batchStart.value === '' ? null : Number(batchStart.value);
+          var e = batchEnd.value === '' ? null : Number(batchEnd.value);
+          if (s !== null && isNaN(s)) s = null;
+          if (e !== null && isNaN(e)) e = null;
+          if (s === null && e === null) return { on: false, start: null, end: null };
+          if (s !== null && e !== null && e <= s) return { on: false, start: null, end: null };
+          return { on: true, start: s, end: e };
+        }
+        return { on: false, start: null, end: null };
+      });
+      var batchTrimWarn = computed(function () {
+        if (batchStart.value === '' || batchEnd.value === '') return '';
+        var s = Number(batchStart.value), e = Number(batchEnd.value);
+        if (!isNaN(s) && !isNaN(e) && e <= s) return '终点必须大于起点，否则这项会被忽略。';
+        return '';
+      });
+      var batchKeepText = computed(function () {
+        var s = batchStart.value === '' ? null : Number(batchStart.value);
+        var e = batchEnd.value === '' ? null : Number(batchEnd.value);
+        if (s !== null && e !== null && e > s) return fmtDuration(e - s);
+        if (s !== null && !isNaN(s)) return '从 ' + fmtDuration(s) + ' 起，到各自结尾';
+        if (e !== null && !isNaN(e)) return '各自前 ' + fmtDuration(e);
+        return '';
+      });
+
+      // ---------------- 工具 ----------------
+      function fmtSize(n) {
+        return n < 1024 ? n + ' B'
+          : n < 1048576 ? (n / 1024).toFixed(1) + ' KB'
+          : (n / 1048576).toFixed(2) + ' MB';
+      }
+      function setStatus(kind, text) { statusKind.value = kind; statusText.value = text; }
+      function appendLog(t) {
+        if (log.value === '（暂无）') log.value = '';
+        log.value += t + '\n';
+      }
+      function setBusy(b) { busy.value = b; }
+
+      // 线程 worker 的诊断旁路：容器在 callMain 期间 JS 事件循环停摆（同步跑 wasm，
+      // 最后阻塞在 Atomics.wait 等帧），它收不到也处理不了子 worker 的 postMessage；
+      // 页面主线程此时是空闲的，所以子 worker 用 BroadcastChannel 直连页面。
+      try {
+        var diag = new BroadcastChannel('ffmpeg-wasm-diag');
+        diag.onmessage = function (ev) {
+          var t = ev.data && ev.data.text;
+          if (t) appendLog(t);
+        };
+      } catch (e) { /* 环境不支持就算了 */ }
+
+      // 简单 shell-like 分词：支持 "..." 与 '...'
+      function splitArgs(s) {
+        if (!s) return [];
+        var re = /"([^"]*)"|'([^']*)'|(\S+)/g, out = [], m;
+        while ((m = re.exec(s))) out.push(m[1] !== undefined ? m[1] : (m[2] !== undefined ? m[2] : m[3]));
+        return out;
+      }
+
+      // ---------------- 媒体信息：从 ffmpeg 日志里解析 ----------------
+      // 探测/转换的日志里有这些（信息卡就靠它们，不用额外再跑一遍解码）：
+      //   Input #0, wav, from '/input/input.bin':          ← 段头：容器格式 + 路径
+      //     Duration: 00:00:05.32, bitrate: 768 kb/s
+      //     Stream #0:0: Audio: pcm_s16le (…), 48000 Hz, 1 channels, s16, 768 kb/s
+      //   Output #0, mp3, to '/output/out.mp3':            ← 产物段没有 Duration，用进度行补
+      //     Stream #0:0: Audio: mp3, 48000 Hz, mono, s16p, 192 kb/s
+      //   size=     126kB time=00:00:05.30 bitrate= 194.6kbits/s speed=14.5x
+      function parseStreamLine(line) {
+        // 注意 mp4/mov（m4a）的流行会带**轨道号**：`Stream #0:0[0x1](und): Audio: aac (LC) …`，
+        // 漏掉 [] 这一段就整行匹配不上 → m4a/mp4 的编码读不到（"不重编码"因此永远置灰）。
+        var m = /^Stream #\d+:\d+(?:\[[^\]]*\])?(?:\([^)]*\))?: Audio: ([^,]+?)(?: \([^)]*\))*,\s*(\d+) Hz,\s*([^,]+)(.*)$/
+          .exec(String(line).trim());
+        if (!m) return null;
+        var br = /(\d+)\s*kb\/s/.exec(m[4] || '');
+        return {
+          codec: m[1].trim(),
+          sampleRate: Number(m[2]),
+          channels: m[3].trim(),
+          bitrate: br ? Number(br[1]) : null
+        };
+      }
+
+      function parseMediaInfo(text) {
+        var res = { inputs: {}, outputs: {}, progress: null };
+        var lines = String(text || '').split('\n');
+        var cur = null;
+        // 注意格式名里**可能有逗号**：ffmpeg 会把 m4a/mp4 报成 "mov,mp4,m4a,3gp,3g2,mj2"、
+        // webm 报成 "matroska,webm"。所以这里不能用 ([^,]+)，否则整行匹配不上 →
+        // 这些格式的时长/编码信息全都读不到（"不重编码"因此永远置灰）。
+        var reHeader = /^(Input|Output) #\d+, (.+?), (?:from|to) '([^']+)':/;
+        var reDur = /Duration:\s*(\d+):(\d\d):(\d\d(?:\.\d+)?)/;
+        var reBr = /bitrate:\s*(\d+)\s*kb\/s/;
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          var h = reHeader.exec(line);
+          if (h) {
+            cur = { path: h[3], format: h[2].trim(), duration: null, sampleRate: null,
+                    channels: null, codec: null, bitrate: null };
+            (h[1] === 'Input' ? res.inputs : res.outputs)[h[3]] = cur;
+            continue;
+          }
+          if (!cur) continue;
+          var d = reDur.exec(line);
+          if (d && cur.duration === null) {
+            cur.duration = (+d[1]) * 3600 + (+d[2]) * 60 + parseFloat(d[3]);
+          }
+          if (cur.bitrate === null) {
+            var b = reBr.exec(line);
+            if (b) cur.bitrate = Number(b[1]);
+          }
+          var s = parseStreamLine(line);
+          if (s) {
+            cur.codec = s.codec;
+            cur.sampleRate = s.sampleRate;
+            cur.channels = s.channels;
+            if (s.bitrate) cur.bitrate = s.bitrate;
+          }
+        }
+        // 产物段的时长：取进度行里的 time=（多产物时是最大值）
+        var reTime = /time=(\d+):(\d\d):(\d\d(?:\.\d+)?)/g, t, max = null;
+        while ((t = reTime.exec(text))) {
+          var sec = (+t[1]) * 3600 + (+t[2]) * 60 + parseFloat(t[3]);
+          if (max === null || sec > max) max = sec;
+        }
+        res.progress = max;
+        Object.keys(res.outputs).forEach(function (p) {
+          if (res.outputs[p].duration === null) res.outputs[p].duration = max;
+        });
+        return res;
+      }
+
+      function fmtDuration(sec) {
+        if (sec === null || sec === undefined || isNaN(sec)) return '—';
+        var s = Math.round(Number(sec) * 100) / 100;
+        var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s - h * 3600 - m * 60;
+        var rs = (r < 10 ? '0' : '') + r.toFixed(2);
+        return (h ? h + ':' + (m < 10 ? '0' : '') + m : m) + ':' + rs;
+      }
+
+      // 处理耗时（毫秒 → 好看的字符串）
+      function fmtCost(ms) {
+        if (ms === null || ms === undefined || isNaN(ms)) return '—';
+        var s = Number(ms) / 1000;
+        if (s < 10) return s.toFixed(2) + ' s';
+        if (s < 60) return s.toFixed(1) + ' s';
+        var m = Math.floor(s / 60);
+        return m + ' 分 ' + Math.round(s - m * 60) + ' 秒';
+      }
+
+      function channelsText(v) {
+        if (!v) return '—';
+        var s = String(v).trim();
+        if (/mono/i.test(s) || /^1(\s|$)/.test(s)) return '单声道';
+        if (/stereo/i.test(s) || /^2(\s|$)/.test(s)) return '立体声';
+        return s.replace(/\s*channels?$/i, '') + ' 声道';
+      }
+
+      // ---------------- 产物试听（用浏览器内置解码器） ----------------
+      // 产物是 Blob URL，能不能直接放取决于**浏览器**有没有这个格式的解码器，
+      // 跟 wasm 里 FFmpeg 的本事无关：wav/mp3/m4a/flac 基本都能放，wma/amr/adts-aac 谁都不行，
+      // ogg/opus Safari 不行，aiff/au 看系统。所以别写死支持表 —— 问 <audio> 自己（canPlayType）。
+      var MIME_BY_EXT = {
+        mp3: ['audio/mpeg'],
+        wav: ['audio/wav', 'audio/x-wav'],
+        flac: ['audio/flac', 'audio/x-flac'],
+        m4a: ['audio/mp4', 'audio/x-m4a'],
+        mp4: ['audio/mp4'],
+        aac: ['audio/aac', 'audio/aacp'],                      // ADTS 裸流，多数浏览器放不了
+        ogg: ['audio/ogg'],                                    // Vorbis
+        opus: ['audio/ogg; codecs=opus', 'audio/opus'],
+        webm: ['audio/webm; codecs=opus', 'audio/webm'],        // Chrome/Firefox 可以，Safari 不行
+        wma: ['audio/x-ms-wma'], asf: ['audio/x-ms-wma'],       // 浏览器都不支持
+        aiff: ['audio/aiff', 'audio/x-aiff'], aif: ['audio/aiff', 'audio/x-aiff'],
+        au: ['audio/basic'],
+        amr: ['audio/amr']
+      };
+      var audioProbe = null;
+      function mimesOfExt(ext) {
+        return MIME_BY_EXT[String(ext || '').toLowerCase()] || [];
+      }
+      function canPlayMimes(mimes) {
+        if (!mimes || !mimes.length) return false;
+        try { audioProbe = audioProbe || new Audio(); } catch (e) { return false; }
+        for (var i = 0; i < mimes.length; i++) {
+          var r = '';
+          try { r = audioProbe.canPlayType(mimes[i]); } catch (e) { r = ''; }
+          if (r === 'probably' || r === 'maybe') return true;
+        }
+        return false;
+      }
+
+      var outPlayingUrl = ref('');    // 正在试听的产物 url（模板用它切换按钮文案）
+      var outAudio = null;            // 对应的 <audio>；同一时刻只放一个
+      function stopOutputAudio() {
+        if (outAudio) { try { outAudio.pause(); } catch (e) {} outAudio = null; }
+        outPlayingUrl.value = '';
+      }
+      function toggleOutputAudio(o) {
+        if (!o || !o.playable) return;
+        if (outPlayingUrl.value === o.url) { stopOutputAudio(); return; }   // 再点一次 = 停
+        stopOutputAudio();
+        stopPreview();                                                      // 与「试听选中片段」互斥
+        var a = new Audio(o.url);
+        outAudio = a;
+        outPlayingUrl.value = o.url;
+        a.onended = function () { if (outPlayingUrl.value === o.url) stopOutputAudio(); };
+        a.onerror = function () {
+          stopOutputAudio();
+          appendLog('[preview] 浏览器放不了 ' + o.name + '（下载后用本地播放器听）');
+        };
+        var p = a.play();
+        if (p && p.catch) p.catch(function (e) {
+          stopOutputAudio();
+          appendLog('[preview] 播放失败：' + ((e && e.message) || e) + '（可下载后用本地播放器）');
+        });
+      }
+
+      // ---------------- 裁剪：波形拖动条 + 选区试听 ----------------
+      // 试听和波形都用浏览器自身能力，不加解码库：
+      //   <audio> 播放原文件（按选区起点 seek、到终点停/循环）—— 不吃内存、兼容性最好；
+      //   decodeAudioData 只用来画波形，且只对「小且短」的文件做（解码结果是 float32，太大就跳过）。
+      // 真正的裁剪落到 ffmpeg 参数：-ss <起点> 放在 -i 前，-t <保留时长> 放在 -i 后。
+      function durationSec() { return mediaDuration.value; }
+      function round1(v) { return Math.round(Number(v) * 10) / 10; }
+      function secArg(v) { return String(Math.round(Number(v) * 1000) / 1000); }   // 送给 ffmpeg 用，别丢精度
+
+      function clampTrim() {
+        var d = durationSec();
+        if (!d) { trimStart.value = 0; trimEnd.value = 0; return; }
+        trimStart.value = Math.min(Math.max(0, Number(trimStart.value) || 0), d);
+        trimEnd.value = Math.min(Math.max(0, Number(trimEnd.value) || 0), d);
+        if (trimEnd.value - trimStart.value < 0.1) {         // 至少留 0.1 秒，且不越界
+          if (trimStart.value > d - 0.1) trimStart.value = Math.max(0, d - 0.1);
+          trimEnd.value = Math.min(d, trimStart.value + 0.1);
+        }
+      }
+
+      function resetTrim() { trimStart.value = 0; trimEnd.value = durationSec(); playhead.value = 0; drawTrim(); }
+
+      function cssVar(n) {
+        try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || '#888'; }
+        catch (e) { return '#888'; }
+      }
+
+      function drawTrim() {
+        var canvas = trimCanvas.value;
+        if (!canvas) return;
+        var w = canvas.clientWidth, h = canvas.clientHeight;
+        if (!w || !h) return;
+        var dpr = window.devicePixelRatio || 1;
+        var pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+        if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+        var g = canvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var dur = durationSec() || 1;
+        var x0 = trimStart.value / dur * w;
+        var x1 = trimEnd.value / dur * w;
+        var selW = Math.max(1, x1 - x0);
+
+        g.clearRect(0, 0, w, h);
+        g.fillStyle = cssVar('--panel2'); g.fillRect(0, 0, w, h);
+        g.fillStyle = cssVar('--hover-bg'); g.fillRect(x0, 0, selW, h);
+
+        if (peaks) {
+          var mid = h / 2, amp = Math.max(1, h / 2 - 3);
+          g.strokeStyle = cssVar('--muted');
+          g.beginPath();
+          for (var x = 0; x < w; x++) {
+            var c = Math.min(peaks.cols - 1, Math.max(0, Math.floor(x / w * peaks.cols)));
+            var top = mid - peaks.max[c] * amp;
+            var bot = mid - peaks.min[c] * amp;
+            if (bot - top < 1) bot = top + 1;
+            g.moveTo(x + 0.5, top); g.lineTo(x + 0.5, bot);
+          }
+          g.stroke();
+        } else {
+          g.strokeStyle = cssVar('--line');
+          g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+        }
+
+        // 选中区外压暗，突出保留区间
+        g.fillStyle = cssVar('--panel'); g.globalAlpha = 0.55;
+        g.fillRect(0, 0, x0, h);
+        g.fillRect(x0 + selW, 0, Math.max(0, w - x0 - selW), h);
+        g.globalAlpha = 1;
+
+        // 两端手柄
+        g.fillStyle = cssVar('--accent');
+        g.fillRect(x0 - 1, 0, 2, h);
+        g.fillRect(x0 + selW - 1, 0, 2, h);
+        g.fillRect(x0 - 4, 0, 8, 4);
+        g.fillRect(x0 + selW - 4, h - 4, 8, 4);
+
+        // 播放头
+        if (playing.value || playhead.value > 0) {
+          g.fillStyle = cssVar('--ok');
+          g.fillRect(playhead.value / dur * w - 1, 0, 2, h);
+        }
+      }
+
+      // 波形：解码原文件副本（decodeAudioData 会 detach 传入的 ArrayBuffer，必须 slice），
+      // 再按列取 min/max。太大 / 太长的直接跳过 —— 滑块和试听照样能用。
+      async function loadWaveform() {
+        peaks = null; waveReady.value = false; drawTrim();
+        var f = file.value;
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!f || !AC) return;
+        if (f.size > 80 * 1024 * 1024) return;
+        var d = durationSec();
+        if (d && d > 20 * 60) return;
+        var ac = null;
+        try {
+          var buf = await f.arrayBuffer();
+          ac = new AC();
+          var audio = await ac.decodeAudioData(buf.slice(0));
+          var ch = audio.getChannelData(0);
+          var cols = 1200;
+          var step = Math.max(1, Math.floor(ch.length / cols));
+          var mn = new Float32Array(cols), mx = new Float32Array(cols);
+          for (var c = 0; c < cols; c++) {
+            var s = c * step, e = Math.min(ch.length, s + step);
+            var lo = 1, hi = -1;
+            for (var i = s; i < e; i += 2) {
+              var v = ch[i];
+              if (v < lo) lo = v;
+              if (v > hi) hi = v;
+            }
+            if (lo > hi) { lo = 0; hi = 0; }
+            mn[c] = lo; mx[c] = hi;
+          }
+          peaks = { min: mn, max: mx, cols: cols };
+          waveReady.value = true;
+        } catch (e) {
+          peaks = null;      // 浏览器解不了这种格式（amr/wma…），不影响裁剪与转换
+        } finally {
+          if (ac) { try { ac.close(); } catch (e) {} }
+          drawTrim();
+        }
+      }
+
+      function ensurePreviewAudio() {
+        if (previewAudio) return previewAudio;
+        if (!previewUrl) return null;
+        var a = new Audio();
+        a.preload = 'auto';
+        a.src = previewUrl;
+        previewAudio = a;
+        return a;
+      }
+
+      function stopPreview() {
+        if (previewRaf) { cancelAnimationFrame(previewRaf); previewRaf = 0; }
+        if (previewAudio) { try { previewAudio.pause(); } catch (e) {} }
+        playing.value = false;
+        playhead.value = 0;
+        drawTrim();
+      }
+
+      function togglePreview() {
+        if (playing.value) { stopPreview(); return; }
+        stopOutputAudio();          // 同一时刻只放一个声音
+        var a = ensurePreviewAudio();
+        if (!a) { appendLog('[preview] 没有可试听的音频源'); return; }
+        clampTrim();
+        try { a.currentTime = trimStart.value; } catch (e) { /* 个别格式 seek 会抛，忽略 */ }
+        var p = a.play();
+        playing.value = true;
+        if (p && p.catch) {
+          p.catch(function (e) {
+            playing.value = false;
+            appendLog('[preview] 浏览器放不了这个格式（' + ((e && e.message) || e) + '）—— 裁剪与转换不受影响');
+            drawTrim();
+          });
+        }
+        var tick = function () {
+          if (!playing.value) return;
+          var t = a.currentTime;
+          playhead.value = t;
+          if (t >= trimEnd.value - 0.03) {
+            if (trimLoop.value) { try { a.currentTime = trimStart.value; } catch (e) {} }
+            else { stopPreview(); return; }
+          }
+          drawTrim();
+          previewRaf = requestAnimationFrame(tick);
+        };
+        previewRaf = requestAnimationFrame(tick);
+      }
+
+      // ---- 拖动交互（pointer 事件：鼠标 / 触摸 / 触控笔通用） ----
+      function trimTimeAt(ev) {
+        var canvas = trimCanvas.value;
+        var rect = canvas.getBoundingClientRect();
+        var dur = durationSec() || 1;
+        var x = Math.min(Math.max(ev.clientX - rect.left, 0), rect.width);
+        return (rect.width ? x / rect.width : 0) * dur;
+      }
+
+      function onTrimDown(ev) {
+        var dur = durationSec();
+        if (!dur || !trimCanvas.value) return;
+        var t = trimTimeAt(ev);
+        var w = Math.max(1, trimCanvas.value.getBoundingClientRect().width);
+        var tol = dur * (12 / w);                     // 12px 命中范围换算成秒
+        if (Math.abs(t - trimStart.value) <= tol) dragMode = 'start';
+        else if (Math.abs(t - trimEnd.value) <= tol) dragMode = 'end';
+        else { dragMode = 'new'; dragAnchor = t; trimStart.value = t; trimEnd.value = t; }
+        try { ev.target.setPointerCapture(ev.pointerId); } catch (e) {}
+        if (ev.preventDefault) ev.preventDefault();
+        onTrimMove(ev);
+      }
+
+      function onTrimMove(ev) {
+        if (!dragMode) return;
+        if (ev.preventDefault) ev.preventDefault();
+        var t = trimTimeAt(ev);
+        if (dragMode === 'start') trimStart.value = Math.min(t, trimEnd.value);
+        else if (dragMode === 'end') trimEnd.value = Math.max(t, trimStart.value);
+        else { trimStart.value = Math.min(dragAnchor, t); trimEnd.value = Math.max(dragAnchor, t); }
+        clampTrim();
+        drawTrim();
+      }
+
+      function onTrimUp() {
+        if (!dragMode) return;
+        dragMode = null;
+        clampTrim();
+        if (playing.value && previewAudio) {          // 正在试听时改区间 → 从新起点接着听
+          try { previewAudio.currentTime = trimStart.value; } catch (e) {}
+        }
+        drawTrim();
+      }
+
+      function onTrimInput(which, ev) {
+        var v = Number(ev.target.value);
+        if (!isNaN(v)) {
+          if (which === 'start') trimStart.value = v; else trimEnd.value = v;
+        }
+        clampTrim();
+        drawTrim();
+      }
+
+      // atempo 单次倍率限制在 0.5~2，超范围就串联多级
+      function atempoChain(rate) {
+        var out = [], r = rate;
+        while (r > 2) { out.push('atempo=2'); r /= 2; }
+        while (r < 0.5) { out.push('atempo=0.5'); r /= 0.5; }
+        out.push('atempo=' + Number(r.toFixed(4)));
+        return out;
+      }
+
+      // 已选文件在 wasm 里的虚拟路径：第 1 个 → /input/input.bin（既有命令、内置示例、
+      // 文档都按这个写，保持兼容），第 2 个起 → /input/f2.bin、/input/f3.bin …
+      // ffmpeg-worker.js 按同一规则落盘。
+      function inputPathOf(i) { return i === 0 ? '/input/input.bin' : '/input/f' + (i + 1) + '.bin'; }
+
+      // 输入字节会 transfer 给 worker，转移后主线程这份 ArrayBuffer 就被 detach 了
+      // （byteLength 变 0）。不重新读的话，第二次转换会写进空输入 —— 多文件时每个都要过一遍。
+      async function currentInputs(entries) {
+        entries = entries || files.value;
+        var list = [];
+        for (var i = 0; i < entries.length; i++) {
+          var it = entries[i];
+          if (!it.buf || it.buf.byteLength === 0) it.buf = await it.file.arrayBuffer();
+          list.push({ name: it.file.name, data: it.buf });
+        }
+        return list;
+      }
+
+      // ---------------- worker ----------------
+      function newWorker() { return new Worker(WORKER_URL); }
+
+      // ---------------- 线程 worker 中转 ----------------
+      // 这个环境里「worker 里再建 worker」跑不起来：子 worker 对象能建出来，但脚本从不执行、
+      // 也不报 error（父 worker 就永远卡在等帧）。所以 ffmpeg-worker.js 把 emscripten 的线程
+      // worker 换成代理对象，真正的 worker 由这里（页面）创建，消息双向经页面转发。
+      var threads = Object.create(null);   // tid -> { worker, container }
+
+      function terminateThreadsOf(container) {
+        Object.keys(threads).forEach(function (tid) {
+          if (threads[tid].container === container) {
+            try { threads[tid].worker.terminate(); } catch (e) {}
+            delete threads[tid];
+          }
+        });
+      }
+
+      function terminateAllThreads() {
+        Object.keys(threads).forEach(function (tid) {
+          try { threads[tid].worker.terminate(); } catch (e) {}
+          delete threads[tid];
+        });
+      }
+
+      function handleThreadMsg(container, m) {
+        if (m.__thread === 'new') {
+          var tw;
+          try {
+            // 同源、同一份脚本，带 #em-pthread 标记与 name（子 worker 靠它认出自己是线程）
+            tw = new Worker(WORKER_URL + '#em-pthread', { name: 'em-pthread' });
+          } catch (e) {
+            container.postMessage({ __thread: 'error', tid: m.tid, message: '创建线程 worker 失败: ' + e });
+            return;
+          }
+          threads[m.tid] = { worker: tw, container: container };
+          tw.onmessage = function (ev) {
+            container.postMessage({ __thread: 'from', tid: m.tid, msg: ev.data });
+          };
+          tw.onerror = function (e) {
+            container.postMessage({ __thread: 'error', tid: m.tid,
+              message: (e && (e.message || e.error)) || 'thread worker error' });
+          };
+          return;
+        }
+        if (m.__thread === 'to') {
+          var rec = threads[m.tid];
+          if (!rec) return;
+          try { rec.worker.postMessage(m.msg); }
+          catch (e) { appendLog('[thread] 转发给线程 worker 失败: ' + ((e && (e.message || e)) || e)); }
+          return;
+        }
+        if (m.__thread === 'terminate') {
+          var r2 = threads[m.tid];
+          if (r2) { try { r2.worker.terminate(); } catch (e) {} delete threads[m.tid]; }
+        }
+      }
+
+      function execFFmpeg(o) {
+        var args = o.args, list = o.files || [], outs = o.outputs, onLog = o.onLog;
+        var join = !!o.joinInputs;
+        // 静止多久算卡死。原来 45 秒对「浏览器同时启动十几个 wasm 线程 worker」的情况偏紧
+        // （每个 worker 都要实例化一份 3.7MB 的 wasm），容易把只是慢、但会成功的任务误杀，所以放宽到 120 秒。
+        var stallMs = o.stallMs || 45000;
+        return new Promise(function (resolve, reject) {
+          var id = ++seq;
+          var w = newWorker();
+          var settled = false, timer = null;
+
+          // 兜底看门狗：多线程 core 一旦线程起不来，callMain 会一直阻塞在等帧，
+          // 既不报错也不产出 —— 这里在「长时间没有任何进展」时主动终止并提示，
+          // 免得页面永远转圈。FFmpeg 正常时会持续刷进度日志，判据可靠。
+          var arm = function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+              if (settled) return;
+              settled = true;
+              try { w.terminate(); } catch (e) {}
+              terminateThreadsOf(w);
+              reject(new Error('超过 ' + Math.round(stallMs / 1000) + ' 秒没有任何进展，已强制终止：'
+                + '多线程 wasm 的线程没跑起来（浏览器同时启动太多 wasm 线程时会出现）。'
+                + '建议刷新页面（右上角「刷新」）后重试；下一次任务会自动串行排队，不会叠加。'
+                + '排查看日志里的 [pthread] / [thread] / [postMessage] / [rejection] 行'));
+            }, stallMs);
+          };
+          arm();
+
+          w.onmessage = function (ev) {
+            var m = ev.data || {};
+            // 容器请求 / 转发线程 worker 的消息（见 handleThreadMsg）
+            if (m.__thread) { handleThreadMsg(w, m); return; }
+            if (m.type === 'log') { arm(); if (onLog) onLog(m.text); return; }
+            if (m.type === 'done') {
+              settled = true; clearTimeout(timer);
+              terminateThreadsOf(w); w.terminate(); resolve(m); return;
+            }
+            if (m.type === 'error') {
+              settled = true; clearTimeout(timer);
+              terminateThreadsOf(w); w.terminate();
+              reject(new Error(m.message)); return;
+            }
+          };
+          w.onerror = function (e) {
+            if (settled) return;
+            settled = true; clearTimeout(timer);
+            terminateThreadsOf(w); w.terminate();
+            reject(new Error((e && e.message) || 'worker error'));
+          };
+
+          // 零拷贝：把所有输入一起转移给 worker（转移后主线程这几份 buffer 失效，
+          // 下次跑之前 currentInputs() 会按 File 重新读）
+          var transfer = [];
+          list.forEach(function (f) { if (f && f.data) transfer.push(f.data); });
+          w.postMessage({ id: id, type: 'run', args: args, files: list, joinInputs: join, outputs: outs }, transfer);
+        });
+      }
+
+      // 引擎预热：后台起一个 worker，把 wasm 编译好之后立即杀掉
+      function initEngine() {
+        if (enginePromise) return enginePromise;
+        engine.value = '加载中…';
+        enginePromise = new Promise(function (resolve) {
+          var w = newWorker(), done = false;
+          function finish(ok, note) {
+            if (done) return; done = true;
+            engine.value = ok
+              ? '就绪（FFmpeg 6.1.2 wasm' + (note ? ' · ' + note : '') + '）'
+              : note;
+            if (!ok) appendLog('[engine] 预热失败：' + note);   // 失败原因也进日志，别只挂在徽标上
+            try { w.terminate(); } catch (e) {}
+            resolve(ok);
+          }
+          w.onmessage = function (ev) {
+            if (ev.data && ev.data.type === 'pong') {
+              finish(true, ev.data.sab === false ? '缺 SharedArrayBuffer' : '');
+            }
+          };
+          w.onerror = function () { finish(false, '加载失败'); };
+          setTimeout(function () { finish(false, '超时'); }, 60000);
+          w.postMessage({ id: 0, type: 'ping' });
+        });
+        return enginePromise;
+      }
+
+      // ---------------- 文件 ----------------
+      function pickFile() {
+        // ref 绑定偶尔会拿到空（比如模板 ref 与 setup 名字不匹配时），兜一层 id 查询
+        var el = fileInput.value || document.getElementById('fileInput');
+        if (el) el.click();
+      }
+
+      // 选完文件先探一次（`ffmpeg -i a -i b` 不给输出：ffmpeg 打印完各输入信息后报错退出，
+      // 我们要的正是那段日志；顺便把引擎预热了）：出「源文件信息」卡片 + 每行文件的时长
+      async function probeInput(keepTrim) {
+        if (!files.value.length || !hasSab) return;
+        inputInfo.value = null;
+        var entries = files.value.slice();
+        try {
+          var list = await currentInputs(entries);
+          if (!list.length) return;
+          await initEngine();
+          setStatus('run', '正在读取源文件信息…');
+          var args = ['-hide_banner'];
+          list.forEach(function (_, i) { args.push('-i', inputPathOf(i)); });
+          var text = '';
+          await execFFmpeg({
+            args: args,
+            files: list,
+            outputs: [],
+            onLog: function (t) { text += t + '\n'; },
+            stallMs: 120000
+          });
+          // 时长/格式按「路径 → 信息」回填到各份文件上（跟着文件走，重排序也不会错位）
+          var infos = parseMediaInfo(text).inputs;
+          entries.forEach(function (it, i) {
+            var got = infos[inputPathOf(i)];
+            if (got) it.info = got;
+          });
+          var info = infos[inputPathOf(0)];
+          if (info) {
+            inputInfo.value = info;
+            // 追加文件时第 1 个文件没变 → 别把用户已经拖好的裁剪选区冲掉
+            if (!keepTrim || !(trimEnd.value > 0)) {
+              trimStart.value = 0;
+              trimEnd.value = info.duration || 0;
+            }
+            clampTrim();
+            drawTrim();
+            loadWaveform();
+          }
+          if (!busy.value) setStatus('run', '文件已就绪，点「开始转换」');   // 别覆盖正在转换的状态
+        } catch (e) {
+          appendLog('[info] 读取源文件信息失败：' + ((e && e.message) || e));
+          if (!busy.value) setStatus('run', '文件已就绪，点「开始转换」');
+        }
+      }
+
+      // 再选/再拖 = **追加**到列表末尾（顺序就是合并顺序）；想去掉用列表里的 × / 清空。
+      // 同一个文件拖几次就真会出现几份 —— 拼接时就是重复几遍，这也是有用的用法。
+      function addFiles(input) {
+        var arr = Array.prototype.slice.call(input || []);
+        if (!arr.length) return;
+        var prevFirst = files.value.length ? files.value[0].file : null;
+        var before = files.value.length;
+        files.value = files.value.concat(arr.map(function (f) {
+          return { id: ++fileSeq, file: f, buf: null, info: null };
+        }));
+        var firstChanged = !prevFirst || prevFirst !== files.value[0].file;
+        var added = files.value.slice(before);
+        fileListChanged(prevFirst);
+        log.value = (before ? '已追加 ' + added.length + ' 个文件（原有 ' + before + ' 个）'
+                            : '已读取 ' + added.length + ' 个文件')
+          + files.value.map(function (it, i) {
+              return '\n  ' + (i + 1) + '. ' + it.file.name + '（' + fmtSize(it.file.size) + '） → ' + inputPathOf(i);
+            }).join('')
+          + (hasSab ? '' : '\n[隔离] crossOriginIsolated=' + globalThis.crossOriginIsolated
+            + ' · Service Worker 状态：' + (window.__coiStatus || 'unknown'));
+        initEngine();
+        probeInput(!firstChanged);   // 追加时保留已有的裁剪选区
+      }
+
+      function removeFile(i) {
+        var prevFirst = files.value.length ? files.value[0].file : null;
+        var list = files.value.slice();
+        list.splice(i, 1);
+        files.value = list;
+        fileListChanged(prevFirst);
+        if (!list.length) setStatus('', '等待选择文件…');
+      }
+
+      // 顺序就是拼接顺序，所以要能调
+      function moveFile(i, delta) {
+        var prevFirst = files.value.length ? files.value[0].file : null;
+        var list = files.value.slice();
+        var j = i + delta;
+        if (j < 0 || j >= list.length) return;
+        var tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+        files.value = list;
+        fileListChanged(prevFirst);
+      }
+
+      function clearFiles() {
+        var prevFirst = files.value.length ? files.value[0].file : null;
+        files.value = [];
+        fileListChanged(prevFirst);
+        setStatus('', '等待选择文件…');
+      }
+
+      // 列表变化后的收尾。波形/试听/裁剪只认第 1 个文件：**只有第 1 个真的换了**才重置，
+      // 否则（追加、删掉非首个、重排没动到首位）保持原样，免得每次拖文件都白屏重来。
+      // 每条对应的虚拟路径是按序号现算的，不用重新探测（info 跟着文件走）。
+      function fileListChanged(prevFirst) {
+        var first = files.value.length ? files.value[0] : null;
+        if (!prevFirst || !first || prevFirst !== first.file) {
+          stopPreview();
+          if (previewUrl) { try { URL.revokeObjectURL(previewUrl); } catch (e) {} previewUrl = null; }
+          previewAudio = null; peaks = null; waveReady.value = false;
+          trimStart.value = 0; trimEnd.value = 0;
+          inputInfo.value = (first && first.info) || null;
+          if (first) {
+            previewUrl = URL.createObjectURL(first.file);
+            trimEnd.value = (first.info && first.info.duration) || 0;
+          }
+          clampTrim();
+          drawTrim();
+          if (first) loadWaveform();
+        }
+        if (first) setStatus('run', '文件已就绪，点「开始转换」');
+      }
+
+      function onFileChange(e) {
+        var list = e.target.files;
+        if (list && list.length) addFiles(list);
+        e.target.value = '';   // 允许再次选择同一批文件
+      }
+
+      function onDrop(e) {
+        dragging.value = false;
+        var list = e.dataTransfer && e.dataTransfer.files;
+        if (list && list.length) addFiles(list);
+      }
+
+      // ---------------- 参数拼装 ----------------
+      // 产物名跟着输入文件走：test.wav -> test.mp3（只换扩展名）。
+      // 多文件合并时用第 1 个文件的基名 + -merged，避免和单个文件的产物同名。
+      function inputBaseName(entry) {
+        var f = (entry && entry.file) || file.value;
+        var n = (f && f.name) || 'out';
+        n = n.replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, '');
+        return n.replace(/^\s+|\s+$/g, '') || 'out';
+      }
+      // 写进 MEMFS 的名字再净化一道：引号会让 ffmpeg 的 `to '…':` 那行产生歧义
+      // （信息解析靠它匹配），反斜杠 / 控制字符也不适合当路径
+      function fsSafeName(n) {
+        n = String(n).replace(/[\\/'\u0000-\u001f]/g, '_').replace(/^\s+|\s+$/g, '');
+        if (n.length > 80) n = n.slice(0, 80);
+        return n || 'out';
+      }
+
+      // 音量/倍速的滤镜链（两者合成一条，避免重复 -af 互相覆盖）
+      function audioChain() {
+        var outs = [];
+        if (speed.value && Number(speed.value) !== 1) outs = outs.concat(atempoChain(Number(speed.value)));
+        if (gain.value && Number(gain.value) !== 1) outs.push('volume=' + gain.value);
+        return outs;
+      }
+
+      // 多文件合并的滤镜图：
+      //   concat = 首尾相接（n 路 → 1 路，顺序就是 -i 的顺序）
+      //   amix   = 同时播放（混音，时长取最长的那条）
+      // 出口统一叫 [out]，后面用 -map "[out]" 取。
+      // 音量/倍速不能再用 -af：ffmpeg 不允许同一个流既被 -filter_complex 又被 -af 处理
+      // （报 "Filtergraph ... was specified through the -vf/-af/-filter option for output
+      // stream ... cannot be used together"），所以串在图的末尾。
+      function buildMergeGraph(n, mode, tail) {
+        var ins = [];
+        for (var i = 0; i < n; i++) ins.push('[' + i + ':a]');
+        var head = (mode === 'amix')
+          ? ins.join('') + 'amix=inputs=' + n + ':duration=longest:normalize=0'
+          : ins.join('') + 'concat=n=' + n + ':v=0:a=1';
+        if (!tail) return head + '[out]';
+        return head + '[cat];[cat]' + tail + '[out]';
+      }
+
+      // 探测到的解码器名 → 目标格式用的编码族（判断「不重编码」能不能装进目标容器）
+      function copyFamily(codec) {
+        var c = String(codec || '').toLowerCase();
+        if (c === 'mp3' || c === 'mp3float') return 'libmp3lame';
+        if (c === 'aac') return 'aac';
+        if (c === 'flac') return 'flac';
+        if (c === 'vorbis') return 'libvorbis';
+        if (c === 'opus' || c === 'libopus') return 'libopus';
+        if (c === 'wmav1' || c === 'wmav2') return 'wmav2';
+        if (/^pcm_s16le/.test(c)) return 'pcm_s16le';
+        if (/^pcm_s16be/.test(c)) return 'pcm_s16be';
+        return c;
+      }
+
+      // 单个文件的「不重编码」目标：由它的编码/容器反推该输出成什么格式
+      // （copy 只搬字节，容器必须装得下原编码，所以目标不能由用户随手选）。
+      function copyTargetOf(info) {
+        if (!info || !info.codec) return { ok: false, reason: '还没探测到编码信息', target: null };
+        var fam = copyFamily(info.codec);
+        var t = FAMILY_TARGET[fam];
+        if (!t) {
+          return { ok: false, target: null,
+                   reason: '这份输入的编码（' + info.codec + '）没有对应的输出格式，只能重编码' };
+        }
+        // 同一个编码可能对应多个容器：跟着输入的容器走，别把 webm 输入输出成 .opus
+        //   opus：webm / matroska → WebM；其余（ogg）→ Opus
+        //   aac ：adts(.aac) → AAC；其余（mp4/m4a）→ M4A
+        var fmt = String(info.format || '');
+        if (fam === 'libopus' && /webm|matroska/i.test(fmt)) t = 'webm';
+        if (fam === 'aac' && /^aac/i.test(fmt)) t = 'aac';
+        // 裁剪 + copy：切点会吸附到编码帧边界（mp3 实测 10s→10.01s，可接受），
+        // 但有些容器的时长信息不会随 copy 更新 —— 实测 flac：内容 10 秒、头里却写 40 秒；
+        // webm：要 4 秒得到 5.98 秒。这些格式只有在「不裁剪、纯换容器」时才允许 copy。
+        if (trimSpec.value.on && COPY_TRIM_UNSAFE[t]) {
+          return { ok: false, target: null,
+                   reason: FORMATS[t].label + ' 用 copy 剪裁不准：'
+                     + COPY_TRIM_UNSAFE[t] + '，裁剪只能重编码' };
+        }
+        return { ok: true, target: t, reason: '' };
+      }
+
+      // 「不重编码（-c copy）」能不能用、以及合并时能不能走「同格式字节拼接」。
+      // 勾上以后界面会把目标格式对齐成它并锁住，下面的编码参数一并清空锁住（见 watch(copyMode)）。
+      // 合并的快速通道只有 mp3 安全 —— 实测：2×40s mp3 字节拼接被读成 80.09s（对），
+      // 而 adts aac 读成 83.39s（多出内容），wav/ogg 中间夹 RIFF 头 / ogg 页序号，更不行。
+      var copyPlan = computed(function () {
+        var entries = files.value;
+        if (!entries.length) return { ok: false, reason: '先选择文件', target: null, join: false };
+
+        // 多文件 + 逐个转换：每个文件一条命令、各出各的产物 → **各判各的**（可以混格式：
+        // mp3 还是 .mp3、wav 还是 .wav、m4a 还是 .m4a …），只要每个都能 copy 就允许勾选。
+        if (entries.length > 1 && mergeMode.value === 'none') {
+          var byId = {};
+          for (var i = 0; i < entries.length; i++) {
+            var p = copyTargetOf(entries[i].info);
+            if (!p.ok) {
+              return { ok: false, target: null, join: false,
+                       reason: '第 ' + (i + 1) + ' 个文件（' + entries[i].file.name + '）：' + p.reason };
+            }
+            byId[entries[i].id] = p;
+          }
+          return { ok: true, reason: '', target: null, join: false, byId: byId };
+        }
+
+        // 单文件：直接判
+        if (entries.length === 1) {
+          var one = copyTargetOf(entries[0].info);
+          return { ok: one.ok, reason: one.reason || '', target: one.target || null, join: false };
+        }
+
+        // 多个文件 + 合并（拼接/混音）：必须统一，且只有 mp3 能走字节拼接
+        for (var j = 0; j < entries.length; j++) {
+          if (!entries[j].info || !entries[j].info.codec) {
+            return { ok: false, reason: '还没探测到第 ' + (j + 1) + ' 个文件的编码信息',
+                     target: null, join: false };
+          }
+        }
+        var fams = entries.map(function (it) { return copyFamily(it.info.codec); });
+        if (!fams.every(function (x) { return x === fams[0]; })) {
+          return { ok: false, reason: '各文件的编码不一致（' + fams.join('、') + '），做不到不重编码',
+                   target: null, join: false };
+        }
+        if (fams[0] !== 'libmp3lame') {
+          return { ok: false, reason: '不重编码的合并只支持 mp3（其它格式字节拼接会被读错），'
+            + '会走 concat 滤镜（重编码）', target: null, join: false };
+        }
+        var same = entries.every(function (it) {
+          return it.info.sampleRate === entries[0].info.sampleRate
+            && it.info.channels === entries[0].info.channels;
+        });
+        if (!same) return { ok: false, reason: '各文件的采样率/声道不一致，只能重编码合并',
+                            target: null, join: false };
+        return { ok: true, reason: '', target: 'mp3', join: true };
+      });
+
+      var copyRestore = null;   // 勾选「不重编码」前的目标格式与编码参数，取消勾选时还回去
+
+      // 勾选：目标格式对齐到输入编码 + 锁住，下面的编码参数清空（copy 用不到它们）
+      // 取消勾选：把用户原来的设置还回去
+      watch(copyMode, function (on) {
+        if (on) {
+          var plan = copyPlan.value;
+          if (!plan.ok) { copyMode.value = false; appendLog('[copy] 无法启用：' + plan.reason); return; }
+          copyRestore = { target: target.value, quality: quality.value, sr: sr.value, ch: ch.value,
+                          bitrate: bitrate.value, gain: gain.value, speed: speed.value };
+          if (plan.target) target.value = plan.target;   // 逐个转换时 plan.target 为 null（各自成格式）
+          quality.value = 'std'; sr.value = ''; ch.value = ''; bitrate.value = ''; gain.value = ''; speed.value = '';
+          appendLog('[copy] 已切到不重编码：'
+            + (plan.target ? '目标格式 = ' + FORMATS[plan.target].label + '（与输入编码一致）'
+                           : '每个文件保持各自格式（逐个转换，可混格式）')
+            + '；采样率/声道/码率/音量/倍速已清空并锁住'
+            + (plan.join ? '；合并走 mp3 字节拼接快速通道' : ''));
+          return;
+        }
+        if (copyRestore) {
+          target.value = copyRestore.target; quality.value = copyRestore.quality;
+          sr.value = copyRestore.sr; ch.value = copyRestore.ch; bitrate.value = copyRestore.bitrate;
+          gain.value = copyRestore.gain; speed.value = copyRestore.speed;
+          copyRestore = null;
+        }
+      });
+
+      watch(copyPlan, function (plan) {
+        if (!copyMode.value) return;
+        // 勾上之后条件又变得不满足（比如给 flac 拖了裁剪）→ 自动关掉，避免「勾了却没生效」
+        if (!plan.ok) {
+          copyMode.value = false;
+          appendLog('[copy] 已自动关闭「不重编码」：' + plan.reason);
+          return;
+        }
+        // 勾选期间换了文件/改了合并方式，可用的目标格式会变 → 同步被锁住的下拉框，
+        // 不然界面显示 wav、实际却按 flac 输出。
+        // plan.target 为 null = 逐个转换各自成格式（plan.byId），没有统一下拉可同步。
+        if (plan.target && target.value !== plan.target) {
+          target.value = plan.target;
+          appendLog('[copy] 目标格式随输入变为 ' + FORMATS[plan.target].label);
+        }
+      });
+
+      // entries：参与这次转换的文件（默认全部）。长度 1 = 普通单文件转换。
+      function buildArgs(entries) {
+        entries = entries || files.value;
+        var plan = copyPlan.value;
+        var copyNow = copyMode.value && plan.ok;        // 不重编码
+        // 逐个转换时每个文件各判各的（plan.byId）：目标格式/扩展名都按它自己那份走，
+        // 所以一批里 mp3 还是 .mp3、wav 还是 .wav（可以混格式）
+        var per = (copyNow && plan.byId && entries.length === 1) ? plan.byId[entries[0].id] : null;
+        var targetKey = per ? per.target : (copyNow ? plan.target : target.value);
+        var f = FORMATS[targetKey];
+        var q = quality.value;
+        var merging = entries.length > 1 && mergeMode.value !== 'none';
+        var suffix = merging ? '-merged' : '';          // 合并产物加后缀，免得和单文件产物重名
+        var base = inputBaseName(entries[0]);
+        var out = '/output/' + fsSafeName(base) + suffix + '.' + f.ext;
+        var names = {};
+        names[out] = base + suffix + '.' + f.ext;       // 下载名保留原样（含引号等）
+
+        var joinNow = copyNow && plan.join;             // 且走「同格式字节拼接」快速合并
+        var args = ['-hide_banner', '-y'];
+        // 线程数压到 1：这份 core 的 pthread 是「一个线程 = 一个真 Worker + 一份 wasm 运行时」，
+        // FFmpeg 默认按 CPU 核数开（16 核实测：单输入 11 个、三输入拼接 15 个），浏览器同时启动
+        // 这么多会明显卡（用户报过「连转 3 个，第三个卡死」）。实测这两个开关：
+        //   单输入  11 → 3（-filter_threads 1）
+        //   拼接    15 → 7（-filter_complex_threads 1）
+        // 音频编解码本来就是单线程，加这两个不掉速（反而 434ms → 222ms）。copy 模式没有滤镜图，不用加。
+        if (!copyNow) args.push('-filter_threads', '1');
+        // 裁剪：-ss 放 -i 前（输入定位，快），-t 放 -i 后限制保留时长。
+        // 区间来源见 trimSpec：单文件=波形选区；多文件+逐个转换=批量裁剪；合并模式不裁。
+        var ts = trimSpec.value;
+        var trimming = entries.length === 1 && ts.on;
+        if (trimming && ts.start !== null) args.push('-ss', secArg(ts.start));
+        if (joinNow) args.push('-i', '/input/joined.bin');     // worker 会把各输入字节拼成它
+        else entries.forEach(function (_, i) { args.push('-i', inputPathOf(i)); });
+        if (trimming && ts.end !== null) {
+          var keepLen = ts.end - (ts.start || 0);
+          if (keepLen > 0.001) args.push('-t', secArg(keepLen));
+        }
+
+        if (copyNow) {
+          // 不重编码：只搬字节。采样率/声道/码率/滤镜都不能有（copyPlan 已经挡掉了）
+          args.push('-c:a', 'copy');
+        } else {
+          if (sr.value) args.push('-ar', sr.value);
+          if (ch.value) args.push('-ac', ch.value);
+          if (bitrate.value) args.push('-b:a', bitrate.value + 'k');
+          else if (!f.lossless) {
+            if (f.br) args.push('-b:a', f.br[q] + 'k');
+            else if (f.q) args.push('-q:a', String(f.q[q]));
+          }
+          args.push('-c:a', f.codec);
+        }
+        if (f.mux) args.push('-f', f.mux);
+
+        var chain = audioChain().join(',');
+        if (merging && !joinNow) {
+          args.push('-filter_complex_threads', '1');
+          args.push('-filter_complex', buildMergeGraph(entries.length, mergeMode.value, chain));
+          args.push('-map', '[out]');
+        } else if (!copyNow && chain) {
+          args.push('-af', chain);
+        }
+
+        // 附加参数：支持引号内的空格（若这里也写了 -af / -filter_complex，会覆盖上面生成的）
+        args = args.concat(splitArgs(extra.value));
+
+        args.push(out);
+        return { args: args, out: out, names: names, joinInputs: joinNow };
+      }
+
+      // ---------------- 实时命令预览 ----------------
+      // 用的是「真正执行时那份 args」：图形模式走 buildArgs()，自定义模式就是 advArgs，
+      // 所以界面上显示什么，点下去就跑什么。
+      function quoteIfNeeded(a) {
+        a = String(a);
+        return /\s/.test(a) ? '"' + a + '"' : a;
+      }
+      var commandPreview = computed(function () {
+        if (advMode.value) {
+          var raw = splitArgs(advArgs.value.replace(/[\n;]+/g, ' '));
+          return 'ffmpeg -hide_banner -y ' + raw.map(quoteIfNeeded).join(' ');
+        }
+        // 逐个转换时每条命令只带一个输入、各写各的产物，预览就展示第一条 + 说明
+        var list = files.value;
+        if (list.length > 1 && mergeMode.value === 'none') {
+          var one = buildArgs([list[0]]);
+          return 'ffmpeg ' + one.args.map(quoteIfNeeded).join(' ')
+            + '\n…（逐个转换：共 ' + list.length + ' 条命令，每个文件各跑一条、各出一个产物）';
+        }
+        return 'ffmpeg ' + buildArgs().args.map(quoteIfNeeded).join(' ');
+      });
+
+      var copied = ref(false);
+      var copyTimer = 0;
+      function copyCommand() {
+        var text = commandPreview.value;
+        var markCopied = function () {
+          copied.value = true;
+          clearTimeout(copyTimer);
+          copyTimer = setTimeout(function () { copied.value = false; }, 1500);
+        };
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(markCopied).catch(function () {
+              appendLog('[copy] 自动复制被拒绝，请手动选中下面这行：\n' + text);
+            });
+            return;
+          }
+        } catch (e) { /* 走下面的兜底 */ }
+        appendLog('[copy] 当前环境不支持自动复制，请手动选中下面这行：\n' + text);
+      }
+
+      // ---------------- 预设 ----------------
+      function applyPreset(p) {
+        // 这些预设都会动编码参数/滤镜，和「不重编码」冲突 → 先把 copy 关掉
+        // （copyRestore 置空，避免 cancel 分支把预设刚设好的值覆盖回去）
+        if (copyMode.value && (p === 'asr16k' || p === 'mono' || p === 'loud'
+            || p === 'fastforward' || p === 'slow' || p === 'normalize')) {
+          copyRestore = null;
+          copyMode.value = false;
+        }
+        if (p === 'asr16k') { target.value = 'wav'; sr.value = '16000'; ch.value = '1'; extra.value = ''; }
+        if (p === 'trim') {   // 交给上面的拖动条/批量裁剪框，不再往 -af 里塞 atrim（会和倍速的滤镜链打架）
+          if (files.value.length > 1 && mergeMode.value === 'none') {   // 多文件逐个转换 → 批量裁剪
+            batchStart.value = '';
+            batchEnd.value = '30';
+          } else {
+            trimStart.value = 0;
+            trimEnd.value = Math.min(30, durationSec() || 30);
+            clampTrim();
+            drawTrim();
+          }
+        }
+        if (p === 'normalize') { extra.value = '-af "loudnorm=I=-16:TP=-1.5:LRA=11"'; }
+        if (p === 'mono') { ch.value = '1'; }
+        if (p === 'loud') { gain.value = '1.5'; }
+        if (p === 'fastforward') { speed.value = '2'; }
+        if (p === 'slow') { speed.value = '0.75'; }
+      }
+
+      // ---------------- 执行 ----------------
+      // 产物列表刻意「只增不减」：重新转换不会清掉之前的结果（下载链接也一直有效），
+      // 只有刷新页面才清空 —— 所以这里既不 revokeObjectURL 也不清空数组。
+      function runWith(o) {
+        var entries = o.inputs || files.value;          // 这次跑哪几个文件（逐个转换时只跑其中一个）
+        var outputs_ = Array.from(new Set((o.outs || []).concat([o.out]).filter(Boolean)));
+        if (!outputs_.length) { setStatus('err', '没找到输出文件路径'); return Promise.resolve(); }
+        if (!entries.length) { setStatus('err', '先选择文件'); return Promise.resolve(); }
+        // 一次只允许一个任务：worker 一次只能跑一个，重叠只会让浏览器同时启动一堆 wasm 线程（更卡）
+        if (activeJob) { appendLog('[queue] 上一个任务还没跑完，这次请求已忽略'); return Promise.resolve(); }
+        activeJob = true;
+        if (!hasSab) {
+          setStatus('err', '页面未跨域隔离（没有 SharedArrayBuffer），FFmpeg 无法创建解码线程'
+            + ' · COI 状态：' + (window.__coiStatus || 'unknown'));
+          return Promise.resolve();
+        }
+
+        setBusy(true);
+        stopOutputAudio();   // 开始新任务时停掉正在试听的旧产物
+        // 逐个转换时连着跑好几条命令，后面的别把前面的日志冲掉
+        if (o.keepLog) log.value += '\n> ffmpeg ' + o.args.join(' ') + '\n\n';
+        else log.value = '> ffmpeg ' + o.args.join(' ') + '\n\n';
+        setStatus('run', '正在转换…');
+        var startedAt = performance.now();   // 本次处理开始（引擎预热 + 读输入 + 跑 ffmpeg + 收产物）
+        var runLog = '';   // 本次运行的日志：用来解析各产物的格式/时长/采样率/声道
+
+        return initEngine().then(function () {
+          return currentInputs(entries);
+        }).then(function (list) {
+          return execFFmpeg({
+            args: o.args,
+            files: list,
+            joinInputs: o.joinInputs,
+            outputs: outputs_,
+            onLog: function (t) { runLog += t + '\n'; appendLog(t); }
+          });
+        }).then(function (res) {
+          if (!res.outputs.length) {
+            setStatus('err', '转换结束但没有产物，请看下方日志（可能是参数或格式不被支持）');
+            return;
+          }
+          var parsed = parseMediaInfo(runLog);
+          if (!inputInfo.value && parsed.inputs[inputPathOf(0)]) {
+            inputInfo.value = parsed.inputs[inputPathOf(0)];    // 探测失败时用转换日志兜底
+          }
+          var at = new Date().toLocaleTimeString();
+          var cost = performance.now() - startedAt;    // 一次命令的耗时，同批产物共用
+          res.outputs.forEach(function (r) {
+            // 下载名：优先用「输入同名」映射，其它（自定义模式下用户自己起的名字）用路径 basename
+            var name = (o.names && o.names[r.path]) || r.path.split('/').pop();
+            var ext = (r.path.split('.').pop() || '').toLowerCase();
+            var mimes = mimesOfExt(ext);
+            var mime = mimes[0] || '';
+            outputs.value.push({
+              path: r.path,
+              name: name,
+              ext: ext,
+              size: r.size,
+              info: parsed.outputs[r.path] || null,
+              cost: cost,
+              at: at,
+              // 能不能直接试听由浏览器说了算（canPlayType）；放不了就置灰，提示下载后用本地播放器
+              playable: canPlayMimes(mimes),
+              // Blob 带上 MIME：无类型 blob 有些浏览器会拒绝播放
+              url: URL.createObjectURL(mime ? new Blob([r.data], { type: mime }) : new Blob([r.data]))
+            });
+          });
+          setStatus('ok', '完成 · 退出码 ' + (res.exitCode || 0) + ' · 耗时 ' + fmtCost(cost)
+            + ' · 本次生成 ' + res.outputs.length + ' 个文件 · 列表共 ' + outputs.value.length
+            + ' 个（刷新页面才清空）');
+        }).catch(function (e) {
+          setStatus('err', '出错了：' + (e && e.message ? e.message : e));
+          appendLog('[error] ' + (e && e.message ? e.message : e));
+        }).finally(function () {
+          setBusy(false);
+          terminateAllThreads();   // 收尾：不留线程 worker
+          // 这些 pthread worker 刚被 kill，浏览器回收它们要一点时间。立刻再起一批，
+          // 容易变成「线程 worker 启动超时」（用户报的「连转 3 个、第三个卡死」就是这个），
+          // 所以任务之间留一口气。队列里下一个任务会等这里 resolve 才开始。
+          return new Promise(function (r) { setTimeout(r, 150); });
+        }).finally(function () {
+          activeJob = false;
+        });
+      }
+
+      function run() {
+        if (!canRun.value) return Promise.resolve();
+        // 多文件 + 「逐个转换」：**排队**一个接一个跑（前一个结束 + 线程回收完才起下一个），
+        // 界面会显示「队列 2/3」。每条只把自己那个文件写进 /input/input.bin，路径仍是 /input/input.bin
+        if (files.value.length > 1 && mergeMode.value === 'none') {
+          var list = files.value.slice();
+          queueInfo.value = '1/' + list.length;
+          return list.reduce(function (p, entry, i) {
+            return p.then(function () {
+              queueInfo.value = (i + 1) + '/' + list.length;
+              var spec = buildArgs([entry]);
+              return runWith({
+                args: spec.args, out: spec.out, outs: [spec.out], names: spec.names,
+                joinInputs: spec.joinInputs, inputs: [entry], keepLog: i > 0
+              });
+            });
+          }, Promise.resolve()).finally(function () { queueInfo.value = ''; });
+        }
+        return runWith(buildArgs());
+      }
+
+      function runAdv() {
+        if (!file.value) { setStatus('err', '先选择文件'); return; }
+        var raw = splitArgs(advArgs.value.replace(/[\n;]+/g, ' '));
+        var outs = (advArgs.value.match(/\/output\/[\w.\-]+/g) || []);
+        // 与图形模式同样的约定：只把占位名 out.<ext> 换成「输入名.ext」，
+        // 用户自己起的名字（例如 a_0-2s.wav）原样保留
+        var names = {};
+        var base = inputBaseName();
+        outs.forEach(function (p) {
+          var m = /^\/output\/out\.([A-Za-z0-9]+)$/.exec(p);
+          if (m) names[p] = base + '.' + m[1];
+        });
+        runWith({ args: ['-hide_banner', '-y'].concat(raw), out: outs[0], outs: outs, names: names });
+      }
+
+      // ---------------- 主题 / 刷新 ----------------
+      // 手动刷新入口：页面里没有"重置文件列表"之外的需求，但换文件/参数乱了时直接重载最省事
+      function reloadPage() {
+        try { location.reload(); } catch (e) { /* 极端环境下没有 location，忽略 */ }
+      }
+
+      function toggleTheme() {
+        theme.value = theme.value === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme.value;
+        try { localStorage.setItem(THEME_KEY, theme.value); } catch (e) { /* 隐私模式等 */ }
+      }
+
+      // ---------------- 启动 ----------------
+      // 打开页面就预热一次引擎：旧版页面就是「加载即预热」，徽标会直接显示就绪。
+      // 重写成 Vue 时漏了这一步，才导致徽标一直停在「未加载」（选了文件后才会预热）。
+      onMounted(function () {
+        initEngine();
+        window.addEventListener('resize', drawTrim);   // 拖动条按画布宽度渲染，窗口变化要重画
+        drawTrim();
+      });
+
+      // 日志自动滚到底
+      watch(log, function () {
+        nextTick(function () {
+          if (logEl.value) logEl.value.scrollTop = logEl.value.scrollHeight;
+        });
+      });
+      // 主题变了重画波形（颜色取自 CSS 变量）
+      watch(theme, function () { nextTick(drawTrim); });
+
+      // 格式参数变了就存起来（防抖 200ms；只比"拼起来的快照"，没变就不写）
+      watch(function () {
+        return [target.value, quality.value, sr.value, ch.value, bitrate.value, gain.value,
+                speed.value, extra.value, mergeMode.value, copyMode.value].join('\u0001');
+      }, saveParams);
+
+      return {
+        // 常量 / 静态数据
+        formats: FORMATS, cmdPresets: CMDS, uiPresets: UI_PRESETS,
+        sampleRates: SAMPLE_RATES,
+        hasSab: hasSab, coiStatus: coiStatus, isolationTitle: isolationTitle,
+        // 状态
+        file: file, files: files, fileRows: fileRows, mergeMode: mergeMode,
+        totalDuration: totalDuration, dragging: dragging, target: target, quality: quality,
+        sr: sr, ch: ch, bitrate: bitrate, gain: gain, speed: speed, extra: extra,
+        advMode: advMode, advArgs: advArgs, busy: busy, engine: engine, theme: theme,
+        copyMode: copyMode, copyPlan: copyPlan,
+        statusKind: statusKind, statusText: statusText, queueInfo: queueInfo, log: log, outputs: outputs,
+        inputInfo: inputInfo,
+        logEl: logEl, fileInput: fileInput, canRun: canRun,
+        // 裁剪 / 试听
+        trimStart: trimStart, trimEnd: trimEnd, trimLoop: trimLoop, playing: playing,
+        batchStart: batchStart, batchEnd: batchEnd, batchTrimActive: batchTrimActive,
+        batchTrimWarn: batchTrimWarn, batchKeepText: batchKeepText,
+        waveReady: waveReady, trimCanvas: trimCanvas,
+        mediaDuration: mediaDuration, trimDuration: trimDuration, trimActive: trimActive,
+        // 命令预览
+        commandPreview: commandPreview, copied: copied, copyCommand: copyCommand,
+        // 产物试听
+        outPlayingUrl: outPlayingUrl, toggleOutputAudio: toggleOutputAudio,
+        // 方法
+        fmtSize: fmtSize, fmtDuration: fmtDuration, fmtCost: fmtCost,
+        channelsText: channelsText, round1: round1,
+        pickFile: pickFile, onFileChange: onFileChange, onDrop: onDrop,
+        removeFile: removeFile, moveFile: moveFile, clearFiles: clearFiles,
+        applyPreset: applyPreset, run: run, runAdv: runAdv,
+        toggleTheme: toggleTheme, reloadPage: reloadPage, resetParams: resetParams,
+        togglePreview: togglePreview, resetTrim: resetTrim, onTrimInput: onTrimInput,
+        onTrimDown: onTrimDown, onTrimMove: onTrimMove, onTrimUp: onTrimUp
+      };
+    }
+  }).mount('#app');
+})();
+</script>
 </body>
-
 </html>
