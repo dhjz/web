@@ -19,6 +19,7 @@
   <button onclick="toMarkdown()">转Markdown</button>
   <button onclick="minHtmlStr(true)">小化Html</button>
   <button onclick="minHtmlStr(false)">最小化Html</button>
+  <button onclick="removeTableP()">删除表格P</button>
   <button onclick="copy()">复制结果</button>
   <textarea name="" id=""></textarea>
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/turndown/7.2.1/turndown.min.js"></script>
@@ -96,6 +97,17 @@
       });
 
       return doc.body.innerHTML;
+    }
+
+    function removeTableP() {
+      const doc = new DOMParser().parseFromString(top.ue.getContent(), "text/html");
+
+      // 删除 table 内所有 p 标签（保留其内部内容）
+      doc.querySelectorAll("table p").forEach((p) => {
+        p.replaceWith(...Array.from(p.childNodes));
+      });
+
+      document.querySelector('textarea').value = doc.body.innerHTML;
     }
 
     function copy() {
