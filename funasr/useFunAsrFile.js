@@ -71,6 +71,22 @@
         .trim();
     }
 
+    /**
+     * 规范化热词 JSON 字符串(如 {"阿里巴巴":20,"hello world":40})。
+     * 返回压缩后的字符串; 空返回 ''; 非法返回 null。
+     */
+    function parseHotwords(raw) {
+      const s = (raw ?? '').trim();
+      if (!s) return '';
+      try {
+        const obj = JSON.parse(s);
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+        return JSON.stringify(obj);
+      } catch {
+        return null;
+      }
+    }
+
     /** 服务端消息 → result / finalText / logs */
     function handleMessage(raw) {
       let data;
@@ -201,9 +217,16 @@
             chunk_size: config.chunkSize ?? [5, 10, 5],
             itn: config.itn ?? true,
           };
+          // 热词: 与实时识别共用 config.hotwords, 非空时随首条消息一起发出
+          const hotwords = parseHotwords(config.hotwords);
+          if (hotwords === null) {
+            addLog('error', '文件识别: 热词格式错误, 需要 JSON 对象字符串, 如 {"阿里巴巴":20}');
+          } else if (hotwords) {
+            initPayload.hotwords = hotwords;
+          }
           try {
             socket.send(JSON.stringify(initPayload));
-            addLog('system', `文件识别: 已发送 init mode=${initPayload.mode}, fs=${fs}`);
+            addLog('system', `文件识别: 已发送 init mode=${initPayload.mode}, fs=${fs}${hotwords ? ', hotwords=' + hotwords : ''}`);
           } catch (e) {
             finish(false, '文件识别: 发送 init 失败: ' + (e?.message ?? String(e)));
             return;

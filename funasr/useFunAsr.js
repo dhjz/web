@@ -87,6 +87,22 @@ function useFunASR(config = {}) {
     // console.log(val);
     logs.value.push(val);
   }
+
+  /**
+   * 规范化用户输入的热词 JSON 字符串(如 {"阿里巴巴":20,"hello world":40})。
+   * 返回压缩后的字符串; 输入为空返回 ''; 格式非法返回 null(调用方负责提示)。
+   */
+  function parseHotwords(raw) {
+    const s = (raw ?? '').trim();
+    if (!s) return '';
+    try {
+      const obj = JSON.parse(s);
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+      return JSON.stringify(obj);
+    } catch {
+      return null;
+    }
+  }
     
 
   function connect() {
@@ -105,9 +121,16 @@ function useFunASR(config = {}) {
         chunk_size: config.chunkSize ?? [5, 10, 5],
         itn: config.itn ?? true,
       };
+      // 热词: 用户输入的是 JSON 字符串, 非空时随首条消息一起发出
+      const hotwords = parseHotwords(config.hotwords);
+      if (hotwords === null) {
+        addLog('error', '热词格式错误: 需要 JSON 对象字符串, 如 {"阿里巴巴":20}');
+      } else if (hotwords) {
+        initPayload.hotwords = hotwords;
+      }
       try {
         ws?.send(JSON.stringify(initPayload));
-        addLog('system', `已发送 init: mode=${initPayload.mode}, fs=${initPayload.audio_fs}`);
+        addLog('system', `已发送 init: mode=${initPayload.mode}, fs=${initPayload.audio_fs}${hotwords ? ', hotwords=' + hotwords : ''}`);
       } catch (e) {
         addLog('error', '发送 init 失败: ' + (e?.message ?? String(e)));
       }

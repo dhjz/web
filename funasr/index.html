@@ -102,16 +102,16 @@
         .badge.off .circle { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
 
         /* layout */
-        .main { display: grid; grid-template-columns: 5fr 6fr; gap: 20px; align-items: start; }
+        .main { display: grid; grid-template-columns: 5fr 6fr; gap: 13px; align-items: start; }
         @media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
 
         .card {
             background: var(--card);
             border: 1px solid var(--card-border);
             border-radius: 16px;
-            padding: 20px;
+            padding: 13px;
             backdrop-filter: blur(8px);
-            margin-bottom: 20px;
+            margin-bottom: 13px;
         }
         .card-title {
             display: flex;
@@ -119,7 +119,7 @@
             gap: 8px;
             font-size: 15px;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
         .card-title .icon {
             width: 26px; height: 26px;
@@ -131,7 +131,7 @@
         .card-title .tip { font-size: 12px; font-weight: 400; color: var(--text-dim); }
 
         /* form */
-        .form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
         .form-row:last-child { margin-bottom: 0; }
         .form-row label { width: 128px; flex-shrink: 0; font-size: 13px; color: var(--text-dim); }
         .form-row .label-tip { font-size: 12px; color: var(--text-dim); opacity: .75; }
@@ -161,6 +161,22 @@
         }
         .chunk-inputs input:focus { border-color: var(--accent); }
         .chunk-inputs span { color: var(--text-dim); }
+        textarea {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 10px 12px;
+            font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            outline: none;
+            resize: vertical;
+            transition: border-color .2s;
+        }
+        textarea:focus { border-color: var(--accent); }
+        textarea::placeholder { color: var(--text-dim); }
 
         /* switch */
         .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
@@ -210,7 +226,7 @@
 
         /* result */
         .result-box {
-            min-height: 250px;
+            min-height: 220px;
             background: var(--panel-bg);
             border: 1px solid var(--card-border);
             border-radius: 12px;
@@ -466,6 +482,12 @@
                     <div class="result-box" :class="{ empty: !asr.result.value }">{{ asr.result.value || '等待识别...' }}</div>
                     <div class="final-line">最终文本(已确认): <b>{{ asr.finalText.value || '—' }}</b></div>
                 </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="icon">💬</span>热词 <span class="tip">JSON 字符串, 随首条消息一起发送 {"阿里巴巴":20}</span></div>
+                    <textarea rows="3" v-model.trim="config.hotwords" spellcheck="false"
+                              placeholder='{"阿里巴巴":20,"hello world":40}'></textarea>
+                </div>
             </div>
 
             <div class="right">
@@ -526,6 +548,8 @@ const DEFAULT_CONFIG = {
     audioFs: 16000,
     wavName: 'browser',
     chunkSize: [5, 10, 5],
+    // 热词: JSON 字符串, 形如 {"阿里巴巴":20,"hello world":40}, 空则不发送
+    hotwords: '{"阿里巴巴":20,"hello world":40}',
 }
 
 const app = createApp({
