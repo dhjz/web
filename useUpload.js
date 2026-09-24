@@ -14,6 +14,7 @@
     } = options
 		
     const el = typeof target === 'string' ? document.querySelector(target) : target
+    console.log('[useUpload] inited', el, options)
     // 文件过滤核心逻辑
     const processFiles = async (rawFiles) => {
       let list = Array.from(rawFiles || [])
