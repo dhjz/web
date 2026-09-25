@@ -238,6 +238,7 @@
       <span class="badge">纯浏览器 · WebAssembly · 不上传服务器</span>
       <span class="badge" :title="isolationTitle">{{ hasSab ? '跨域隔离 ✓' : '跨域隔离 ✗' }}</span>
       <span class="badge">引擎：{{ engine }}</span>
+      <span class="badge"><a target="_blank" href="./cut/index.html">剪裁工具</a></span>
       <button id="themeBtn" class="ghost small" type="button"
         :title="theme === 'dark' ? '切换到白天模式' : '切换到夜间模式'"
         @click="toggleTheme">{{ theme === 'dark' ? '白天模式' : '夜间模式' }}</button>
