@@ -485,7 +485,7 @@
 	.head .eye
 	{
 		width: 28px;
-		background-image: var(--icon_eye);/*url("../img/eye.png");*/
+		background-image: var(--icon_eye);/*url("../img/lrs/eye.png");*/
 		filter: invert(  var(--icon_eye_invrt)  );
 		/*background-size: 15px 15px;*/
 	}
@@ -915,7 +915,7 @@ input[type="checkbox"]:checked + label:before {  content: "\2713";  }
 	.fontitem .thumb
 	{
 		display:inline-block; width:120px; height:20px;  margin-left:0.5em;
-		background: url(../img/fonts.png);
+		background: url(../rsrc/fonts/fonts.png);
 	}
 	
 	.fontitem .star {
