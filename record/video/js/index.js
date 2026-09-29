@@ -447,7 +447,7 @@ createApp({
           error.value = 'MP4 转 WebM 需要转码，未在本工具中实现';
           return;
         }
-        const { blob, audioDropped, videoCodec } = await convertToMp4(item.blob, {
+        const { blob, audioCodec, audioDropped, videoCodec } = await convertToMp4(item.blob, {
           width: item.width,
           height: item.height,
           bitrate: item.bitrate,
@@ -472,7 +472,12 @@ createApp({
             + '老一点的剪辑软件可能不认',
           );
         }
-        if (audioDropped) notes.push('当前浏览器不支持 AAC 编码，导出的 MP4 不含声音，WebM 版本声音完整');
+        if (audioCodec === 'Opus') {
+          notes.push('当前浏览器没有 AAC 编码器，MP4 的声音用的是 Opus，老一点的剪辑软件可能不认；WebM 版本兼容性最好');
+        }
+        if (audioDropped) {
+          notes.push('当前浏览器既编不出 AAC 也编不出 Opus，导出的 MP4 不含声音，WebM 版本声音完整');
+        }
         if (notes.length) notice.value = notes.join('；');
         downloadBlob(converted.blob, converted.filename);
       } catch (e) {

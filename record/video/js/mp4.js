@@ -1,17 +1,35 @@
 const FPS = 30;
 const SAMPLE_RATE = 48_000;
 const CHANNELS = 2;
-const AUDIO_FRAME = 1024;
+/**
+ * 每次喂给编码器的采样数。Opus 原生按 20ms 一帧工作（48kHz 下 960 样本），
+ * AAC 用 1024；统一取 960 就够两种编码器自己切帧，也不会让时间戳出现零头。
+ */
+const AUDIO_FRAME = 960;
 const AAC_CODEC = 'mp4a.40.2';
+/**
+ * AAC 依赖系统平台编码器（macOS 用 AudioToolbox、Windows 用 MediaFoundation，Linux 没有），
+ * 编不出来时退到 Opus。Opus 在浏览器里是内置的软件编码器，各平台都有，
+ * 且 MP4 里允许封装 Opus（ISO/IEC 14496-12 + Opus in ISOBMFF），所以不会因此丢掉声音。
+ */
+const OPUS_CODEC = 'opus';
+const AAC_BITRATE = 128_000;
+const OPUS_BITRATE = 128_000;
 /** 没有 duration 元数据时，画面停滞超过这个时间就认为播放结束 */
 const STALL_TIMEOUT = 1000;
 const IDLE = () => new Promise((r) => setTimeout(r, 0));
 
 /**
- * 录制结果转 MP4（视频优先 H.264，超纲时退 VP9；能编 AAC 时附加音轨）。
+ * 录制结果转 MP4（视频优先 H.264，超纲时退 VP9；音频优先 AAC，编不出就退 Opus）。
  * WebM 和 MP4 容器结构不同，没法只改后缀，必须逐帧解码再编码。
- * 返回 { blob, audioDropped, videoCodec }：audioDropped 表示源有声音但本浏览器编不出 AAC，
- * videoCodec 是实际用上的编码（正常是 H.264，硬件编不出时会走 VP9）。
+ *
+ * 音频为什么不像视频那样只做转封装：源 WebM 里的 Opus 块常是 2×10ms 的双帧包，
+ * mp4-muxer 会把这些包原样写进 MP4，但不会补 Opus 必需的 sgpd/sbgp 预滚（pre-roll）分组。
+ * 缺了它，解码器会把 pre-skip 的 312 个样本当成真实音频，整条轨道从一开始就错位，
+ * 实测 ffmpeg 只解出 2 秒、浏览器直接卡死。所以音频走重新编码，编出来的包结构干净。
+ *
+ * 返回 { blob, audioCodec, audioDropped, videoCodec }：audioDropped 表示源有声音但
+ * 本浏览器既编不出 AAC 也编不出 Opus；audioCodec 是音轨实际用的编码（'AAC' / 'Opus' / null）。
  */
 export async function convertToMp4(source, { width, height, bitrate }, onProgress = () => {}) {
   if (!window.VideoEncoder || !window.AudioEncoder) {
@@ -22,8 +40,7 @@ export async function convertToMp4(source, { width, height, bitrate }, onProgres
   }
 
   const decoded = await decodeAudio(source);
-  const chunks = decoded && (await canEncodeAac()) ? await encodeAudio(decoded) : null;
-  const audio = chunks ? { chunks } : null;
+  const audio = decoded ? await encodeAudioTrack(decoded) : null;
   const video = await encodeVideo(source, width, height, bitrate, onProgress);
 
   const { Muxer, ArrayBufferTarget } = window.Mp4Muxer;
@@ -31,7 +48,7 @@ export async function convertToMp4(source, { width, height, bitrate }, onProgres
   const muxer = new Muxer({
     target,
     video: { codec: video.muxerCodec, width, height },
-    ...(audio ? { audio: { codec: 'aac', numberOfChannels: CHANNELS, sampleRate: SAMPLE_RATE } } : {}),
+    ...(audio ? { audio: { codec: audio.muxerCodec, numberOfChannels: CHANNELS, sampleRate: SAMPLE_RATE } } : {}),
     fastStart: 'in-memory',
   });
 
@@ -40,62 +57,85 @@ export async function convertToMp4(source, { width, height, bitrate }, onProgres
   muxer.finalize();
   return {
     blob: new Blob([target.buffer], { type: 'video/mp4' }),
+    audioCodec: audio?.label ?? null,
     audioDropped: Boolean(decoded) && !audio,
     videoCodec: video.label,
   };
 }
 
 /**
- * AAC 编码依赖系统平台编码器：macOS 用 AudioToolbox、Windows 用 MediaFoundation，
- * Linux 没有实现。而 isConfigSupported 在 Linux 上会误报 true，所以实际编一小段
- * 音频来确认编码器真的可用。
+ * 音轨编码：AAC 优先（兼容性最好），系统平台没有 AAC 编码器时退 Opus。
+ * Opus 是浏览器内置的软件编码器，Linux 上也有，所以这条路几乎总能出声。
  */
-async function canEncodeAac() {
-  const encoder = new AudioEncoder({ output: () => {}, error: () => {} });
-  try {
-    const support = await AudioEncoder.isConfigSupported({
-      codec: AAC_CODEC,
-      sampleRate: SAMPLE_RATE,
-      numberOfChannels: CHANNELS,
-      bitrate: 128_000,
-    });
-    if (!support?.supported) return false;
+async function encodeAudioTrack(decoded) {
+  if (await canEncodeAac()) {
+    const chunks = await encodeAudio(decoded, { codec: AAC_CODEC, bitrate: AAC_BITRATE });
+    if (chunks?.length) return { chunks, muxerCodec: 'aac', label: 'AAC' };
+  }
+  const chunks = await encodeAudio(decoded, { codec: OPUS_CODEC, bitrate: OPUS_BITRATE });
+  return chunks?.length ? { chunks, muxerCodec: 'opus', label: 'Opus' } : null;
+}
 
-    let produced = false;
-    let failed = false;
-    const probe = new AudioEncoder({
-      output: () => {
-        produced = true;
-      },
-      error: () => {
-        failed = true;
-      },
-    });
-    probe.configure({ codec: AAC_CODEC, sampleRate: SAMPLE_RATE, numberOfChannels: CHANNELS, bitrate: 128_000 });
+/**
+ * 音频编码器「真的编得动吗」要实测，不能只信 isConfigSupported：
+ * Linux 上没有 AAC 实现，但它照样报 supported = true，
+ * 只有真喂一包数据、看有没有出 chunk，才知道能不能用。
+ */
+async function canEncodeAudio(config) {
+  if (AudioEncoder.isConfigSupported) {
+    try {
+      const support = await AudioEncoder.isConfigSupported(config);
+      if (support && support.supported === false) return false;
+    } catch {
+      return false;
+    }
+  }
+
+  let produced = false;
+  let failed = false;
+  const probe = new AudioEncoder({
+    output: () => {
+      produced = true;
+    },
+    error: () => {
+      failed = true;
+    },
+  });
+  try {
+    probe.configure(config);
     const data = new AudioData({
       format: 'f32-planar',
-      sampleRate: SAMPLE_RATE,
+      sampleRate: config.sampleRate,
       numberOfFrames: AUDIO_FRAME,
-      numberOfChannels: CHANNELS,
+      numberOfChannels: config.numberOfChannels,
       timestamp: 0,
-      data: new Float32Array(AUDIO_FRAME * CHANNELS),
+      data: new Float32Array(AUDIO_FRAME * config.numberOfChannels),
     });
     probe.encode(data);
     data.close();
     await probe.flush().catch(() => {
       failed = true;
     });
-    probe.close();
     return produced && !failed;
   } catch {
     return false;
   } finally {
     try {
-      encoder.close();
+      probe.close();
     } catch {
       /* 未 configure 的编码器无需关闭 */
     }
   }
+}
+
+/** AAC 依赖系统平台编码器：macOS 用 AudioToolbox、Windows 用 MediaFoundation，Linux 没有实现 */
+function canEncodeAac() {
+  return canEncodeAudio({
+    codec: AAC_CODEC,
+    sampleRate: SAMPLE_RATE,
+    numberOfChannels: CHANNELS,
+    bitrate: AAC_BITRATE,
+  });
 }
 
 /**
@@ -113,8 +153,12 @@ async function decodeAudio(source) {
   }
 }
 
-/** 把解码后的音频重采样到 48kHz 双声道，按 1024 帧喂给 AAC 编码器 */
-async function encodeAudio(decoded) {
+/**
+ * 把解码后的音频重采样到 48kHz 双声道，按 AUDIO_FRAME 一包喂给编码器。
+ * codec 决定容器里最终装的是 AAC 还是 Opus；编码器不认这组参数时返回 null，
+ * 交给调用方换一种编码再试，而不是让整个导出失败。
+ */
+async function encodeAudio(decoded, { codec, bitrate }) {
   const offline = new OfflineAudioContext(CHANNELS, Math.ceil(decoded.duration * SAMPLE_RATE), SAMPLE_RATE);
   const node = offline.createBufferSource();
   node.buffer = decoded;
@@ -122,12 +166,19 @@ async function encodeAudio(decoded) {
   node.start();
   const buffer = await offline.startRendering();
 
+  const config = { codec, sampleRate: SAMPLE_RATE, numberOfChannels: CHANNELS, bitrate };
+  if (!(await canEncodeAudio(config))) return null;
+
   const chunks = [];
+  let failed = false;
   const encoder = new AudioEncoder({
     output: (chunk, meta) => chunks.push({ chunk, meta }),
-    error: (e) => console.error('音频编码失败', e),
+    error: (e) => {
+      failed = true;
+      console.error('音频编码失败', e);
+    },
   });
-  encoder.configure({ codec: AAC_CODEC, sampleRate: SAMPLE_RATE, numberOfChannels: CHANNELS, bitrate: 128_000 });
+  encoder.configure(config);
 
   const planes = [];
   for (let c = 0; c < CHANNELS; c += 1) planes.push(buffer.getChannelData(c));
