@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>在线录屏工具</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="css/index.css" />
+  <script src="	https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+  <script src="js/vendor/mp4-muxer.js"></script>
+  <script>
+    // 主题在样式表之前定下来，避免刷新时先闪一下默认色
+    try {
+      var saved = localStorage.getItem('recorder-theme');
+      document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <header class="topbar">
+      <div>
+        <h1>在线录屏工具<a style="font-size: 14px; color:#22c55e; margin-left: 16px;" href="../index.html">音频录制</a></h1>
+        <p class="sub">屏幕 / 窗口 + 系统声音 / 麦克风任意组合，导出 WebM 或 MP4</p>
+      </div>
+      <div class="segmented theme-switch">
+        <label v-for="t in themes" :key="t.value" class="seg">
+          <input type="radio" :value="t.value" v-model="theme" />
+          <span>{{ t.label }}</span>
+        </label>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card setup">
+        <h2>录制设置</h2>
+
+        <div class="field">
+          <span class="field-label">录制内容</span>
+          <div class="segmented">
+            <label v-for="s in captureSurfaces" :key="s.value" class="seg">
+              <input type="radio" :value="s.value" v-model="form.surface" :disabled="busy" />
+              <span>{{ s.label }}</span>
+            </label>
+          </div>
+          <p class="hint">具体屏幕或窗口在浏览器弹窗中挑选。</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">声音来源</span>
+          <label class="check">
+            <input type="checkbox" v-model="form.systemAudio" :disabled="busy" />
+            <span>电脑声音（系统音频）</span>
+          </label>
+          <label class="check">
+            <input type="checkbox" v-model="form.micAudio" :disabled="busy" />
+            <span>麦克风声音</span>
+          </label>
+          <div v-if="form.micAudio" class="mic-row">
+            <select
+              v-model="form.micDeviceId"
+              class="mic-select"
+              :disabled="!canSelectMic"
+              aria-label="选择麦克风设备"
+            >
+              <option value="">系统默认麦克风</option>
+              <option v-for="d in micDevices" :key="d.id" :value="d.id">{{ d.label }}</option>
+            </select>
+            <span class="mic-badge" :class="micState">{{ micStateLabel }}</span>
+          </div>
+          <p class="hint" :class="{ warn: micState === 'denied' }">{{ micHint }}</p>
+          <p class="hint">两者同时勾选会混音为一条音轨；都不勾选即静音录制。</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">开始延迟</span>
+          <div class="delay-row">
+            <input type="range" min="0" max="10" step="1" v-model.number="form.delay" :disabled="busy" />
+            <span class="delay-value">{{ form.delay }} 秒</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">导出格式</span>
+          <div class="segmented">
+            <label v-for="f in formats" :key="f.value" class="seg">
+              <input type="radio" :value="f.value" v-model="form.format" :disabled="busy" />
+              <span>{{ f.label }}</span>
+            </label>
+          </div>
+          <p class="hint">录制始终先得到 WebM；选择 MP4 会在停止后自动转换。</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">画质档位</span>
+          <div class="segmented">
+            <label v-for="q in qualities" :key="q.value" class="seg">
+              <input type="radio" :value="q.value" v-model="form.quality" :disabled="busy" />
+              <span>{{ q.label }}</span>
+            </label>
+          </div>
+          <div v-if="form.quality === 'custom'" class="custom-bitrate">
+            <input
+              class="custom-input"
+              type="number"
+              min="100"
+              max="200"
+              step="50"
+              inputmode="numeric"
+              v-model="customKbps"
+              :disabled="busy"
+              aria-label="自定义码率，单位 kbps"
+              @keydown.enter.prevent="applyCustomKbps"
+              @blur="applyCustomKbps"
+            />
+            <span class="custom-unit">kbps</span>
+            <span class="custom-derived">预计每分钟 ≈ {{ customPerMinute }}</span>
+          </div>
+          <p class="hint">{{ qualityHint }}</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">WebM 编码</span>
+          <div class="segmented">
+            <label v-for="c in webmCodecs" :key="c.value" class="seg">
+              <input type="radio" :value="c.value" v-model="form.webmCodec" :disabled="busy" />
+              <span>{{ c.label }}</span>
+            </label>
+          </div>
+          <p class="hint">{{ codecHint }}</p>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" @click="start" :disabled="busy">{{ primaryLabel }}</button>
+          <button class="btn" @click="stop" :disabled="!running">停止录制</button>
+          <button class="btn" @click="togglePause" :disabled="!running">{{ paused ? '继续' : '暂停' }}</button>
+        </div>
+        <p v-if="error" class="error">{{ error }}</p>
+      </section>
+
+      <section class="card stage">
+        <div class="stage-tabs">
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'preview' }"
+            @click="activeTab = 'preview'"
+          >
+            预览<span v-if="running || counting" class="dot"></span>
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'result' }"
+            :disabled="!lastRecording"
+            @click="activeTab = 'result'"
+          >
+            本次录制
+          </button>
+          <span class="tab-meta" v-if="activeTab === 'preview' && !hasPreview">等待开始录制…</span>
+          <span class="tab-meta" v-else-if="activeTab === 'result' && lastRecording">{{ formatDuration(lastRecording.duration) }}</span>
+        </div>
+
+        <div v-show="activeTab === 'preview'" class="tab-panel">
+          <div class="video-wrap">
+            <video ref="previewVideo" class="video" autoplay muted playsinline></video>
+            <div v-show="!hasPreview" class="video-placeholder">等待开始录制…</div>
+            <div v-show="counting" class="countdown">{{ countdownLeft }}</div>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <span class="stat-label">已录制</span>
+              <span class="stat-value">{{ formatDuration(elapsed) }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">预计大小</span>
+              <span class="stat-value">{{ formatSize(estimatedSize) }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">分辨率</span>
+              <span class="stat-value">{{ resolution || '—' }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">码率</span>
+              <span class="stat-value">{{ bitrate ? formatBitrate(bitrate) : '—' }}</span>
+            </div>
+          </div>
+          <p class="hint">预计大小按当前实际码率推算，仅供参考。</p>
+        </div>
+
+        <div v-show="activeTab === 'result'" class="tab-panel">
+          <template v-if="lastRecording">
+            <video class="video" :src="lastRecording.url" controls playsinline></video>
+            <div class="stats">
+              <div class="stat">
+                <span class="stat-label">时长</span>
+                <span class="stat-value">{{ formatDuration(lastRecording.duration) }}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">大小</span>
+                <span class="stat-value">{{ formatSize(lastRecording.size) }}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">分辨率</span>
+                <span class="stat-value">{{ lastRecording.resolution }}</span>
+              </div>
+            </div>
+            <p class="hint">
+              声音：{{ lastRecording.audioLabel }}
+              <template v-if="lastRecording.videoCodec"> ｜ 视频编码：{{ lastRecording.videoCodec }}</template>
+              <template v-if="lastRecording.qualityLabel"> ｜ 档位：{{ lastRecording.qualityLabel }}</template>
+            </p>
+            <div class="actions actions-top">
+              <button class="btn primary" @click="download(lastRecording)">
+                下载 {{ lastRecording.ext.toUpperCase() }}
+              </button>
+              <button class="btn" @click="exportAs(lastRecording, otherFormat(lastRecording))" :disabled="lastRecording.exporting">
+                {{ lastRecording.exporting ? '转换中…' : '另存为 ' + otherFormat(lastRecording).toUpperCase() }}
+              </button>
+            </div>
+          </template>
+          <p v-else class="empty">还没有录制，先开始一次吧</p>
+        </div>
+      </section>
+
+      <section class="card history">
+        <div class="history-head">
+          <h2>历史记录 <span class="count">{{ history.length }}</span></h2>
+          <button class="btn small" @click="clearHistory" :disabled="!history.length">清空</button>
+        </div>
+        <p v-if="recordingNotice" class="hint rec-notice">{{ recordingNotice }}</p>
+        <p v-if="notice" class="error rec-notice">{{ notice }}</p>
+        <ul class="history-list">
+          <li v-for="item in history" :key="item.id" class="history-item">
+            <div class="history-main">
+              <div class="history-title">
+                <span class="badge" :class="item.ext">{{ item.ext.toUpperCase() }}</span>
+                <span>{{ formatTime(item.createdAt) }}</span>
+              </div>
+              <div class="history-meta">
+                <span>{{ formatDuration(item.duration) }}</span>
+                <span>{{ formatSize(item.size) }}</span>
+                <span>{{ item.resolution }}</span>
+                <span>码率 {{ formatBitrate(item.bitrate) }}</span>
+                <span v-if="item.videoCodec">{{ item.videoCodec }}<template v-if="item.qualityLabel"> · {{ item.qualityLabel }}</template></span>
+                <span>{{ item.audioLabel }}</span>
+              </div>
+            </div>
+            <div class="history-actions">
+              <button class="btn small" @click="previewItem = item">预览</button>
+              <button class="btn small primary" @click="download(item)">下载</button>
+              <button class="btn small" @click="exportAs(item, otherFormat(item))" :disabled="item.exporting">
+                {{ item.exporting ? '转换中…' : '转 ' + otherFormat(item).toUpperCase() }}
+              </button>
+              <button class="btn small danger" @click="removeHistory(item)">删除</button>
+            </div>
+          </li>
+        </ul>
+        <p v-if="!history.length" class="empty">还没有录制记录</p>
+      </section>
+    </main>
+
+    <div v-if="previewItem" class="modal" @click.self="previewItem = null">
+      <div class="modal-body">
+        <div class="modal-head">
+          <h3>{{ previewItem.filename }}</h3>
+          <button class="btn small" @click="previewItem = null">关闭</button>
+        </div>
+        <video class="video" :src="previewItem.url" controls autoplay playsinline></video>
+        <div class="history-meta">
+          <span>{{ formatTime(previewItem.createdAt) }}</span>
+          <span>{{ formatDuration(previewItem.duration) }}</span>
+          <span>{{ formatSize(previewItem.size) }}</span>
+          <span>{{ previewItem.resolution }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/index.js"></script>
+</body>
+</html>
