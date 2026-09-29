@@ -148,6 +148,45 @@ async function encodeAudio(decoded) {
   return chunks;
 }
 
+/**
+ * AVC level 的 MaxFS（最大帧尺寸，单位 macroblock）换算出的像素上限。
+ * 编码器只认 level 里声明的面积，超出就拒绝 configure —— 1080p 是 4.0 的天花板。
+ * 数组按 level 升序排列，codec 字符串是 avc1.<profile><level 十六进制>（High profile = 64）。
+ */
+const AVC_LEVELS = [
+  { level: '28', maxArea: 2_097_152 }, // 4.0  1080p
+  { level: '29', maxArea: 2_097_152 }, // 4.1
+  { level: '2a', maxArea: 2_228_224 }, // 4.2
+  { level: '32', maxArea: 5_652_480 }, // 5.0  1440p
+  { level: '33', maxArea: 9_437_184 }, // 5.1
+  { level: '34', maxArea: 9_437_184 }, // 5.2  4K
+  { level: '3c', maxArea: 35_651_584 }, // 6.0
+];
+
+/**
+ * 挑一个能装下当前分辨率的 AVC level。先按面积粗选，再用 isConfigSupported
+ * 逐个确认（部分浏览器声明的 level 支持度和实际能力对不上）。
+ * 都不行时抛错，把「分辨率太高」这件事说清楚，而不是丢一句编码器原始报错。
+ */
+async function pickAvcCodec(width, height, bitrate) {
+  const area = width * height;
+  const candidates = AVC_LEVELS.filter((item) => item.maxArea >= area);
+  const list = candidates.length ? candidates : [AVC_LEVELS[AVC_LEVELS.length - 1]];
+
+  for (const { level } of list) {
+    const codec = `avc1.64${level}`;
+    const config = { codec, width, height, bitrate, framerate: FPS };
+    try {
+      if (!VideoEncoder.isConfigSupported) return codec;
+      const support = await VideoEncoder.isConfigSupported(config);
+      if (support?.supported) return codec;
+    } catch {
+      /* 这个 level 编不了，试下一个 */
+    }
+  }
+  throw new Error(`当前浏览器无法以 H.264 编码 ${width}×${height} 的画面，请降低分辨率后再导出 MP4`);
+}
+
 /** 逐帧重绘到 canvas 再编码，帧时间戳按标称帧率推进，画面不会丢时长 */
 async function encodeVideo(source, width, height, bitrate, onProgress) {
   const url = URL.createObjectURL(source);
@@ -171,11 +210,12 @@ async function encodeVideo(source, width, height, bitrate, onProgress) {
       output: (chunk, meta) => chunks.push({ chunk, meta }),
       error: (e) => console.error('视频编码失败', e),
     });
+    const targetBitrate = Math.max(1_000_000, Math.round(bitrate || 4_000_000));
     encoder.configure({
-      codec: 'avc1.640028',
+      codec: await pickAvcCodec(width, height, targetBitrate),
       width,
       height,
-      bitrate: Math.max(1_000_000, Math.round(bitrate || 4_000_000)),
+      bitrate: targetBitrate,
       framerate: FPS,
     });
 
