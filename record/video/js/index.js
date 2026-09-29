@@ -447,7 +447,7 @@ createApp({
           error.value = 'MP4 转 WebM 需要转码，未在本工具中实现';
           return;
         }
-        const { blob, audioDropped } = await convertToMp4(item.blob, {
+        const { blob, audioDropped, videoCodec } = await convertToMp4(item.blob, {
           width: item.width,
           height: item.height,
           bitrate: item.bitrate,
@@ -459,12 +459,21 @@ createApp({
           width: item.width,
           height: item.height,
           bitrate: (blob.size * 8) / (item.duration / 1000),
-          videoCodec: 'H.264',
+          // 用实际编出来的编码，别硬写 H.264 —— 超纲的分辨率会退到 VP9
+          videoCodec,
           qualityLabel: item.qualityLabel,
           // 音轨被丢弃时如实标注，避免用户以为导出的 MP4 有声音
           audioLabel: audioDropped ? `${item.audioLabel}（未编入）` : item.audioLabel,
         });
-        if (audioDropped) notice.value = '当前浏览器不支持 AAC 编码，导出的 MP4 不含声音，WebM 版本声音完整';
+        const notes = [];
+        if (videoCodec !== 'H.264') {
+          notes.push(
+            `${item.width}×${item.height} 超出 H.264 编码器的能力，这段 MP4 用的是 ${videoCodec}，`
+            + '老一点的剪辑软件可能不认',
+          );
+        }
+        if (audioDropped) notes.push('当前浏览器不支持 AAC 编码，导出的 MP4 不含声音，WebM 版本声音完整');
+        if (notes.length) notice.value = notes.join('；');
         downloadBlob(converted.blob, converted.filename);
       } catch (e) {
         error.value = `导出 ${ext.toUpperCase()} 失败：${e.message}`;

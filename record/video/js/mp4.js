@@ -8,9 +8,10 @@ const STALL_TIMEOUT = 1000;
 const IDLE = () => new Promise((r) => setTimeout(r, 0));
 
 /**
- * 录制结果转 MP4（H.264，能编 AAC 时附加音轨）。
+ * 录制结果转 MP4（视频优先 H.264，超纲时退 VP9；能编 AAC 时附加音轨）。
  * WebM 和 MP4 容器结构不同，没法只改后缀，必须逐帧解码再编码。
- * 返回 { blob, audioDropped }，audioDropped 表示源有声音但本浏览器编不出 AAC。
+ * 返回 { blob, audioDropped, videoCodec }：audioDropped 表示源有声音但本浏览器编不出 AAC，
+ * videoCodec 是实际用上的编码（正常是 H.264，硬件编不出时会走 VP9）。
  */
 export async function convertToMp4(source, { width, height, bitrate }, onProgress = () => {}) {
   if (!window.VideoEncoder || !window.AudioEncoder) {
@@ -21,22 +22,27 @@ export async function convertToMp4(source, { width, height, bitrate }, onProgres
   }
 
   const decoded = await decodeAudio(source);
-  const audio = decoded && (await canEncodeAac()) ? await encodeAudio(decoded) : null;
+  const chunks = decoded && (await canEncodeAac()) ? await encodeAudio(decoded) : null;
+  const audio = chunks ? { chunks } : null;
   const video = await encodeVideo(source, width, height, bitrate, onProgress);
 
   const { Muxer, ArrayBufferTarget } = window.Mp4Muxer;
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
     target,
-    video: { codec: 'avc', width, height },
+    video: { codec: video.muxerCodec, width, height },
     ...(audio ? { audio: { codec: 'aac', numberOfChannels: CHANNELS, sampleRate: SAMPLE_RATE } } : {}),
     fastStart: 'in-memory',
   });
 
-  audio?.forEach(({ chunk, meta }) => muxer.addAudioChunk(chunk, meta));
-  video.forEach(({ chunk, meta }) => muxer.addVideoChunk(chunk, meta));
+  audio?.chunks.forEach(({ chunk, meta }) => muxer.addAudioChunk(chunk, meta));
+  video.chunks.forEach(({ chunk, meta }) => muxer.addVideoChunk(chunk, meta));
   muxer.finalize();
-  return { blob: new Blob([target.buffer], { type: 'video/mp4' }), audioDropped: Boolean(decoded) && !audio };
+  return {
+    blob: new Blob([target.buffer], { type: 'video/mp4' }),
+    audioDropped: Boolean(decoded) && !audio,
+    videoCodec: video.label,
+  };
 }
 
 /**
@@ -149,42 +155,74 @@ async function encodeAudio(decoded) {
 }
 
 /**
- * AVC level 的 MaxFS（最大帧尺寸，单位 macroblock）换算出的像素上限。
- * 编码器只认 level 里声明的面积，超出就拒绝 configure —— 1080p 是 4.0 的天花板。
- * 数组按 level 升序排列，codec 字符串是 avc1.<profile><level 十六进制>（High profile = 64）。
+ * AVC level 表。两个约束都要看：MaxFS（每帧 macroblock 数上限，单位 16×16 块）
+ * 和 MaxMBPS（每秒 macroblock 数上限，4.0 与 4.1 的 MaxFS 相同、靠 MaxMBPS 区分），
+ * 只按面积挑会选出编码器其实不认的档。MaxFS 与 level 的对应写死在规范里，
+ * 不靠浏览器的 isConfigSupported 猜。
+ * 数组按 level 升序，codec 字符串是 avc1.<profile><level 十六进制>（High profile = 64）。
  */
 const AVC_LEVELS = [
-  { level: '28', maxArea: 2_097_152 }, // 4.0  1080p
-  { level: '29', maxArea: 2_097_152 }, // 4.1
-  { level: '2a', maxArea: 2_228_224 }, // 4.2
-  { level: '32', maxArea: 5_652_480 }, // 5.0  1440p
-  { level: '33', maxArea: 9_437_184 }, // 5.1
-  { level: '34', maxArea: 9_437_184 }, // 5.2  4K
-  { level: '3c', maxArea: 35_651_584 }, // 6.0
+  { level: '1f', maxFs: 3_600, maxMbps: 108_000 }, // 3.1  720p
+  { level: '20', maxFs: 8_192, maxMbps: 245_760 }, // 3.2
+  { level: '28', maxFs: 8_192, maxMbps: 245_760 }, // 4.0  1080p
+  { level: '29', maxFs: 8_192, maxMbps: 245_760 }, // 4.1
+  { level: '2a', maxFs: 8_704, maxMbps: 522_240 }, // 4.2
+  { level: '32', maxFs: 22_080, maxMbps: 589_824 }, // 5.0  1440p
+  { level: '33', maxFs: 36_864, maxMbps: 983_040 }, // 5.1
+  { level: '34', maxFs: 36_864, maxMbps: 2_073_600 }, // 5.2  4K
+  { level: '3c', maxFs: 139_264, maxMbps: 4_177_920 }, // 6.0
+  { level: '3d', maxFs: 139_264, maxMbps: 8_355_840 }, // 6.1
+  { level: '3e', maxFs: 139_264, maxMbps: 16_711_680 }, // 6.2
 ];
 
-/**
- * 挑一个能装下当前分辨率的 AVC level。先按面积粗选，再用 isConfigSupported
- * 逐个确认（部分浏览器声明的 level 支持度和实际能力对不上）。
- * 都不行时抛错，把「分辨率太高」这件事说清楚，而不是丢一句编码器原始报错。
- */
-async function pickAvcCodec(width, height, bitrate) {
-  const area = width * height;
-  const candidates = AVC_LEVELS.filter((item) => item.maxArea >= area);
-  const list = candidates.length ? candidates : [AVC_LEVELS[AVC_LEVELS.length - 1]];
+/** macroblock 边长固定 16 像素；宽度和高度都要向上取整成整数个 mb */
+const macroblocks = (width, height) => Math.ceil(width / 16) * Math.ceil(height / 16);
 
-  for (const { level } of list) {
+/**
+ * 选编码器：H.264 优先（兼容性最好），硬件编不出就退 VP9 —— VP9 在 MP4 里
+ * 合规，只是部分老软件不认，总比导不出来强。
+ */
+async function pickVideoCodec(width, height, bitrate) {
+  const avc = await tryAvc(width, height, bitrate);
+  if (avc) return avc;
+  if (await canEncode('vp09.00.10.08', width, height, bitrate)) {
+    return { codec: 'vp09.00.10.08', muxerCodec: 'vp9', label: 'VP9' };
+  }
+  throw new Error(
+    `${width}×${height} 这个尺寸当前浏览器既编不出 H.264 也编不出 VP9，无法导出 MP4。`
+    + '请降低录制分辨率，或改导出 WebM（录制时就是 WebM，不需要重新编码）',
+  );
+}
+
+/** 探一下编码器认不认这组参数 */
+async function canEncode(codec, width, height, bitrate) {
+  try {
+    if (!VideoEncoder.isConfigSupported) return true;
+    const support = await VideoEncoder.isConfigSupported({ codec, width, height, bitrate, framerate: FPS });
+    return Boolean(support?.supported);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 试 H.264。硬件编码器普遍停在 level 5.1/5.2，2K、4K 屏幕录下来常常超纲，
+ * 挑不出档就返回 null 交给 VP9 兜底，而不是把「导出失败」甩给用户。
+ */
+async function tryAvc(width, height, bitrate) {
+  const mb = macroblocks(width, height);
+  const mbps = mb * FPS;
+  // 面积最紧的排在前面，避免一上来就用 6.2 这种又大又慢的档
+  const fit = AVC_LEVELS.filter((item) => item.maxFs >= mb && item.maxMbps >= mbps);
+  const candidates = fit.length ? fit : [AVC_LEVELS[AVC_LEVELS.length - 1]];
+
+  for (const { level } of candidates) {
     const codec = `avc1.64${level}`;
-    const config = { codec, width, height, bitrate, framerate: FPS };
-    try {
-      if (!VideoEncoder.isConfigSupported) return codec;
-      const support = await VideoEncoder.isConfigSupported(config);
-      if (support?.supported) return codec;
-    } catch {
-      /* 这个 level 编不了，试下一个 */
+    if (await canEncode(codec, width, height, bitrate)) {
+      return { codec, muxerCodec: 'avc', label: 'H.264' };
     }
   }
-  throw new Error(`当前浏览器无法以 H.264 编码 ${width}×${height} 的画面，请降低分辨率后再导出 MP4`);
+  return null;
 }
 
 /** 逐帧重绘到 canvas 再编码，帧时间戳按标称帧率推进，画面不会丢时长 */
@@ -211,13 +249,8 @@ async function encodeVideo(source, width, height, bitrate, onProgress) {
       error: (e) => console.error('视频编码失败', e),
     });
     const targetBitrate = Math.max(1_000_000, Math.round(bitrate || 4_000_000));
-    encoder.configure({
-      codec: await pickAvcCodec(width, height, targetBitrate),
-      width,
-      height,
-      bitrate: targetBitrate,
-      framerate: FPS,
-    });
+    const { codec, muxerCodec, label } = await pickVideoCodec(width, height, targetBitrate);
+    encoder.configure({ codec, width, height, bitrate: targetBitrate, framerate: FPS });
 
     const frameDuration = 1e6 / FPS;
     // MediaRecorder 产出的 WebM 常缺 duration 元数据，total 为 0 时只能靠画面停滞判结束
@@ -259,7 +292,7 @@ async function encodeVideo(source, width, height, bitrate, onProgress) {
 
     await encoder.flush();
     encoder.close();
-    return chunks;
+    return { chunks, muxerCodec, label };
   } finally {
     URL.revokeObjectURL(url);
   }
