@@ -65,7 +65,7 @@ window.config = {
         // { name: 'SSL证书更新', short: 'SSL', url: 'http://home.199311.xyz:40055', color: '#35C0F4' },
         { name: '软件聚合', short: '软件', url: './soft/index.html', color: '#e0fe00' },
         { name: 'CNB控台', short: 'CNB', url: './h/?key=Gc8mQ9', color: '#ff6200' },
-        { name: 'IPTV', short: 'TV', url: 'http://home.199311.xyz:46666/tv/admin', color: '#4f63e9' },
+        { name: 'IPTV', short: 'TV', url: 'http://home.199311.xyz:46667/tv/admin', color: '#4f63e9' },
       ]
     },
     {
