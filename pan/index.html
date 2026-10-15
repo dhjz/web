@@ -5,15 +5,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>软件仓库聚合</title>
-  <!-- <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script> -->
+  <title>网盘搜索聚合</title>
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
   <script src="/static/vue.global.prod.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-size: 14px; }
     body { font-family: Arial, sans-serif; height: 100dvh; overflow: hidden; }
     #app { display: flex; height: 100dvh; }
     input, select { background-color: #fff; border-radius: 4px; border: 1px solid #dcdfe6;  color: #333; line-height: 32px; padding: 0 4px; outline: none; margin: 0 4px; display: inline-block; max-width: 96%; }
-    .sidebar { height: 100dvh; position: fixed; width: 140px; left: 0; top: 0; z-index: 1; background-color: #f5f5f5; border-right: 1px solid #ddd; overflow: auto; transition: width 0.3s ease; }
+    .sidebar { height: 100dvh; position: fixed; width: 170px; left: 0; top: 0; z-index: 1; background-color: #f5f5f5; border-right: 1px solid #ddd; overflow: auto; transition: width 0.3s ease; }
     .sb-hide .sidebar { width: 0 !important; border-right: none; }
     .sidebar-list { list-style: none; overflow-y: auto; height: calc(100% - 50px); margin-top: 10px; }
     .sidebar-list li { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -21,22 +21,35 @@
     .sidebar-list li.active { background-color: #007bff; color: white; }
     .sidebar-list li i {font-size: 12px; float: right; opacity: .6; user-select: none; }
     .content { flex: 1; display: flex; flex-direction: column; position: relative; }
-    .toggle-btn { position: absolute; top: 4px; left: 148px; background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ddd; 
+    .toggle-btn { position: absolute; top: 4px; left: 178px; background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ddd; 
       border-radius: 50%; cursor: pointer; font-size: 13px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; 
       z-index: 1000; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); transition: all 0.3s ease; opacity: .3; }
     .sb-hide .toggle-btn { left: 4px; }
     .toggle-btn:hover { background-color: #f0f0f0; transform: scale(1.05); opacity: .8; }
     .iframe-container { flex: 1; width: 100%; border: none; }
+    .blank-tip { padding: 40px; color: #999; text-align: center; user-select: none; }
+    .input-row { display: flex; align-items: center; margin: 0 8px; }
+    .input-row input { flex: 1; min-width: 0; max-width: none; margin: 0; }
+    .input-row .clear-btn { flex: none; width: 26px; height: 26px; line-height: 1; margin-left: 4px; cursor: pointer;
+      border: 1px solid #dcdfe6; border-radius: 4px; background-color: #fff; color: #999; font-size: 12px; }
+    .input-row .clear-btn:hover { color: #333; border-color: #bbb; background-color: #f5f5f5; }
+    @media (min-width: 768px) {
+      .sidebar { width: 240px; }
+      .toggle-btn { left: 248px; }
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <div class="sidebar">
-      <input type="text" v-model="keyword" placeholder="关键词回车搜索" @keyup.enter="doSearch">
+      <div class="input-row">
+        <input type="text" v-model="keyword" placeholder="关键词回车搜索" @keyup.enter="doSearch">
+        <button class="clear-btn" title="清空" @click="clearKeyword">✕</button>
+      </div>
       <ul class="sidebar-list">
         <li v-for="(site, index) in appData" :key="index" :class="{ active: currInd === index }"
           @click="selectSite(site, index)" :title="site.name">
-          {{ site.name }} <i @click.stop="open(site.url)">🔗</i>
+          {{ site.name }} <i @click.stop="open(site.url)">{{ site.blank ? '↗' : '🔗' }}</i>
         </li>
       </ul>
     </div>
@@ -45,9 +58,10 @@
         {{ isSbHide ? '▶' : '◀' }}
       </button>
       <template v-for="(site, ind) in appData">
-        <iframe v-if="site.load" v-show="ind == currInd" :src="site.url" class="iframe-container" frameborder="0" allowfullscreen>
+        <iframe v-if="site.load && !site.blank" v-show="ind == currInd" :src="site.url" class="iframe-container" frameborder="0" allowfullscreen>
         </iframe>
       </template>
+      <div class="blank-tip" v-if="currSite && currSite.blank">该站点不支持内嵌，点击左侧导航将在新页面打开 ↗</div>
     </div>
   </div>
   <script src="data.js"></script>
@@ -62,6 +76,11 @@
           appData: []
         }
       },
+      computed: {
+        currSite() {
+          return this.appData[this.currInd];
+        }
+      },
       created() {
         this.resetAppData();
       },
@@ -72,22 +91,33 @@
         resetAppData() {
           this.appData = this.originalData.map(item => ({
             ...item,
-            url: item.url.replace('%s', encodeURIComponent(this.keyword || '')),
+            url: this.keyword
+              ? item.url.includes('%s') ? item.url.replace('%s', encodeURIComponent(this.keyword)) : item.url
+              : new URL(item.url).origin,
             load: false
           }));
-          if (this.appData.length > 0) {
-            this.appData[0].load = true;
+          const firstInd = this.appData.findIndex(item => !item.blank);
+          if (firstInd > -1) {
+            this.appData[firstInd].load = true;
+            this.currInd = firstInd;
           }
         },
         doSearch() {
           this.resetAppData();
-          this.currInd = 0;
           // document.body.classList.add('sb-hide');
+        },
+        clearKeyword() {
+          this.keyword = '';
+          this.doSearch();
         },
         open(url) {
           window.open(url);
         },
         selectSite(site, ind) {
+          if (site.blank) {
+            this.open(site.url);
+            return;
+          }
           site.load = true;
           this.currInd = ind;
           // this.toggleSidebar()
