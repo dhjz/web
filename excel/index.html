@@ -156,9 +156,15 @@
             <span class="panel-title-dot"></span>
             原表格预览
           </div>
-          <select v-if="sheetNames.length" v-model="activeSheet" class="sheet-select" style="width: auto; padding: 5px 10px; font-size: 12px;">
-            <option v-for="name in sheetNames" :key="name" :value="name">{{ name }}</option>
-          </select>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <select v-if="sheetNames.length" v-model="activeSheet" class="sheet-select" style="width: auto; padding: 5px 10px; font-size: 12px;">
+              <option v-for="name in sheetNames" :key="name" :value="name">{{ name }}</option>
+            </select>
+            <button class="btn" :disabled="!workbook" @click="copyOriginalTable" title="复制整张原表格,可直接粘贴到 WPS / Excel">
+              <span style="font-size: 14px;">📋</span>
+              复制
+            </button>
+          </div>
         </div>
         <div class="panel-body" ref="originalBody">
           <div v-if="!workbook" class="empty clickable" @click="triggerFile" title="点击导入 Excel 文件">
@@ -177,11 +183,17 @@
             <span class="panel-title-dot" :style="{ background: resultWorkbook ? '#16a34a' : '#b8c0cc' }"></span>
             结果预览
           </div>
-          <span v-if="mergeStats" style="font-size: 12px; color: var(--text-dim); font-family: Consolas, monospace; font-weight: 600;">
-            {{ operationMode === 'merge'
-               ? `${mergeStats.cells} 个单元格已合并`
-               : `${mergeStats.regions} 个区域已拆分(共 ${mergeStats.cells} 个单元格)` }}
-          </span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span v-if="mergeStats" style="font-size: 12px; color: var(--text-dim); font-family: Consolas, monospace; font-weight: 600;">
+              {{ operationMode === 'merge'
+                 ? `${mergeStats.cells} 个单元格已合并`
+                 : `${mergeStats.regions} 个区域已拆分(共 ${mergeStats.cells} 个单元格)` }}
+            </span>
+            <button class="btn" :disabled="!resultWorkbook" @click="copyResultTable" title="复制结果表格(含合并单元格),可直接粘贴到 WPS / Excel">
+              <span style="font-size: 14px;">📋</span>
+              复制
+            </button>
+          </div>
         </div>
         <div class="panel-body" ref="resultBody">
           <div v-if="!resultWorkbook" class="empty">
@@ -246,6 +258,17 @@
                   <span class="col-name">{{ col.name || '(空)' }}</span>
                 </label>
               </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn" :disabled="!workbook || !selectedColumns.length" @click="copySelectedColumnsOriginal" style="flex: 1; justify-content: center; padding: 6px;" title="复制勾选列的数据(不含表头第 1 行)">
+                  <span style="font-size: 13px;">📋</span>
+                  复制选中列·原表
+                </button>
+                <button class="btn" :disabled="!resultWorkbook || !selectedColumns.length" @click="copySelectedColumnsResult" style="flex: 1; justify-content: center; padding: 6px;" title="复制勾选列在结果表中的数据(不含表头第 1 行)">
+                  <span style="font-size: 13px;">📋</span>
+                  复制选中列·结果
+                </button>
+              </div>
+              <div class="config-hint">勾选列后可只复制该列数据(跳过表头第 1 行);多列以制表符分隔,纵向合并会按单元格合并粘贴。</div>
             </div>
 
             <div v-if="mergeStats" class="stats">
@@ -1149,6 +1172,263 @@
           }
         }
 
+        // ===== 一键复制表格到剪贴板(可直接粘贴到 WPS / Excel) =====
+        // 同时写入两种格式:
+        //   text/html — 带 <table>/rowspan/colspan,宿主(WPS、Excel、Word)会还原合并单元格、字体与对齐
+        //   text/plain — TSV 制表符文本,HTML 不被识别时 Excel 仍能按列自动拆分
+        const MAX_COPY_ROWS = 5000;
+        const MAX_COPY_COLS = 200;
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function formatDateForCopy(d) {
+          const date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+          if (!d.getHours() && !d.getMinutes() && !d.getSeconds()) return date;
+          return `${date} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+        }
+
+        // 复制取值:预览里的 Date 会变成 "Mon Jan 01 2024 ...",这里按 YYYY-MM-DD 输出更接近 Excel 显示
+        function cellValueForCopy(v) {
+          if (v instanceof Date) return formatDateForCopy(v);
+          if (v && typeof v === 'object' && v.result instanceof Date) return formatDateForCopy(v.result);
+          return cellValueToString(v);
+        }
+
+        // TSV 中制表符/换行会破坏分列分行,统一替换为空格
+        function tsvCell(s) {
+          return String(s === null || s === undefined ? '' : s).replace(/[\t\r\n]/g, ' ');
+        }
+
+        // 生成剪贴板载荷(不含预览用的行号列与列标行)
+        function buildClipboardPayload(worksheet) {
+          if (!worksheet) return null;
+          const totalRows = worksheet.rowCount || 0;
+          const totalCols = worksheet.columnCount || 0;
+          if (!totalRows || !totalCols) return null;
+
+          const rows = Math.min(totalRows, MAX_COPY_ROWS);
+          const cols = Math.min(totalCols, MAX_COPY_COLS);
+          const mergeMap = buildMergeMap(worksheet);
+          const htmlRows = [];
+          const tsvRows = [];
+
+          for (let r = 1; r <= rows; r++) {
+            const row = worksheet.getRow(r);
+            const htmlCells = [];
+            const tsvCells = [];
+            for (let c = 1; c <= cols; c++) {
+              const merge = mergeMap[`${r},${c}`];
+              if (merge && merge.hidden) {
+                // HTML 侧由 rowspan/colspan 覆盖;TSV 侧补主格值,保证矩形网格不错列
+                tsvCells.push(tsvCell(cellValueForCopy(worksheet.getRow(merge.top).getCell(merge.left).value)));
+                continue;
+              }
+              const cell = row.getCell(c);
+              const value = cellValueForCopy(cell.value);
+              const css = cellStyleToCss(cell);
+              const attrs = merge ? ` rowspan="${merge.rowspan}" colspan="${merge.colspan}"` : '';
+              htmlCells.push(`<td${attrs}${css ? ` style="${css}"` : ''}>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td>`);
+              tsvCells.push(tsvCell(value));
+            }
+            htmlRows.push(`<tr>${htmlCells.join('')}</tr>`);
+            tsvRows.push(tsvCells.join('\t'));
+          }
+
+          const tableHtml = `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse">${htmlRows.join('')}</table>`;
+          return {
+            tableHtml,
+            html: `<meta charset="utf-8">${tableHtml}`,
+            text: tsvRows.join('\r\n'),
+            rows,
+            cols,
+            truncated: rows < totalRows || cols < totalCols
+          };
+        }
+
+        // 生成「指定列」载荷:不含表头(第 1 行),多列按列号升序,以制表符分隔
+        // 纵向单列合并 → HTML 用 rowspan 表达(与整表复制一致);跨列合并或主格不在本列时 → 每行重复主格值,保证不错列
+        function buildColumnsClipboardPayload(worksheet, colNums, { skipHeader = true } = {}) {
+          if (!worksheet || !colNums || !colNums.length) return null;
+          const totalRows = worksheet.rowCount || 0;
+          const totalCols = worksheet.columnCount || 0;
+          if (!totalRows || !totalCols) return null;
+
+          const cols = colNums.filter((c) => c >= 1 && c <= totalCols).sort((a, b) => a - b);
+          if (!cols.length) return null;
+
+          const startRow = skipHeader ? 2 : 1;
+          const endRow = Math.min(totalRows, MAX_COPY_ROWS);
+          if (endRow < startRow) return null;
+
+          const mergeMap = buildMergeMap(worksheet);
+          const htmlRows = [];
+          const tsvRows = [];
+
+          for (let r = startRow; r <= endRow; r++) {
+            const htmlCells = [];
+            const tsvCells = [];
+            for (const c of cols) {
+              const merge = mergeMap[`${r},${c}`];
+              if (!merge) {
+                const value = cellValueForCopy(worksheet.getRow(r).getCell(c).value);
+                const css = cellStyleToCss(worksheet.getRow(r).getCell(c));
+                htmlCells.push(`<td${css ? ` style="${css}"` : ''}>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td>`);
+                tsvCells.push(tsvCell(value));
+                continue;
+              }
+              // 主格值(可能不在本列,如 A1:C1 这种横向合并)
+              const masterCell = worksheet.getRow(merge.top).getCell(merge.left);
+              const value = cellValueForCopy(masterCell.value);
+              const singleCol = merge.left === c && merge.right === c;
+              if (singleCol && r > merge.top) {
+                // 被上方 rowspan 覆盖:HTML 跳过,TSV 补值
+                tsvCells.push(tsvCell(value));
+                continue;
+              }
+              const css = cellStyleToCss(masterCell);
+              const attrs = (singleCol && r === merge.top) ? ` rowspan="${merge.bottom - merge.top + 1}"` : '';
+              htmlCells.push(`<td${attrs}${css ? ` style="${css}"` : ''}>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td>`);
+              tsvCells.push(tsvCell(value));
+            }
+            htmlRows.push(`<tr>${htmlCells.join('')}</tr>`);
+            tsvRows.push(tsvCells.join('\t'));
+          }
+
+          const tableHtml = `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse">${htmlRows.join('')}</table>`;
+          return {
+            tableHtml,
+            html: `<meta charset="utf-8">${tableHtml}`,
+            text: tsvRows.join('\r\n'),
+            rows: endRow - startRow + 1,
+            cols: cols.length,
+            truncated: endRow < totalRows
+          };
+        }
+
+        // 写剪贴板:Clipboard API(可带 HTML)→ 隐藏节点 execCommand → 纯文本
+        async function writeTableToClipboard(payload) {
+          if (navigator.clipboard && navigator.clipboard.write && typeof window.ClipboardItem === 'function') {
+            try {
+              await navigator.clipboard.write([new ClipboardItem({
+                'text/html': new Blob([payload.html], { type: 'text/html' }),
+                'text/plain': new Blob([payload.text], { type: 'text/plain' }),
+              })]);
+              return 'clipboard-api';
+            } catch (err) {
+              console.warn('Clipboard API 写入失败,尝试 execCommand:', err);
+            }
+          }
+
+          try {
+            const holder = document.createElement('div');
+            holder.setAttribute('contenteditable', 'true');
+            holder.style.cssText = 'position:fixed;left:-99999px;top:0;opacity:0;pointer-events:none;';
+            holder.innerHTML = payload.tableHtml;
+            document.body.appendChild(holder);
+            const range = document.createRange();
+            range.selectNodeContents(holder);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            const ok = document.execCommand('copy');
+            sel.removeAllRanges();
+            document.body.removeChild(holder);
+            if (ok) return 'execCommand';
+          } catch (err) {
+            console.warn('execCommand 复制失败:', err);
+          }
+
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(payload.text);
+              return 'plain-text';
+            }
+            const ta = Object.assign(document.createElement('textarea'), {
+              value: payload.text,
+              readOnly: true,
+              style: 'position:fixed;top:0;left:0;opacity:0',
+            });
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) return 'plain-text-fallback';
+          } catch (err) {
+            console.warn('纯文本复制失败:', err);
+          }
+          return null;
+        }
+
+        async function copyTable(worksheet, label, payload = buildClipboardPayload(worksheet)) {
+          if (!payload) {
+            showToast('当前表格为空,无法复制', 'error');
+            return;
+          }
+          const method = await writeTableToClipboard(payload);
+          if (!method) {
+            showToast('复制失败,请检查浏览器剪贴板权限', 'error');
+            return;
+          }
+          const rangeTip = payload.truncated
+            ? `(已截取前 ${payload.rows} 行 × ${payload.cols} 列)`
+            : `(${payload.rows} 行 × ${payload.cols} 列)`;
+          const plainTip = method.indexOf('plain-text') === 0 ? ',仅纯文本(合并单元格不会保留)' : '';
+          showToast(`已复制${label}${rangeTip}${plainTip},去 WPS 里 Ctrl+V 即可`, 'success');
+        }
+
+        // 勾选列 → 列号数组(升序)
+        function selectedColumnNums() {
+          return selectedColumns.value.map((letter) => colLetterToNum(letter)).sort((a, b) => a - b);
+        }
+
+        async function copySelectedColumns(source) {
+          if (source === 'original' && (!workbook.value || !activeSheet.value)) {
+            showToast('请先导入文件', 'error');
+            return;
+          }
+          if (source === 'result' && !resultWorkbook.value) {
+            showToast('请先点击「预览结果」生成结果', 'error');
+            return;
+          }
+          if (!selectedColumns.value.length) {
+            showToast('请先在上方勾选要复制的列', 'error');
+            return;
+          }
+          const wb = source === 'result' ? resultWorkbook.value : workbook.value;
+          const worksheet = wb.getWorksheet(activeSheet.value);
+          const colNums = selectedColumnNums();
+          const payload = buildColumnsClipboardPayload(worksheet, colNums);
+          if (!payload) {
+            showToast('所选列没有可复制的数据', 'error');
+            return;
+          }
+          const label = `列 ${colNums.map((n) => colNumToLetter(n)).join('、')}(${source === 'result' ? '结果表' : '原表'}·不含表头)`;
+          await copyTable(worksheet, label, payload);
+        }
+
+        async function copySelectedColumnsOriginal() {
+          await copySelectedColumns('original');
+        }
+
+        async function copySelectedColumnsResult() {
+          await copySelectedColumns('result');
+        }
+
+        async function copyOriginalTable() {
+          if (!workbook.value || !activeSheet.value) {
+            showToast('请先导入文件', 'error');
+            return;
+          }
+          await copyTable(workbook.value.getWorksheet(activeSheet.value), '原表格');
+        }
+
+        async function copyResultTable() {
+          if (!resultWorkbook.value) {
+            showToast('请先点击「预览结果」生成结果', 'error');
+            return;
+          }
+          await copyTable(resultWorkbook.value.getWorksheet(activeSheet.value), '结果表格');
+        }
+
         function showToast(message, type = 'success') {
           toast.value = { message, type };
           setTimeout(() => { toast.value = null; }, 2400);
@@ -1192,6 +1472,7 @@
           operationMode, fillMasterOnly,
           formatFileSize,
           triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, exportMarkdown, copyMarkdown, reset,
+          copyOriginalTable, copyResultTable, copySelectedColumnsOriginal, copySelectedColumnsResult,
           openMarkdownImport
         };
       }
