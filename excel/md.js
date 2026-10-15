@@ -37,6 +37,22 @@
    * ============================================================ */
 
   /**
+   * 单元格文本规范化。
+   * GFM 表格里无法直接写换行,多行内容约定用 HTML 的 <br> 表达;
+   * 这里把它还原成单元格内的真正换行符(LF),配合单元格的 wrapText,
+   * 在 Excel / WPS 里就表现为「格内换行」(等价于 Alt+Enter)。
+   * - 支持 <br> / <br/> / <br /> / <BR>
+   * - 顺带吃掉 <br> 两侧的空格与制表符,避免换行后残留空白
+   * - 只处理 <br> 标签本身,&lt;br&gt; 这类转义文本保持原样
+   */
+  function normalizeCellText(s) {
+    return String(s == null ? '' : s)
+      .replace(/[ \t]*<br\s*\/?>\s*[ \t]*/gi, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  /**
    * 把一行 Markdown 拆成单元格数组。
    * 支持行内 \| 与 \\\ 转义(其它反斜杠保留原样)。
    * 同时去掉首尾空白,并剥离外层可有可无的前后 | 。
@@ -68,7 +84,7 @@
       buf += ch;
     }
     cells.push(buf);
-    return cells.map((c) => c.trim());
+    return cells.map((c) => normalizeCellText(c));
   }
 
   /**
@@ -183,12 +199,12 @@
 
     // 列宽(粗略自适应)
     ws.columns = new Array(colCount).fill(0).map((_, c) => {
-      const headerCell = String(table.header[c] || '');
-      let maxLen = headerCell.length;
+      // 含换行的单元格按最长的一行估宽,避免多行内容把列撑得过宽
+      let maxLen = longestLineLen(table.header[c]);
       const sample = Math.min(table.rows.length, 200);
       for (let r = 0; r < sample; r++) {
-        const s = String(table.rows[r][c] || '');
-        if (s.length > maxLen) maxLen = s.length;
+        const len = longestLineLen(table.rows[r][c]);
+        if (len > maxLen) maxLen = len;
       }
       const align = aligns[c];
       return {
@@ -199,6 +215,10 @@
     // 应用样式
     applyStylesToWorksheet(ws, colCount, aligns);
 
+    // 行高(表头稍高,便于看清;表头本身含换行时交给 Excel/WPS 自动撑高,避免被裁掉)
+    const headerHasBreak = table.header.some((h) => String(h == null ? '' : h).includes('\n'));
+    if (!headerHasBreak) ws.getRow(1).height = 22;
+
     return ws;
   }
 
@@ -206,6 +226,13 @@
     const out = arr.slice(0, len);
     while (out.length < len) out.push('');
     return out;
+  }
+
+  /** 单元格文本中最长一行的长度(用于估算列宽,兼容格内换行) */
+  function longestLineLen(v) {
+    const s = String(v == null ? '' : v);
+    if (s.indexOf('\n') === -1) return s.length;
+    return s.split('\n').reduce((max, line) => (line.length > max ? line.length : max), 0);
   }
 
   function makeUniqueSheetName(wb, base) {
@@ -256,9 +283,6 @@
       }
       row.commit();
     }
-
-    // 行高(表头稍高,便于看清)
-    ws.getRow(1).height = 22;
   }
 
   /* ============================================================
@@ -961,7 +985,9 @@
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
+          .replace(/"/g, '&quot;')
+          // 单元格内的换行(来自 <br>)在 HTML 里默认会被折叠,这里显式还原成 <br>
+          .replace(/\n/g, '<br>');
         const { start, end } = rangeBounds.value;
         const ex = excludedSet.value;
         let html = '<table><thead><tr>';
@@ -1138,6 +1164,7 @@
         // 暴露给高级用户 / 测试用
         parseMarkdownTable,
         writeTableToWorksheet,
+        normalizeCellText,
       };
 
       // ESC 关闭

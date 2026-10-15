@@ -63,7 +63,7 @@
     .empty.clickable:hover .empty-title { color: var(--accent); }
     .table-wrap { display: inline-block; min-width: 100%; }
     table.excel { border-collapse: collapse; font-family: Consolas, 'Courier New', monospace; font-size: 12px; table-layout: auto; background: var(--bg-elev); }
-    table.excel th, table.excel td { border: 1px solid var(--border); padding: 4px 8px; xwhite-space: nowrap; word-break: break-all; vertical-align: middle; background: var(--bg-elev); color: var(--text); }
+    table.excel th, table.excel td { border: 1px solid var(--border); padding: 4px 8px; white-space: pre-wrap; word-break: break-all; vertical-align: middle; background: var(--bg-elev); color: var(--text); }
     table.excel thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elev-2); color: var(--text); font-weight: 700; text-align: center; border-bottom: 2px solid var(--border-strong); font-size: 11px; }
     table.excel .col-index { position: sticky; left: 0; z-index: 1; background: var(--bg-elev-2); color: var(--text-faint); font-weight: 600; text-align: center; min-width: 50px; border-right: 2px solid var(--border-strong); font-size: 11px; }
     table.excel thead .col-index { z-index: 3; background: var(--bg-elev-2); }
@@ -73,7 +73,7 @@
     .merged-original { text-align: center !important; vertical-align: middle !important; background: var(--bg-elev-2) !important; }
     .config { padding: 12px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; height: 100%; }
     .config-section { display: flex; flex-direction: column; gap: 10px; }
-    .config-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); display: flex; align-items: center;justify-content: space-between; }
+    .config-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); display: flex; align-items: center;justify-content: space-between; }
     .config-hint { font-size: 12px; color: var(--text-faint); line-height: 1.6; }
     select.sheet-select { width: 100%; padding: 9px 12px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; font-weight: 500; }
     select.sheet-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
@@ -90,7 +90,7 @@
     .config-toggle input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; width: 13px; height: 13px; }
     .segmented { display: inline-flex; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px; gap: 2px; }
     .segmented input[type="radio"] { display: none; }
-    .segmented label { padding: 4px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; color: var(--text-dim); font-weight: 600; transition: all 0.15s; user-select: none; }
+    .segmented label { padding: 2px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; color: var(--text-dim); font-weight: 600; transition: all 0.15s; user-select: none; }
     .segmented label:hover { color: var(--text); }
     .segmented input[type="radio"]:checked + label { background: var(--bg-elev); color: var(--accent); box-shadow: var(--shadow-sm); }
     .config-actions { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
@@ -255,6 +255,17 @@
                   <span class="col-name">{{ col.name || '(空)' }}</span>
                 </label>
               </div>
+            <div class="config-section">
+              <div class="config-label">
+                <span>复制:格内换行</span>
+                <div class="segmented" style="align-self: flex-start;">
+                  <input type="radio" id="lb-space" value="space" v-model="copyLineBreak">
+                  <label for="lb-space">合并为空格</label>
+                  <input type="radio" id="lb-br" value="br" v-model="copyLineBreak">
+                  <label for="lb-br">保留换行</label>
+                </div>
+              </div>
+            </div>
               <div style="display: flex; gap: 6px;">
                 <button class="btn" :disabled="!workbook || !selectedColumns.length" @click="copySelectedColumnsOriginal" style="flex: 1; justify-content: center; padding: 6px;" title="复制勾选列的数据(不含表头第 1 行)">
                   <span style="font-size: 13px;">📋</span>
@@ -265,7 +276,7 @@
                   复制选中列·结果
                 </button>
               </div>
-              <div class="config-hint">勾选列后可只复制该列数据(跳过表头第 1 行);多列以制表符分隔,纵向合并会按单元格合并粘贴。</div>
+              <div class="config-hint">勾选列后可只复制该列数据(跳过表头第 1 行)</div>
             </div>
 
             <div v-if="mergeStats" class="stats">
@@ -373,6 +384,11 @@
         //   false(默认) — 把主格的值向下复制到所有被合并行,最符合"取消合并"直觉
         //   true        — 只保留主格的值,下方单元格清空(样式仍复制,便于后续填新内容)
         const fillMasterOnly = ref(false);
+        // 复制到剪贴板时如何处理单元格内的换行:
+        //   'space'(默认) — 合并为空格。WPS 粘贴 HTML 表格时会把 <br> 当成新行(一个单元格被拆成多行),
+        //                   合并为空格可以保证「一个单元格还是一行」,代价是丢掉格内换行
+        //   'br'          — 用 <br> 保留格内换行。Excel 支持,但 WPS 可能会拆成多行
+        const copyLineBreak = ref('space');
 
         const MAX_PREVIEW_ROWS = 500;
         const CACHE_KEY = '__excel_file_cache__';
@@ -608,7 +624,9 @@
                 attrs += ` rowspan="${merge.rowspan}" colspan="${merge.colspan}"`;
                 cls = highlightNewMerges ? 'merged' : 'merged-original';
               }
-              html += `<td class="${cls}" style="${css}"${attrs}>${escapeHtml(value)}</td>`;
+              // 格内换行在预览里显示为真正的换行(与导出 xlsx 后 WPS/Excel 的显示一致)。
+              // 这里用字面量正则而不是共用常量:本函数可能在常量初始化前就被调用(缓存恢复路径),避免 TDZ
+              html += `<td class="${cls}" style="${css}"${attrs}>${escapeHtml(value).replace(/[\r\n\v\f\u2028\u2029]/g, '<br>')}</td>`;
             }
             html += '</tr>';
           }
@@ -1190,9 +1208,28 @@
           return cellValueToString(v);
         }
 
-        // TSV 中制表符/换行会破坏分列分行,统一替换为空格
+        // 会被 WPS / Excel 当成"换行"的字符:除了常见的 \r \n,还有 \v(0x0B,有些工具用它表示
+        // 格内换行)、\f、U+0085、U+2028/U+2029。少一个没处理,粘过去就会多出一行。
+        const LINE_BREAK_G = /[\r\n\v\f\u0085\u2028\u2029]+/g;
+        const LINE_BREAK_PAD_G = /[ \t]*[\r\n\v\f\u0085\u2028\u2029]+[ \t]*/g;
+        // TSV 里制表符和任何换行都会破坏分列分行,统一替换为空格
+        const TSV_UNSAFE_G = /[\t\r\n\v\f\u0085\u2028\u2029]+/g;
+
         function tsvCell(s) {
-          return String(s === null || s === undefined ? '' : s).replace(/[\t\r\n]/g, ' ');
+          return String(s === null || s === undefined ? '' : s).replace(TSV_UNSAFE_G, ' ');
+        }
+
+        function hasLineBreakChars(v) {
+          return /[\r\n\v\f\u0085\u2028\u2029]/.test(String(v === null || v === undefined ? '' : v));
+        }
+
+        // 单元格文本 → 剪贴板用的 HTML。格内换行按 copyLineBreak 决定:
+        //   'br'    → <br>(保留换行,Excel 友好)
+        //   'space' → 空格(合到一行,避免 WPS 把换行解释成新行)
+        function cellTextToCopyHtml(value) {
+          const escaped = escapeHtml(value);
+          if (copyLineBreak.value === 'br') return escaped.replace(LINE_BREAK_G, '<br>');
+          return escaped.replace(LINE_BREAK_PAD_G, ' ');
         }
 
         // 生成剪贴板载荷(不含预览用的行号列与列标行)
@@ -1207,6 +1244,7 @@
           const mergeMap = buildMergeMap(worksheet);
           const htmlRows = [];
           const tsvRows = [];
+          let hadBreak = false;
 
           for (let r = 1; r <= rows; r++) {
             const row = worksheet.getRow(r);
@@ -1216,14 +1254,17 @@
               const merge = mergeMap[`${r},${c}`];
               if (merge && merge.hidden) {
                 // HTML 侧由 rowspan/colspan 覆盖;TSV 侧补主格值,保证矩形网格不错列
-                tsvCells.push(tsvCell(cellValueForCopy(worksheet.getRow(merge.top).getCell(merge.left).value)));
+                const hiddenValue = cellValueForCopy(worksheet.getRow(merge.top).getCell(merge.left).value);
+                if (hasLineBreakChars(hiddenValue)) hadBreak = true;
+                tsvCells.push(tsvCell(hiddenValue));
                 continue;
               }
               const cell = row.getCell(c);
               const value = cellValueForCopy(cell.value);
+              if (hasLineBreakChars(value)) hadBreak = true;
               const css = cellStyleToCss(cell);
               const attrs = merge ? ` rowspan="${merge.rowspan}" colspan="${merge.colspan}"` : '';
-              htmlCells.push(`<td${attrs}${css ? ` style="${css}"` : ''}>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td>`);
+              htmlCells.push(`<td${attrs}${css ? ` style="${css}"` : ''}>${cellTextToCopyHtml(value)}</td>`);
               tsvCells.push(tsvCell(value));
             }
             htmlRows.push(`<tr>${htmlCells.join('')}</tr>`);
@@ -1237,6 +1278,7 @@
             text: tsvRows.join('\r\n'),
             rows,
             cols,
+            hadBreak,
             truncated: rows < totalRows || cols < totalCols
           };
         }
@@ -1259,6 +1301,7 @@
           const mergeMap = buildMergeMap(worksheet);
           const htmlRows = [];
           const tsvRows = [];
+          let hadBreak = false;
 
           for (let r = startRow; r <= endRow; r++) {
             const htmlCells = [];
@@ -1267,14 +1310,16 @@
               const merge = mergeMap[`${r},${c}`];
               if (!merge) {
                 const value = cellValueForCopy(worksheet.getRow(r).getCell(c).value);
+                if (hasLineBreakChars(value)) hadBreak = true;
                 const css = cellStyleToCss(worksheet.getRow(r).getCell(c));
-                htmlCells.push(`<td${css ? ` style="${css}"` : ''}>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td>`);
+                htmlCells.push(`<td${css ? ` style="${css}"` : ''}>${cellTextToCopyHtml(value)}</td>`);
                 tsvCells.push(tsvCell(value));
                 continue;
               }
               // 主格值(可能不在本列,如 A1:C1 这种横向合并)
               const masterCell = worksheet.getRow(merge.top).getCell(merge.left);
               const value = cellValueForCopy(masterCell.value);
+              if (hasLineBreakChars(value)) hadBreak = true;
               const singleCol = merge.left === c && merge.right === c;
               if (singleCol && r > merge.top) {
                 // 被上方 rowspan 覆盖:HTML 跳过,TSV 补值
@@ -1283,7 +1328,7 @@
               }
               const css = cellStyleToCss(masterCell);
               const attrs = (singleCol && r === merge.top) ? ` rowspan="${merge.bottom - merge.top + 1}"` : '';
-              htmlCells.push(`<td${attrs}${css ? ` style="${css}"` : ''}>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td>`);
+              htmlCells.push(`<td${attrs}${css ? ` style="${css}"` : ''}>${cellTextToCopyHtml(value)}</td>`);
               tsvCells.push(tsvCell(value));
             }
             htmlRows.push(`<tr>${htmlCells.join('')}</tr>`);
@@ -1297,6 +1342,7 @@
             text: tsvRows.join('\r\n'),
             rows: endRow - startRow + 1,
             cols: cols.length,
+            hadBreak,
             truncated: endRow < totalRows
           };
         }
@@ -1315,12 +1361,26 @@
             }
           }
 
+          // 兜底路径:隐藏节点 + 拦截 copy 事件,手动写入两种格式。
+          // 不能直接依赖 execCommand 的自动序列化 —— 浏览器把 DOM 里的 <br> 序列化成换行符放进
+          // text/plain,而 WPS/Excel 拿到纯文本时会按换行拆行,「单元格内的换行」就变成了多一行。
+          let holder = null;
+          let onCopy = null;
           try {
-            const holder = document.createElement('div');
+            holder = document.createElement('div');
             holder.setAttribute('contenteditable', 'true');
             holder.style.cssText = 'position:fixed;left:-99999px;top:0;opacity:0;pointer-events:none;';
             holder.innerHTML = payload.tableHtml;
             document.body.appendChild(holder);
+
+            onCopy = (e) => {
+              if (!e.clipboardData) return;
+              try { e.clipboardData.setData('text/html', payload.tableHtml); } catch (err) { /* 个别浏览器不允许写 html */ }
+              try { e.clipboardData.setData('text/plain', payload.text); } catch (err) { /* ignore */ }
+              e.preventDefault();
+            };
+            document.addEventListener('copy', onCopy, true);
+
             const range = document.createRange();
             range.selectNodeContents(holder);
             const sel = window.getSelection();
@@ -1328,10 +1388,12 @@
             sel.addRange(range);
             const ok = document.execCommand('copy');
             sel.removeAllRanges();
-            document.body.removeChild(holder);
             if (ok) return 'execCommand';
           } catch (err) {
             console.warn('execCommand 复制失败:', err);
+          } finally {
+            if (onCopy) document.removeEventListener('copy', onCopy, true);
+            if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
           }
 
           try {
@@ -1361,6 +1423,7 @@
             return;
           }
           const method = await writeTableToClipboard(payload);
+          console.info('[copy] 剪贴板写入方式:', method, `(${payload.rows} 行 × ${payload.cols} 列)`);
           if (!method) {
             showToast('复制失败,请检查浏览器剪贴板权限', 'error');
             return;
@@ -1369,7 +1432,11 @@
             ? `(已截取前 ${payload.rows} 行 × ${payload.cols} 列)`
             : `(${payload.rows} 行 × ${payload.cols} 列)`;
           const plainTip = method.indexOf('plain-text') === 0 ? ',仅纯文本(合并单元格不会保留)' : '';
-          showToast(`已复制${label}${rangeTip}${plainTip},去 WPS 里 Ctrl+V 即可`, 'success');
+          // 数据里本来有格内换行、但当前模式把换行合并成了空格 —— 明确提示,避免用户以为数据丢了
+          const breakTip = (payload.hadBreak && copyLineBreak.value !== 'br')
+            ? ',格内换行已合并为空格(需格内多行请用「导出 Excel」;粘到 Word 可切「保留换行」)'
+            : '';
+          showToast(`已复制${label}${rangeTip}${plainTip}${breakTip},去 WPS 里 Ctrl+V 即可`, 'success');
         }
 
         // 勾选列 → 列号数组(升序)
@@ -1466,7 +1533,7 @@
           fileInput, workbook, resultWorkbook, sheetNames, activeSheet, columns,
           originalHtml, resultHtml, selectedColumns, fileName, fileSize, fromCache, dragOver,
           mergeStats, currentSheetRowCount, toast, syncScroll, originalBody, resultBody,
-          operationMode, fillMasterOnly,
+          operationMode, fillMasterOnly, copyLineBreak,
           formatFileSize,
           triggerFile, handleFile, handleDrop, loadFile, previewMerge, exportFile, exportMarkdown, copyMarkdown, reset,
           copyOriginalTable, copyResultTable, copySelectedColumnsOriginal, copySelectedColumnsResult,
