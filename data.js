@@ -63,7 +63,8 @@ window.config = {
         { name: '音乐之家', short: '音乐', url: 'https://music.199311.xyz/', color: '#49ABFC' },
         // { name: '内云服务', short: '云服务', url: 'http://home.199311.xyz:42220', color: '#56C4E3' },
         // { name: 'SSL证书更新', short: 'SSL', url: 'http://home.199311.xyz:40055', color: '#35C0F4' },
-        { name: '软件聚合', short: '软件', url: './soft/index.html', color: '#e0fe00' },
+        { name: '软件聚合', short: '软件', url: './soft/index.html', color: '#b5cc03' },
+        { name: '网盘聚合', short: '网盘', url: './pan/index.html', color: '#0353cc' },
         { name: 'CNB控台', short: 'CNB', url: './h/?key=Gc8mQ9', color: '#ff6200' },
         { name: 'IPTV', short: 'TV', url: 'http://home.199311.xyz:46667/tv/admin', color: '#4f63e9' },
       ]
