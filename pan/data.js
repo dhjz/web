@@ -7,5 +7,5 @@ var apps = [
   { name: 'dddisk.com', url: 'https://so.dddisk.com/list.html?q=%s' },
   { name: '网盘搜索', url: 'https://www.wangpansousuo.com/s/%s.html' },
   { name: 'pansou.us', url: 'https://www.pansou.us' },
-  { name: 'pansou.app', url: 'https://pansou.app', blank: true },
+  { name: 'pansou.app', url: 'https://pansou.app', blank: false },
 ]
