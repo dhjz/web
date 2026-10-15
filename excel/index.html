@@ -44,6 +44,10 @@
     .btn-ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
     .btn-ghost:hover:not(:disabled) { background: var(--bg-elev-2); color: var(--text); }
     .main { display: grid; grid-template-columns: 1fr 1fr 340px; flex: 1; min-height: 0; gap: 1px; background: var(--border); }
+    /* 没有预览结果时隐藏结果面板,原表占满剩余宽度 */
+    .main.result-hidden { grid-template-columns: 1fr 340px; }
+    .panel-enter { animation: panelFade 0.18s ease-out; }
+    @keyframes panelFade { from { opacity: 0; } to { opacity: 1; } }
     .panel { display: flex; flex-direction: column; background: var(--bg-elev); min-width: 0; overflow: hidden; }
     .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elev); flex-shrink: 0; gap: 12px; }
     .panel-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
@@ -59,7 +63,7 @@
     .empty.clickable:hover .empty-title { color: var(--accent); }
     .table-wrap { display: inline-block; min-width: 100%; }
     table.excel { border-collapse: collapse; font-family: Consolas, 'Courier New', monospace; font-size: 12px; table-layout: auto; background: var(--bg-elev); }
-    table.excel th, table.excel td { border: 1px solid var(--border); padding: 4px 8px; white-space: nowrap; vertical-align: middle; background: var(--bg-elev); color: var(--text); }
+    table.excel th, table.excel td { border: 1px solid var(--border); padding: 4px 8px; xwhite-space: nowrap; word-break: break-all; vertical-align: middle; background: var(--bg-elev); color: var(--text); }
     table.excel thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elev-2); color: var(--text); font-weight: 700; text-align: center; border-bottom: 2px solid var(--border-strong); font-size: 11px; }
     table.excel .col-index { position: sticky; left: 0; z-index: 1; background: var(--bg-elev-2); color: var(--text-faint); font-weight: 600; text-align: center; min-width: 50px; border-right: 2px solid var(--border-strong); font-size: 11px; }
     table.excel thead .col-index { z-index: 3; background: var(--bg-elev-2); }
@@ -148,7 +152,7 @@
       </div>
     </div>
 
-    <div class="main">
+    <div class="main" :class="{ 'result-hidden': !resultWorkbook }">
       <!-- Left: Original Preview -->
       <div class="panel">
         <div class="panel-header">
@@ -176,8 +180,8 @@
         </div>
       </div>
 
-      <!-- Middle: Result Preview -->
-      <div class="panel">
+      <!-- Middle: Result Preview(无结果时整块隐藏,让原表占满左侧) -->
+      <div v-if="resultWorkbook" class="panel panel-enter">
         <div class="panel-header">
           <div class="panel-title">
             <span class="panel-title-dot" :style="{ background: resultWorkbook ? '#16a34a' : '#b8c0cc' }"></span>
@@ -189,21 +193,14 @@
                  ? `${mergeStats.cells} 个单元格已合并`
                  : `${mergeStats.regions} 个区域已拆分(共 ${mergeStats.cells} 个单元格)` }}
             </span>
-            <button class="btn" :disabled="!resultWorkbook" @click="copyResultTable" title="复制结果表格(含合并单元格),可直接粘贴到 WPS / Excel">
+            <button class="btn" @click="copyResultTable" title="复制结果表格(含合并单元格),可直接粘贴到 WPS / Excel">
               <span style="font-size: 14px;">📋</span>
               复制
             </button>
           </div>
         </div>
         <div class="panel-body" ref="resultBody">
-          <div v-if="!resultWorkbook" class="empty">
-            <div class="empty-icon" style="font-size: 56px;">📊</div>
-            <div class="empty-title">{{ workbook ? '尚未生成预览' : '等待导入文件' }}</div>
-            <div class="empty-hint" v-if="workbook">
-              在右侧勾选需要合并的列,然后点击「预览结果」
-            </div>
-          </div>
-          <div v-else class="table-wrap" v-html="resultHtml"></div>
+          <div class="table-wrap" v-html="resultHtml"></div>
         </div>
       </div>
 
