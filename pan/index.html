@@ -45,11 +45,9 @@
     }
     /* 进入弹框 */
     .intro-mask { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center;
-      background: rgba(15, 23, 42, .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: maskIn .3s ease; }
-    @keyframes maskIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes cardIn { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+      background: rgba(15, 23, 42, .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .intro-card { width: min(520px, 88vw); background: #fff; border-radius: 20px; padding: 44px 40px 36px; text-align: center;
-      box-shadow: 0 24px 80px rgba(15, 23, 42, .35); animation: cardIn .4s cubic-bezier(.22, 1, .36, 1); }
+      box-shadow: 0 24px 80px rgba(15, 23, 42, .35); }
     .intro-logo { width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
       font-size: 28px; background: linear-gradient(135deg, #2563eb, #3b82f6 55%, #0ea5e9); box-shadow: 0 10px 24px rgba(59, 130, 246, .35); }
     .intro-title { font-size: 24px; margin-bottom: 14px; font-weight: 700; letter-spacing: 2px;
