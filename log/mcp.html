@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>McpLog</title>
+<style>
+:root{
+  --acc:#0b7fc4; --ok:#1a7f37; --bad:#cf222e; --warn:#9a6700;
+  --r:7px;
+  --t:.15s;
+}
+/* 白天（默认） */
+html[data-theme=light]{
+  --bg:#f6f7f9; --panel:#fff; --panel2:#f0f2f5; --line:#e2e5ea;
+  --fg:#1f2328; --dim:#5b6472; --dim2:#8b95a3;
+  --code-bg:#f6f8fa; --code-fg:#24292f;
+  --head:rgba(246,247,249,.86);
+  --ok-bg:rgba(26,127,55,.12); --bad-bg:rgba(207,34,46,.12); --warn-bg:rgba(154,103,0,.13);
+  --acc-bg:rgba(11,127,196,.1);  --trow-bg:rgba(207,34,46,.05);
+  --sh:0 1px 2px rgba(16,22,26,.06);
+}
+/* 黑夜 */
+html[data-theme=dark]{
+  --bg:#0f1115; --panel:#161920; --panel2:#1c2029; --line:#272d38;
+  --fg:#e6e9ef; --dim:#949daf; --dim2:#6b7484;
+  --code-bg:#0b0d11; --code-fg:#c9d1d9;
+  --head:rgba(15,17,21,.86);
+  --ok-bg:rgba(63,185,80,.16); --bad-bg:rgba(248,81,73,.16); --warn-bg:rgba(210,153,34,.16);
+  --acc-bg:rgba(76,194,255,.14); --trow-bg:rgba(248,81,73,.06);
+  --sh:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+button{font-family:inherit}
+
+/* ---------- 顶栏 ---------- */
+header{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:8px 16px; background:var(--head);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.brand small{color:var(--dim2);font-weight:400;font-size:13px}
+.spacer{flex:1}
+input[type=search]{
+  background:var(--panel); border:1px solid var(--line); color:var(--fg);
+  padding:5px 10px; border-radius:6px; width:190px; outline:none; font-size:13px;
+  transition:border-color var(--t),width var(--t);
+}
+input[type=search]:focus{border-color:var(--acc); width:230px}
+input[type=search]::placeholder{color:var(--dim2)}
+.btn{
+  background:var(--panel); border:1px solid var(--line); color:var(--fg);
+  padding:5px 10px; border-radius:6px; cursor:pointer; font-size:13px;
+  transition:background var(--t),border-color var(--t),color var(--t);
+}
+.btn:hover{background:var(--panel2);border-color:var(--dim2)}
+#themeBtn{width:28px;height:26px;padding:0;display:grid;place-items:center;font-size:13px}
+
+/* ---------- 投放区 ---------- */
+#drop{
+  margin:16px; padding:44px 20px; text-align:center;
+  border:2px dashed var(--line); border-radius:12px;
+  background:var(--panel); cursor:pointer; transition:border-color var(--t),background var(--t);
+}
+#drop:hover,#drop.over{border-color:var(--acc);background:var(--acc-bg)}
+#drop h2{font-size:15px;font-weight:600;margin-bottom:6px}
+#drop p{color:var(--dim);font-size:13px}
+#drop kbd{
+  background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:4px;padding:0 5px;font-size:13px;color:var(--fg);
+}
+#drop.compact{padding:9px;margin:10px 16px}
+#drop.compact h2,#drop.compact p,#drop.compact .ico{display:none}
+#drop.compact::after{content:"拖入新文件以替换 · 点击选择";color:var(--dim);font-size:13px}
+
+/* ---------- 统计（单行紧凑） ---------- */
+.stats{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.stat{
+  display:flex;align-items:baseline;gap:5px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:3px 9px;box-shadow:var(--sh);
+}
+.stat b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{color:var(--dim2);font-size:13px}
+.stat.ok b{color:var(--ok)} .stat.bad b{color:var(--bad)} .stat.warn b{color:var(--warn)}
+
+/* ---------- 过滤 ---------- */
+.filters{display:flex;gap:5px;padding:0 16px 10px;flex-wrap:wrap}
+.chip{
+  background:var(--panel);border:1px solid var(--line);color:var(--dim);
+  padding:2px 9px;border-radius:99px;cursor:pointer;font-size:13px;
+  transition:background var(--t),border-color var(--t),color var(--t);
+}
+.chip:hover{color:var(--fg);border-color:var(--dim2)}
+.chip.on{background:var(--acc-bg);border-color:var(--acc);color:var(--acc);font-weight:600}
+
+/* ---------- 条目：两行 ---------- */
+main{padding:0 16px 32px;display:flex;flex-direction:column;gap:5px}
+.row{
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--dim2);
+  border-radius:var(--r);padding:6px 10px;box-shadow:var(--sh);
+  transition:background var(--t);
+  animation:in .18s ease both;
+}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
+.row:hover{background:var(--panel2)}
+.row.allowed{border-left-color:var(--ok)}
+.row.blocked{border-left-color:var(--bad)}
+.row.failed{border-left-color:var(--warn)}
+.row.trow{background:var(--trow-bg)}
+
+/* 第一行：时间 工具 标签 身份 耗时 复制 */
+.l1{display:flex;align-items:center;gap:8px;min-width:0}
+.t{color:var(--dim2);font-size:13px;font-variant-numeric:tabular-nums;flex-shrink:0}
+.tool{font-weight:600;font-size:14px;white-space:nowrap}
+.tool .en{color:var(--dim2);font-weight:400;font-size:13px;margin-left:4px}
+.tag{
+  font-size:13px;padding:0 6px;border-radius:99px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;line-height:19px;
+}
+.tag.allowed{background:var(--ok-bg);color:var(--ok)}
+.tag.blocked,.tag.denied{background:var(--bad-bg);color:var(--bad)}
+.tag.exit{background:var(--warn-bg);color:var(--warn)}
+.tag.other{background:var(--panel2);color:var(--dim)}
+.who{color:var(--dim2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dur{color:var(--dim2);font-size:13px;font-variant-numeric:tabular-nums;flex-shrink:0;margin-left:auto}
+.cpy{
+  background:transparent;border:1px solid var(--line);color:var(--dim2);
+  padding:0 7px;border-radius:5px;cursor:pointer;font-size:13px;line-height:19px;
+  flex-shrink:0;opacity:0;transition:opacity var(--t),color var(--t),border-color var(--t);
+}
+.row:hover .cpy{opacity:1}
+.cpy:hover{color:var(--acc);border-color:var(--acc);background:var(--acc-bg)}
+.cpy.done{color:var(--ok);border-color:var(--ok);opacity:1}
+
+/* 第二行：命令 */
+pre.cmd{
+  margin-top:3px;font-size:14px;color:var(--code-fg);line-height:1.5;
+  white-space:pre-wrap;word-break:break-word;font-family:inherit;
+}
+pre.cmd.c{
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  background:var(--code-bg);border:1px solid var(--line);border-radius:5px;
+  padding:2px 7px;margin-top:4px;
+}
+pre.cmd.clamp{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;cursor:pointer;
+}
+pre.cmd.clamp:hover{-webkit-line-clamp:unset;overflow:visible}
+.trow .bad{color:var(--bad);font-weight:600}
+
+.empty-tip{text-align:center;color:var(--dim2);padding:36px 0;font-size:13px}
+.more{margin:4px auto 0}
+.hide{display:none !important}
+/* clip-path 隐藏：不可见但保留在无访问性树与自动化中，file input 需要 */
+#file{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+
+/* ---------- 提示 ---------- */
+#toast{
+  position:fixed;bottom:18px;left:50%;transform:translate(-50%,12px);
+  background:var(--panel);border:1px solid var(--line);color:var(--fg);box-shadow:var(--sh);
+  padding:7px 16px;border-radius:99px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.2s;z-index:50;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.err{border-color:var(--bad);color:var(--bad)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><i class="dot"></i>McpLog <small id="fname"></small></div>
+  <div class="spacer"></div>
+  <input type="search" id="q" placeholder="搜索命令 / 工具 / 用户…">
+  <button class="btn" id="themeBtn" title="切换主题">🌙</button>
+  <button class="btn" id="copyAll">复制全部</button>
+  <button class="btn" id="reset">清空</button>
+</header>
+
+<div id="drop">
+  <div class="ico">📄</div>
+  <h2>拖入 <code>.mcp.log</code> 文件</h2>
+  <p>或 <b>点击选择</b> · 直接 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴日志文本</p>
+</div>
+
+<div class="stats hide" id="stats"></div>
+<div class="filters hide" id="filters"></div>
+<main id="list"><div class="empty-tip" id="tip">还没有日志</div></main>
+
+<div id="toast"></div>
+<input type="file" id="file" accept=".log,.txt,.json,.jsonl,text/*">
+
+<script>
+const $=s=>document.querySelector(s);
+const listEl=$('#list'), dropEl=$('#drop'), statsEl=$('#stats'),
+      filtersEl=$('#filters'), fileEl=$('#file'), tip=$('#tip');
+
+let rows=[], view=[], flt='all', q='', shown=300;
+
+/* ---------- 中文映射：没有对应就回退原文 ---------- */
+const MAP={
+  tool:{
+    powershell_execute:'执行命令',
+    powershell_open_session:'开启会话',
+    powershell_send:'发送输入',
+    powershell_close_session:'关闭会话',
+    powershell_list_sessions:'会话列表',
+    file_upload:'上传文件',
+    file_download:'下载文件',
+  },
+  decision:{allowed:'放行',blocked:'拦截',denied:'拒绝',pending:'待确认',prompt:'待确认'},
+  role:{admin:'管理员',viewer:'只读',editor:'编辑',operator:'操作员',default:'默认'},
+  principal:{default:'默认'},
+};
+const zh=(kind,key)=>MAP[kind]?.[key] ?? key;
+
+/* ---------- 主题 ---------- */
+const SUN='☀️', MOON='🌙';
+function setTheme(t){
+  document.documentElement.dataset.theme=t;
+  $('#themeBtn').textContent = t==='dark' ? SUN : MOON;
+  $('#themeBtn').title = t==='dark' ? '切换到白天' : '切换到黑夜';
+}
+setTheme(localStorage.getItem('theme')==='dark' ? 'dark' : 'light');
+$('#themeBtn').onclick=()=>{
+  const t=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  setTheme(t); localStorage.setItem('theme',t);
+};
+
+/* ---------- 解析 ---------- */
+function parse(text){
+  const out=[];
+  for(const raw of text.split(/\r?\n/)){
+    const line=raw.trim();
+    if(!line) continue;
+    try{
+      const o=JSON.parse(line);
+      if(o&&typeof o==='object') out.push({ok:true,...o,_raw:line});
+    }catch{ out.push({ok:false,_raw:line}); }
+  }
+  return out.sort((a,b)=>{
+    const x=Date.parse(a.time||''), y=Date.parse(b.time||'');
+    if(isNaN(x)&&isNaN(y)) return 0;
+    if(isNaN(x)) return 1;
+    if(isNaN(y)) return -1;
+    return y-x;
+  });
+}
+
+/* ---------- 复制 ---------- */
+async function copy(text){
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(text); return true;
+    }
+  }catch(e){}
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok=document.execCommand('copy'); ta.remove(); return ok;
+  }catch(e){ return false; }
+}
+
+function asText(r){
+  if(!r.ok) return r._raw;
+  const L=[`[${r.time||'-'}] ${r.tool||'-'} · ${r.decision||'-'}`+
+           (r.durationMs!=null?` · ${r.durationMs}ms`:'')];
+  const meta=[];
+  if(r.principal) meta.push(`principal=${r.principal}`);
+  if(r.role)      meta.push(`role=${r.role}`);
+  if(r.exitCode!=null) meta.push(`exitCode=${r.exitCode}`);
+  if(meta.length) L.push(meta.join(' '));
+  if(r.command) L.push('> '+r.command);
+  return L.join('\n');
+}
+
+let tt;
+function toast(msg,err){
+  const t=$('#toast');
+  t.textContent=msg; t.className='on'+(err?' err':'');
+  clearTimeout(tt); tt=setTimeout(()=>t.className='',1500);
+}
+
+/* ---------- 渲染 ---------- */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fmtTime(t){
+  if(!t) return '-';
+  const d=new Date(t);
+  if(isNaN(d)) return t;
+  const p=n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} `+
+         `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+const fmtDur=ms=>ms>=1000?(ms/1000).toFixed(ms>=10000?0:1)+'s':ms+'ms';
+
+const isBlocked=r=>r.ok&&['blocked','denied'].includes(String(r.decision||'').toLowerCase());
+
+function card(r,i){
+  const d=document.createElement('div');
+
+  if(!r.ok){
+    d.className='row trow';
+    d.innerHTML=`<div class="l1">
+        <span class="t">#${i+1}</span>
+        <span class="bad">解析失败</span>
+        <span class="tag blocked">坏行</span>
+        <span class="dur"></span>
+        <button class="cpy">复制</button>
+      </div>
+      <pre class="cmd c">${esc(r._raw)}</pre>`;
+    bind(d,r); return d;
+  }
+
+  const bad=isBlocked(r);
+  const failed=!bad&&r.exitCode!=null&&r.exitCode!==0;
+  const cmd=String(r.command??'');
+  const long=cmd.length>110;
+  const dec=String(r.decision||'?');
+  const hasCN=zh('tool',r.tool)!==r.tool;
+
+  // 身份合并到第一行：管理员 · 默认
+  const who=[];
+  if(r.role)   who.push(zh('role',r.role));
+  if(r.principal) who.push(zh('principal',r.principal));
+
+  const dl=dec.toLowerCase();
+  const decCls=bad?'blocked':(dl==='allowed'?'allowed':'other');
+  const tags=[`<span class="tag ${decCls}">${esc(zh('decision',dec))}</span>`];
+  if(failed) tags.push(`<span class="tag exit">退出码 ${esc(r.exitCode)}</span>`);
+
+  d.className='row '+(bad?'blocked':failed?'failed':'allowed');
+  d.innerHTML=
+    `<div class="l1">
+       <span class="t mono">${esc(fmtTime(r.time))}</span>
+       <span class="tool">${esc(zh('tool',r.tool||'?'))}`+
+         (hasCN?`<span class="en">${esc(r.tool)}</span>`:'')+`</span>`+
+         tags.join('')+
+         (who.length?`<span class="who">${esc(who.join(' · '))}</span>`:'')+
+         (r.durationMs!=null?`<span class="dur mono">${esc(fmtDur(r.durationMs))}</span>`:'<span class="dur"></span>')+
+         `<button class="cpy">复制</button>
+     </div>`+
+    (cmd?`<pre class="cmd${/\s/.test(cmd)?' c':''}${long?' clamp':''}"${r.truncated?' title="输出已截断"':''}>${esc(cmd)}</pre>`:'');
+
+  const c=d.querySelector('.cmd');
+  if(c) c.onclick=()=>c.classList.toggle('clamp');
+  bind(d,r);
+  return d;
+}
+
+function bind(d,r){
+  const b=d.querySelector('.cpy');
+  if(!b) return;
+  b.onclick=async ev=>{
+    ev.stopPropagation();
+    if(await copy(asText(r))){
+      b.textContent='已复制'; b.classList.add('done');
+      setTimeout(()=>{b.textContent='复制';b.classList.remove('done')},1200);
+      toast('已复制');
+    }else toast('复制失败，请手动选择',true);
+  };
+}
+
+function render(){
+  listEl.innerHTML='';
+  statsEl.classList.toggle('hide',!rows.length);
+  filtersEl.classList.toggle('hide',!rows.length);
+  dropEl.classList.toggle('compact',!!rows.length);
+
+  if(!rows.length){ listEl.appendChild(tip); return; }
+
+  const bad=rows.filter(isBlocked).length;
+  const err=rows.filter(r=>!r.ok).length;
+  const fail=rows.filter(r=>r.ok&&r.exitCode!=null&&r.exitCode!==0).length;
+  const ds=rows.map(r=>r.durationMs).filter(v=>typeof v==='number');
+  const avg=ds.length?Math.round(ds.reduce((a,b)=>a+b,0)/ds.length):null;
+
+  const S=[['总条目',rows.length,''],['放行',rows.length-bad-err,'ok'],
+           ['拦截',bad,bad?'bad':''],['命令失败',fail,fail?'warn':''],
+           ['坏行',err,err?'bad':''],['平均',avg==null?'-':fmtDur(avg),'']];
+  statsEl.innerHTML=S.map(([k,v,c])=>
+    `<div class="stat ${c}"><b>${esc(v)}</b><span>${k}</span></div>`).join('');
+
+  const tools=[...new Set(rows.filter(r=>r.ok&&r.tool).map(r=>r.tool))].sort();
+  const F=[['all','全部',rows.length],['blocked','拦截',bad],['failed','失败',fail],
+           ['raw','坏行',err],...tools.map(t=>['t:'+t,zh('tool',t),rows.filter(r=>r.ok&&r.tool===t).length])];
+  filtersEl.innerHTML=F.map(([k,l,n])=>
+    `<button class="chip${flt===k?' on':''}" data-k="${esc(k)}">${esc(l)} ${n}</button>`).join('');
+  filtersEl.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{flt=b.dataset.k;shown=300;render()});
+
+  const kw=q.toLowerCase();
+  view=rows.filter(r=>{
+    if(flt==='blocked'&&!isBlocked(r)) return false;
+    if(flt==='failed'&&!(r.ok&&r.exitCode!=null&&r.exitCode!==0)) return false;
+    if(flt==='raw'&&r.ok) return false;
+    if(flt.startsWith('t:')&&!(r.ok&&r.tool===flt.slice(2))) return false;
+    if(!kw) return true;
+    return r._raw.toLowerCase().includes(kw);
+  });
+
+  if(!view.length){
+    const e=document.createElement('div');
+    e.className='empty-tip'; e.textContent='没有匹配的条目';
+    listEl.appendChild(e); return;
+  }
+
+  const frag=document.createDocumentFragment();
+  view.slice(0,shown).forEach((r,i)=>frag.appendChild(card(r,i)));
+  listEl.appendChild(frag);
+
+  if(view.length>shown){
+    const b=document.createElement('button');
+    b.className='btn more';
+    b.textContent=`显示更多（还有 ${view.length-shown} 条）`;
+    b.onclick=()=>{shown+=300;render()};
+    listEl.appendChild(b);
+  }
+}
+
+/* ---------- 载入 ---------- */
+function load(text,name){
+  const r=parse(text);
+  if(!r.length){ toast('没有解析出任何条目',true); return; }
+  rows=r; flt='all'; q=''; $('#q').value=''; shown=300;
+  $('#fname').textContent=name?`· ${name}`:'';
+  render();
+  const bad=rows.filter(x=>!x.ok).length;
+  toast(`已载入 ${rows.length} 条`+(bad?`，${bad} 条坏行`:''));
+}
+
+/* ---------- 交互 ---------- */
+dropEl.onclick=()=>fileEl.click();
+fileEl.onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  f.text().then(t=>load(t,f.name));
+  fileEl.value='';
+};
+
+let dragDepth=0;
+document.addEventListener('dragenter',e=>{
+  e.preventDefault();
+  if(++dragDepth===1) dropEl.classList.add('over');
+});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('dragleave',e=>{
+  e.preventDefault();
+  if(--dragDepth<=0){ dragDepth=0; dropEl.classList.remove('over'); }
+});
+document.addEventListener('drop',e=>{
+  e.preventDefault(); dragDepth=0; dropEl.classList.remove('over');
+  const f=e.dataTransfer?.files?.[0]; if(!f) return;
+  f.text().then(t=>load(t,f.name));
+});
+
+document.addEventListener('paste',e=>{
+  const t=(e.clipboardData||window.clipboardData)?.getData('text');
+  if(t&&t.trim()){ e.preventDefault(); load(t,'剪贴板'); }
+});
+
+let qt;
+$('#q').oninput=e=>{
+  clearTimeout(qt);
+  qt=setTimeout(()=>{q=e.target.value.trim();shown=300;render()},160);
+};
+
+$('#copyAll').onclick=async()=>{
+  if(!view.length) return toast('没有可复制的内容',true);
+  if(await copy(view.map(asText).join('\n---\n'))) toast(`已复制 ${view.length} 条`);
+  else toast('复制失败，请手动选择',true);
+};
+
+$('#reset').onclick=()=>{ rows=[]; view=[]; $('#fname').textContent=''; render(); };
+</script>
+</body>
+</html>
