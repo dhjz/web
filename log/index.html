@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>McpLog · 实时</title>
+<style>
+:root{
+  --acc:#0b7fc4; --ok:#1a7f37; --bad:#cf222e; --warn:#9a6700;
+  --r:7px;
+  --t:.15s;
+}
+/* 白天（默认） */
+html[data-theme=light]{
+  --bg:#f6f7f9; --panel:#fff; --panel2:#f0f2f5; --line:#e2e5ea;
+  --fg:#1f2328; --dim:#5b6472; --dim2:#8b95a3;
+  --code-bg:#f6f8fa; --code-fg:#24292f;
+  --head:rgba(246,247,249,.86);
+  --ok-bg:rgba(26,127,55,.12); --bad-bg:rgba(207,34,46,.12); --warn-bg:rgba(154,103,0,.13);
+  --acc-bg:rgba(11,127,196,.1);  --trow-bg:rgba(207,34,46,.05);
+  --sh:0 1px 2px rgba(16,22,26,.06);
+}
+/* 黑夜 */
+html[data-theme=dark]{
+  --bg:#0f1115; --panel:#161920; --panel2:#1c2029; --line:#272d38;
+  --fg:#e6e9ef; --dim:#949daf; --dim2:#6b7484;
+  --code-bg:#0b0d11; --code-fg:#c9d1d9;
+  --head:rgba(15,17,21,.86);
+  --ok-bg:rgba(63,185,80,.16); --bad-bg:rgba(248,81,73,.16); --warn-bg:rgba(210,153,34,.16);
+  --acc-bg:rgba(76,194,255,.14); --trow-bg:rgba(248,81,73,.06);
+  --sh:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+button{font-family:inherit}
+
+/* ---------- 顶栏 ---------- */
+header{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:8px 16px; background:var(--head);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.brand small{color:var(--dim2);font-weight:400;font-size:13px}
+.spacer{flex:1}
+input[type=search]{
+  background:var(--panel); border:1px solid var(--line); color:var(--fg);
+  padding:5px 10px; border-radius:6px; width:190px; outline:none; font-size:13px;
+  transition:border-color var(--t),width var(--t);
+}
+input[type=search]:focus{border-color:var(--acc); width:230px}
+input[type=search]::placeholder{color:var(--dim2)}
+.btn{
+  background:var(--panel); border:1px solid var(--line); color:var(--fg);
+  padding:5px 10px; border-radius:6px; cursor:pointer; font-size:13px;
+  transition:background var(--t),border-color var(--t),color var(--t);
+}
+.btn:hover{background:var(--panel2);border-color:var(--dim2)}
+#themeBtn{width:28px;height:26px;padding:0;display:grid;place-items:center;font-size:13px}
+
+/* ---------- 投放区 ---------- */
+#drop{
+  margin:16px; padding:44px 20px; text-align:center;
+  border:2px dashed var(--line); border-radius:12px;
+  background:var(--panel); cursor:pointer; transition:border-color var(--t),background var(--t);
+}
+#drop:hover,#drop.over{border-color:var(--acc);background:var(--acc-bg)}
+#drop h2{font-size:15px;font-weight:600;margin-bottom:6px}
+#drop p{color:var(--dim);font-size:13px}
+#drop kbd{
+  background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:4px;padding:0 5px;font-size:13px;color:var(--fg);
+}
+#drop.compact{padding:9px;margin:10px 16px}
+#drop.compact h2,#drop.compact p,#drop.compact .ico{display:none}
+#drop.compact::after{content:"拖入新文件以替换 · 点击选择";color:var(--dim);font-size:13px}
+
+/* ---------- 统计（单行紧凑） ---------- */
+.stats{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.stat{
+  display:flex;align-items:baseline;gap:5px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:3px 9px;box-shadow:var(--sh);
+}
+.stat b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{color:var(--dim2);font-size:13px}
+.stat.ok b{color:var(--ok)} .stat.bad b{color:var(--bad)} .stat.warn b{color:var(--warn)}
+
+/* ---------- 过滤 ---------- */
+.filters{display:flex;gap:5px;padding:0 16px 10px;flex-wrap:wrap}
+.chip{
+  background:var(--panel);border:1px solid var(--line);color:var(--dim);
+  padding:2px 9px;border-radius:99px;cursor:pointer;font-size:13px;
+  transition:background var(--t),border-color var(--t),color var(--t);
+}
+.chip:hover{color:var(--fg);border-color:var(--dim2)}
+.chip.on{background:var(--acc-bg);border-color:var(--acc);color:var(--acc);font-weight:600}
+
+/* ---------- 条目：两行 ---------- */
+main{padding:0 16px 32px;display:flex;flex-direction:column;gap:5px}
+.row{
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--dim2);
+  border-radius:var(--r);padding:6px 10px;box-shadow:var(--sh);
+  transition:background var(--t);
+  animation:in .18s ease both;
+}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
+.row:hover{background:var(--panel2)}
+.row.allowed{border-left-color:var(--ok)}
+.row.blocked{border-left-color:var(--bad)}
+.row.failed{border-left-color:var(--warn)}
+.row.trow{background:var(--trow-bg)}
+
+/* 第一行：时间 工具 标签 身份 耗时 复制 */
+.l1{display:flex;align-items:center;gap:8px;min-width:0}
+.t{color:var(--dim2);font-size:13px;font-variant-numeric:tabular-nums;flex-shrink:0}
+.tool{font-weight:600;font-size:14px;white-space:nowrap}
+.tool .en{color:var(--dim2);font-weight:400;font-size:13px;margin-left:4px}
+.tag{
+  font-size:13px;padding:0 6px;border-radius:99px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;line-height:19px;
+}
+.tag.allowed{background:var(--ok-bg);color:var(--ok)}
+.tag.blocked,.tag.denied{background:var(--bad-bg);color:var(--bad)}
+.tag.exit{background:var(--warn-bg);color:var(--warn)}
+.tag.other{background:var(--panel2);color:var(--dim)}
+.who{color:var(--dim2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dur{color:var(--dim2);font-size:13px;font-variant-numeric:tabular-nums;flex-shrink:0;margin-left:auto}
+.cpy{
+  background:transparent;border:1px solid var(--line);color:var(--dim2);
+  padding:0 7px;border-radius:5px;cursor:pointer;font-size:13px;line-height:19px;
+  flex-shrink:0;opacity:0;transition:opacity var(--t),color var(--t),border-color var(--t);
+}
+.row:hover .cpy{opacity:1}
+.cpy:hover{color:var(--acc);border-color:var(--acc);background:var(--acc-bg)}
+.cpy.done{color:var(--ok);border-color:var(--ok);opacity:1}
+
+/* 第二行：命令 */
+pre.cmd{
+  margin-top:3px;font-size:14px;color:var(--code-fg);line-height:1.5;
+  white-space:pre-wrap;word-break:break-word;font-family:inherit;
+}
+pre.cmd.c{
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  background:var(--code-bg);border:1px solid var(--line);border-radius:5px;
+  padding:2px 7px;margin-top:4px;
+}
+pre.cmd.clamp{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;cursor:pointer;
+}
+pre.cmd.clamp:hover{-webkit-line-clamp:unset;overflow:visible}
+.trow .bad{color:var(--bad);font-weight:600}
+
+/* 详情行：路径 / 大小 / 原因 / 会话 */
+.det{display:flex;flex-wrap:wrap;gap:3px 6px;margin-top:4px;font-size:13px;align-items:baseline}
+.det .k{color:var(--dim2);flex-shrink:0}
+.det .v{
+  color:var(--code-fg);background:var(--code-bg);border:1px solid var(--line);
+  border-radius:5px;padding:0 6px;font-size:13px;
+  max-width:100%;word-break:break-all;
+}
+.det .v.bad{color:var(--bad);border-color:var(--bad);background:var(--bad-bg)}
+
+.empty-tip{text-align:center;color:var(--dim2);padding:36px 0;font-size:13px}
+.more{margin:4px auto 0}
+.hide{display:none !important}
+/* clip-path 隐藏：不可见但保留在无访问性树与自动化中，file input 需要 */
+#file{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+
+/* ---------- 提示 ---------- */
+#toast{
+  position:fixed;bottom:18px;left:50%;transform:translate(-50%,12px);
+  background:var(--panel);border:1px solid var(--line);color:var(--fg);box-shadow:var(--sh);
+  padding:7px 16px;border-radius:99px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.2s;z-index:50;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.err{border-color:var(--bad);color:var(--bad)}
+
+/* ---------- 实时监测：状态条 ---------- */
+#bar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:12px 16px 0;padding:7px 11px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--sh);font-size:13px;
+}
+#bar .lead{font-weight:600}
+#bar .live{
+  display:inline-flex;align-items:center;gap:5px;color:var(--dim);
+  padding:0 7px;border:1px solid var(--line);border-radius:99px;line-height:19px;
+}
+#bar .live .pd{width:6px;height:6px;border-radius:50%;background:var(--dim2)}
+#bar .live.on{color:var(--ok);border-color:var(--ok)}
+#bar .live.on .pd{background:var(--ok);animation:pd 1.8s infinite}
+@keyframes pd{50%{opacity:.25}}
+#bar .live.watch{color:var(--acc);border-color:var(--acc)}
+#bar .live.watch .pd{background:var(--acc)}
+#bar .live.paused{color:var(--warn);border-color:var(--warn)}
+#bar .live.paused .pd{background:var(--warn)}
+#bar .off{color:var(--bad);border-color:var(--bad)}
+#bar .off .pd{background:var(--bad)}
+#bar .file{
+  color:var(--dim);max-width:34vw;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-size:13px;
+}
+#bar .sep{color:var(--dim2)}
+#bar .spacer{flex:1}
+.lb{
+  background:transparent;border:1px solid var(--line);color:var(--dim);
+  padding:1px 8px;border-radius:99px;cursor:pointer;font-size:13px;line-height:19px;
+  transition:color var(--t),border-color var(--t),background var(--t);
+}
+.lb:hover{color:var(--fg);border-color:var(--dim2)}
+.lb.on{background:var(--acc-bg);border-color:var(--acc);color:var(--acc);font-weight:600}
+.lb[disabled]{opacity:.45;cursor:not-allowed}
+
+/* 监测不可用时的兜底区 */
+#drop{display:none}
+#drop.dev{display:block}
+#drop b{color:var(--acc)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><i class="dot"></i>McpLog <small id="fname"></small></div>
+  <div class="spacer"></div>
+  <button class="btn" id="openBtn" title="选择日志文件并开启实时监测">打开日志</button>
+  <input type="search" id="q" placeholder="搜索命令 / 工具 / 用户…">
+  <button class="btn" id="themeBtn" title="切换主题">🌙</button>
+  <button class="btn" id="copyAll">复制全部</button>
+  <button class="btn" id="reset">清空</button>
+</header>
+
+<div id="bar" class="hide">
+  <span class="lead" id="fname2">未打开文件</span>
+  <span class="live" id="live"><i class="pd"></i><span id="liveTxt">待打开</span></span>
+  <span class="file" id="fileMeta"></span>
+  <span class="spacer"></span>
+  <button class="lb" id="follow" title="新条目到达时自动滚动到顶部">跟随 开</button>
+  <button class="lb" id="pause" title="暂停读取新内容" disabled>暂停</button>
+  <button class="lb" id="reopen" title="重新选择一个日志文件" disabled>重新选择</button>
+  <button class="lb" id="forget" title="停止监测并忘掉这个文件" disabled>忘掉</button>
+</div>
+
+<div class="stats hide" id="stats"></div>
+<div class="filters hide" id="filters"></div>
+
+<main id="list"><div class="empty-tip" id="tip">还没有日志</div></main>
+
+<div id="drop" class="dev">
+  <div class="ico">📄</div>
+  <h2 id="dropTitle">选择 <code>.mcp.log</code> 开始实时监测</h2>
+  <p id="dropSub">点顶栏 <b>打开日志</b>，或把文件 / 目录拖到这里 · 也可以 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴文本（仅静态查看）</p>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="file" accept=".log,.txt,.json,.jsonl,text/*">
+
+<script>
+const $=s=>document.querySelector(s);
+const listEl=$('#list'), dropEl=$('#drop'), statsEl=$('#stats'),
+      filtersEl=$('#filters'), fileEl=$('#file'), tip=$('#tip');
+
+let rows=[], view=[], flt='all', q='', shown=300;
+
+/* ---------- 中文映射：没有对应就回退原文 ---------- */
+const MAP={
+  tool:{
+    powershell_execute:'执行命令',
+    powershell_open_session:'开启会话',
+    powershell_send:'发送输入',
+    powershell_close_session:'关闭会话',
+    powershell_list_sessions:'会话列表',
+    file_upload:'上传文件',
+    file_download:'下载文件',
+  },
+  decision:{allowed:'放行',blocked:'拦截',denied:'拒绝',pending:'待确认',prompt:'待确认'},
+  role:{admin:'管理员',viewer:'只读',editor:'编辑',operator:'操作员',default:'默认'},
+  principal:{default:'默认'},
+  perm:{granted:'已授权',denied:'已拒绝',prompt:'待授权',unknown:'未知'},
+};
+const zh=(kind,key)=>MAP[kind]?.[key] ?? key;
+
+/* ---------- 主题 ---------- */
+const SUN='☀️', MOON='🌙';
+function setTheme(t){
+  document.documentElement.dataset.theme=t;
+  $('#themeBtn').textContent = t==='dark' ? SUN : MOON;
+  $('#themeBtn').title = t==='dark' ? '切换到白天' : '切换到黑夜';
+}
+setTheme(localStorage.getItem('theme')==='dark' ? 'dark' : 'light');
+$('#themeBtn').onclick=()=>{
+  const t=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  setTheme(t); localStorage.setItem('theme',t);
+};
+
+/* ---------- 解析 ---------- */
+function sortRows(out){
+  return out.sort((a,b)=>{
+    const x=Date.parse(a.time||''), y=Date.parse(b.time||'');
+    if(isNaN(x)&&isNaN(y)) return 0;
+    if(isNaN(x)) return 1;
+    if(isNaN(y)) return -1;
+    return y-x;
+  });
+}
+
+function parse(text){
+  const out=[];
+  for(const raw of text.split(/\r?\n/)){
+    const line=raw.trim();
+    if(!line) continue;
+    try{
+      const o=JSON.parse(line);
+      if(o&&typeof o==='object') out.push({ok:true,...o,_raw:line});
+    }catch{ out.push({ok:false,_raw:line}); }
+  }
+  return sortRows(out);
+}
+
+/* ---------- 复制 ---------- */
+async function copy(text){
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(text); return true;
+    }
+  }catch(e){}
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok=document.execCommand('copy'); ta.remove(); return ok;
+  }catch(e){ return false; }
+}
+
+/* 除 command 外的补充字段，按需展示 */
+const EXTRA=[
+  ['path','路径'],['bytes','大小'],['reason','原因'],
+  ['sessionId','会话'],['cwd','目录'],
+];
+const fmtBytes=n=>{
+  if(typeof n!=='number') return String(n);
+  if(n<1024) return n+' B';
+  if(n<1048576) return (n/1024).toFixed(1)+' KB';
+  return (n/1048576).toFixed(1)+' MB';
+};
+const extras=r=>EXTRA.filter(([k])=>r[k]!=null&&r[k]!=='');
+
+function asText(r){
+  if(!r.ok) return r._raw;
+  const L=[`[${r.time||'-'}] ${r.tool||'-'} · ${r.decision||'-'}`+
+           (r.durationMs!=null?` · ${r.durationMs}ms`:'')];
+  const meta=[];
+  if(r.principal) meta.push(`principal=${r.principal}`);
+  if(r.role)      meta.push(`role=${r.role}`);
+  if(r.exitCode!=null) meta.push(`exitCode=${r.exitCode}`);
+  if(meta.length) L.push(meta.join(' '));
+  if(r.command) L.push('> '+r.command);
+  for(const [k,label] of extras(r)) L.push(`${label}: ${k==='bytes'?fmtBytes(r[k]):r[k]}`);
+  return L.join('\n');
+}
+
+let tt;
+function toast(msg,err){
+  const t=$('#toast');
+  t.textContent=msg; t.className='on'+(err?' err':'');
+  clearTimeout(tt); tt=setTimeout(()=>t.className='',1500);
+}
+
+/* ---------- 渲染 ---------- */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fmtTime(t){
+  if(!t) return '-';
+  const d=new Date(t);
+  if(isNaN(d)) return t;
+  const p=n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} `+
+         `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+const fmtDur=ms=>ms>=1000?(ms/1000).toFixed(ms>=10000?0:1)+'s':ms+'ms';
+
+const isBlocked=r=>r.ok&&['blocked','denied'].includes(String(r.decision||'').toLowerCase());
+
+function card(r,i){
+  const d=document.createElement('div');
+
+  if(!r.ok){
+    d.className='row trow';
+    d.innerHTML=`<div class="l1">
+        <span class="t">#${i+1}</span>
+        <span class="bad">解析失败</span>
+        <span class="tag blocked">坏行</span>
+        <span class="dur"></span>
+        <button class="cpy">复制</button>
+      </div>
+      <pre class="cmd c">${esc(r._raw)}</pre>`;
+    bind(d,r); return d;
+  }
+
+  const bad=isBlocked(r);
+  const failed=!bad&&r.exitCode!=null&&r.exitCode!==0;
+  const cmd=String(r.command??'');
+  const ex=extras(r);
+  const long=cmd.length>110;
+  const dec=String(r.decision||'?');
+  const hasCN=zh('tool',r.tool)!==r.tool;
+
+  // 身份合并到第一行：管理员 · 默认
+  const who=[];
+  if(r.role)   who.push(zh('role',r.role));
+  if(r.principal) who.push(zh('principal',r.principal));
+
+  const dl=dec.toLowerCase();
+  const decCls=bad?'blocked':(dl==='allowed'?'allowed':'other');
+  const tags=[`<span class="tag ${decCls}">${esc(zh('decision',dec))}</span>`];
+  if(failed) tags.push(`<span class="tag exit">退出码 ${esc(r.exitCode)}</span>`);
+
+  d.className='row '+(bad?'blocked':failed?'failed':'allowed');
+  d.innerHTML=
+    `<div class="l1">
+       <span class="t mono">${esc(fmtTime(r.time))}</span>
+       <span class="tool">${esc(zh('tool',r.tool||'?'))}`+
+         (hasCN?`<span class="en">${esc(r.tool)}</span>`:'')+`</span>`+
+         tags.join('')+
+         (who.length?`<span class="who">${esc(who.join(' · '))}</span>`:'')+
+         (r.durationMs!=null?`<span class="dur mono">${esc(fmtDur(r.durationMs))}</span>`:'<span class="dur"></span>')+
+         `<button class="cpy">复制</button>
+     </div>`+
+    (cmd?`<pre class="cmd${/\s/.test(cmd)?' c':''}${long?' clamp':''}"${r.truncated?' title="输出已截断"':''}>${esc(cmd)}</pre>`:'')+
+    (ex.length?`<div class="det">${ex.map(([k,label])=>
+        `<span class="k">${esc(label)}</span>`+
+        `<span class="v mono${k==='reason'?' bad':''}"${k==='path'||k==='cwd'||k==='reason'?' title="'+esc(r[k])+'"':''}>`+
+        `${esc(k==='bytes'?fmtBytes(r[k]):String(r[k]))}</span>`).join('')}</div>`:'');
+
+  const c=d.querySelector('.cmd');
+  if(c) c.onclick=()=>c.classList.toggle('clamp');
+  bind(d,r);
+  return d;
+}
+
+function bind(d,r){
+  const b=d.querySelector('.cpy');
+  if(!b) return;
+  b.onclick=async ev=>{
+    ev.stopPropagation();
+    if(await copy(asText(r))){
+      b.textContent='已复制'; b.classList.add('done');
+      setTimeout(()=>{b.textContent='复制';b.classList.remove('done')},1200);
+      toast('已复制');
+    }else toast('复制失败，请手动选择',true);
+  };
+}
+
+let render=function(){
+  listEl.innerHTML='';
+  statsEl.classList.toggle('hide',!rows.length);
+  filtersEl.classList.toggle('hide',!rows.length);
+  dropEl.classList.toggle('compact',!!rows.length);
+
+  if(!rows.length){ listEl.appendChild(tip); return; }
+
+  const bad=rows.filter(isBlocked).length;
+  const err=rows.filter(r=>!r.ok).length;
+  const fail=rows.filter(r=>r.ok&&r.exitCode!=null&&r.exitCode!==0).length;
+  const ds=rows.map(r=>r.durationMs).filter(v=>typeof v==='number');
+  const avg=ds.length?Math.round(ds.reduce((a,b)=>a+b,0)/ds.length):null;
+
+  const S=[['总条目',rows.length,''],['放行',rows.length-bad-err,'ok'],
+           ['拦截',bad,bad?'bad':''],['命令失败',fail,fail?'warn':''],
+           ['坏行',err,err?'bad':''],['平均',avg==null?'-':fmtDur(avg),'']];
+  statsEl.innerHTML=S.map(([k,v,c])=>
+    `<div class="stat ${c}"><b>${esc(v)}</b><span>${k}</span></div>`).join('');
+
+  const tools=[...new Set(rows.filter(r=>r.ok&&r.tool).map(r=>r.tool))].sort();
+  const F=[['all','全部',rows.length],['blocked','拦截',bad],['failed','失败',fail],
+           ['raw','坏行',err],...tools.map(t=>['t:'+t,zh('tool',t),rows.filter(r=>r.ok&&r.tool===t).length])];
+  filtersEl.innerHTML=F.map(([k,l,n])=>
+    `<button class="chip${flt===k?' on':''}" data-k="${esc(k)}">${esc(l)} ${n}</button>`).join('');
+  filtersEl.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{flt=b.dataset.k;shown=300;render()});
+
+  const kw=q.toLowerCase();
+  view=rows.filter(r=>{
+    if(flt==='blocked'&&!isBlocked(r)) return false;
+    if(flt==='failed'&&!(r.ok&&r.exitCode!=null&&r.exitCode!==0)) return false;
+    if(flt==='raw'&&r.ok) return false;
+    if(flt.startsWith('t:')&&!(r.ok&&r.tool===flt.slice(2))) return false;
+    if(!kw) return true;
+    return r._raw.toLowerCase().includes(kw);
+  });
+
+  if(!view.length){
+    const e=document.createElement('div');
+    e.className='empty-tip'; e.textContent='没有匹配的条目';
+    listEl.appendChild(e); return;
+  }
+
+  const frag=document.createDocumentFragment();
+  view.slice(0,shown).forEach((r,i)=>frag.appendChild(card(r,i)));
+  listEl.appendChild(frag);
+
+  if(view.length>shown){
+    const b=document.createElement('button');
+    b.className='btn more';
+    b.textContent=`显示更多（还有 ${view.length-shown} 条）`;
+    b.onclick=()=>{shown+=300;render()};
+    listEl.appendChild(b);
+  }
+};
+
+/* ---------- 载入 ---------- */
+function load(text,name){
+  const r=parse(text);
+  if(!r.length){ toast('没有解析出任何条目',true); return; }
+  rows=r; flt='all'; q=''; $('#q').value=''; shown=300;
+  $('#fname').textContent=name?`· ${name}`:'';
+  render();
+  const bad=rows.filter(x=>!x.ok).length;
+  toast(`已载入 ${rows.length} 条`+(bad?`，${bad} 条坏行`:''));
+}
+
+/* ---------- 交互（兜底入口） ---------- */
+fileEl.onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  f.text().then(t=>load(t,f.name));
+  fileEl.value='';
+};
+
+let qt;
+$('#q').oninput=e=>{
+  clearTimeout(qt);
+  qt=setTimeout(()=>{q=e.target.value.trim();shown=300;render()},160);
+};
+
+$('#copyAll').onclick=async()=>{
+  if(!view.length) return toast('没有可复制的内容',true);
+  if(await copy(view.map(asText).join('\n---\n'))) toast(`已复制 ${view.length} 条`);
+  else toast('复制失败，请手动选择',true);
+};
+
+$('#reset').onclick=()=>{
+  rows=[]; view=[]; rg.base=[];
+  $('#fname').textContent='';
+  render();
+};
+
+/* 彻底忘掉：停监测、清句柄、清 IndexedDB，避免下次打开又冒出「待授权」 */
+async function forget(){
+  stopWatch();
+  resetStream();
+  st.handle=null; st.file=null; st.perm='prompt'; st.lastF=null;
+  rows=[]; view=[]; rg.base=[];
+  $('#fname').textContent=''; $('#fname2').textContent='未打开文件';
+  await idbClear();
+  setLive('','待打开');
+  render();
+}
+/* ================= 实时监测（File System Access API） ================= */
+/* 与 index.html 的区别：文件只选一次，之后靠浏览器原生文件句柄事件增量读取。
+   FileSystemObserver 事件驱动为优先，不支持时退回 1s 轮询。
+   句柄存 IndexedDB，刷新页面后凭已有授权自动恢复。 */
+
+const bar=$('#bar'), liveEl=$('#live'), liveTxt=$('#liveTxt'),
+      fileMeta=$('#fileMeta'), followBtn=$('#follow'), pauseBtn=$('#pause'),
+      reopenBtn=$('#reopen'), forgetBtn=$('#forget'), openBtn=$('#openBtn');
+
+const HAS_PICKER = typeof window.showOpenFilePicker==='function';
+const HAS_OBSERVER = typeof window.FileSystemObserver==='function';
+
+const st={
+  handle:null,        // FileSystemFileHandle
+  file:null,          // 最近一次 getFile() 的快照
+  size:0,             // 已读到的字节偏移
+  buf:'',             // 尚未成行的尾部
+  observer:null,      // FileSystemObserver
+  watchStop:null,     // observer 停止函数
+  poll:null,          // 轮询定时器
+  observing:false,    // 事件驱动中
+  paused:false,
+  follow:true,
+  perm:'prompt',      // 当前文件授权状态：granted / prompt / denied / unknown
+  lastF:null,         // 最近一次成功读取的快照，便于从不可读状态恢复
+  seq:0,              // 打开动作序号：让「晚到的自动恢复」让位给更新的显式选择
+};
+
+const PICKER_OPTS={
+  types:[{description:'MCP 审计日志',accept:{'text/plain':['.log','.txt','.json','.jsonl']}}],
+  excludeAcceptAllOption:false,
+};
+
+/* 上次选过文件的目录：句柄存 IndexedDB，下次 picker 直接从那儿打开。
+   Chrome 只认「目录句柄」或 WellKnownDirectory，随便塞个路径字符串会被忽略。 */
+async function pickerOpts(){
+  const o={...PICKER_OPTS};
+  try{
+    const dir=await idbGet('lastDir');
+    if(dir && dir.kind==='directory'){
+      // 目录句柄也要有读权限，否则 startIn 会被拒；无权就退回到默认位置
+      const p=await currentPerm(dir);
+      if(p!=='denied'){ o.startIn=dir; return o; }
+    }
+    // 从没选过文件（或目录记忆失效）：默认落在桌面，比「文档」更贴近放日志的地方
+    o.startIn='desktop';
+  }catch(e){ console.warn('[mcplog] 读取上次目录失败',e); }
+  return o;
+}
+
+/* 记住文件所在的目录（父目录句柄），下次打开日志默认落在那里 */
+async function rememberDir(fileHandle){
+  try{
+    if(!fileHandle || !fileHandle.getParent) return;
+    const dir=await fileHandle.getParent();
+    if(dir && dir.kind==='directory') await idbPut(dir,'lastDir');
+  }catch(e){ console.warn('[mcplog] 记录目录失败',e); }
+}
+
+/* ---------- IndexedDB：记住文件句柄 ---------- */
+function idb(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('mcplog-on',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('h');
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+async function idbPut(v,key='handle'){
+  try{ const db=await idb();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('h','readwrite'); tx.objectStore('h').put(v,key);
+      tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){}
+}
+async function idbGet(key='handle'){
+  try{ const db=await idb();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction('h','readonly');
+      const q=tx.objectStore('h').get(key);
+      q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+    });
+  }catch(e){ return null; }
+}
+/* 只清文件句柄，「lastDir」目录记忆保留 —— 否则每次「忘掉」都会连目录一起忘 */
+async function idbClear(){
+  try{ await idbPut(null,'handle'); }catch(e){}
+}
+
+/* ---------- 权限 ---------- */
+/* 语义：查询、续期、读文件各是独立的一步，都可能在未授权时抛 NotAllowedError。
+   查询/续期一律返回状态字符串（granted / prompt / denied / unknown / failed），不抛异常——
+   抛异常会让我们分不清「没授权」和「浏览器真不支持」。
+   只有 snapshot() 会把 getFile 的异常透传出去，交给 openHandle 决定措辞。 */
+async function currentPerm(h){
+  try{
+    const p=await h.queryPermission({mode:'read'});
+    return p==='granted'?'granted':(p==='denied'?'denied':'prompt');
+  }catch(e){
+    console.warn('[mcplog] 查询授权失败',e);
+    return 'unknown';
+  }
+}
+
+/* 只在点击等用户手势里调用：queryPermission 说没授权，不代表不能续期 */
+async function requestPerm(h){
+  try{
+    const p=await h.requestPermission?.({mode:'read'});
+    return p==='granted'?'granted':(p==='denied'?'denied':'prompt');
+  }catch(e){
+    console.warn('[mcplog] 续期授权失败',e);
+    return 'failed';
+  }
+}
+
+/* 取文件快照：授权不足时这里会抛 NotAllowedError，交给调用方决定措辞 */
+async function snapshot(h){
+  const f=await h.getFile();
+  return {f,perm:await currentPerm(h)};
+}
+
+/* ---------- 状态条 ---------- */
+function setLive(cls,txt){ liveEl.className='live '+(cls||''); liveTxt.textContent=txt; }
+function renderBar(){
+  bar.classList.toggle('hide',!st.file);
+  followBtn.classList.toggle('on',st.follow);
+  followBtn.textContent='跟随 '+(st.follow?'开':'关');
+  const needPerm=!!st.handle && !!st.file && st.perm!=='granted';
+  pauseBtn.disabled=!st.file || needPerm;
+  reopenBtn.disabled=!st.file;
+  reopenBtn.textContent=needPerm?'重新授权':'重新选择';
+  reopenBtn.title=needPerm?'点击续期读取权限（浏览器要求一次点击）':'重新选择一个日志文件';
+  reopenBtn.classList.toggle('on',needPerm);
+  forgetBtn.disabled=!st.handle;
+  if(!st.file) return;
+  setLive(st.paused?'paused':(st.observing?'watch':(st.poll?'on':'off')),
+    needPerm?zh('perm',st.perm)
+    : st.paused?'已暂停'
+    : st.observing?'实时监测'
+    : st.poll?'轮询监测'
+    : '未监测');
+  $('#fname2').textContent=st.file.name;
+  $('#fname').textContent='· '+st.file.name;
+  const tail=st.buf?`（待换行 ${st.buf.length} 字符）`:'';
+  fileMeta.textContent = needPerm
+    ? `已记住该文件，点「重新授权」继续监测 · 授权状态 ${zh('perm',st.perm)}`
+    : (st.size?fmtBytes(st.size):'0 B')
+      + (st.paused&&st.pending?` · 待补 ${st.paused&&st.file?st.size:0}`:'')
+      + ` · ${rows.length} 条` + tail;
+}
+
+
+/* ---------- 数据流 ---------- */
+const rg={base:[],pending:false};
+
+function resetStream(){
+  rg.base=[]; rg.pending=false;
+  st.buf=''; st.size=0;
+}
+
+/* 只做「新数据进 rows + 重绘」，滚动位置按用户意图恢复 */
+function commit(recs){
+  if(!recs.length){ renderBar(); return; }
+  rg.base=rg.base.concat(recs);
+  rows=sortRows(rg.base.slice());
+  const y=window.scrollY, follow=st.follow&&!q&&flt==='all';
+  render();
+  if(follow && y<=40) window.scrollTo({top:0,behavior:'auto'});
+  else window.scrollTo({top:y,behavior:'auto'});
+}
+
+/* ---------- 读增量 ---------- */
+/* 三种变化都能识别：
+   1. 追加  —— size 变大，读 offset 之后的新字节
+   2. 截断  —— size 变小，丢弃已有行重新读
+   3. 原地重写 —— size 一样但内容变了（比头部指纹）  */
+const HEAD=512;
+let headSnap='';
+
+async function headOf(f){
+  return f.slice(0,Math.min(HEAD,f.size)).text();
+}
+
+async function readMore(){
+  if(!st.handle || st.paused || rg.pending) return;
+  if(st.perm!=='granted') return;   // 待续期时不做无用的读取尝试，避免刷屏报错
+  rg.pending=true;
+  try{
+    const f=await st.handle.getFile();
+    st.perm=await currentPerm(st.handle);
+    const size=f.size;
+    if(size<st.size){
+      await reload(f,'文件被截断，已重新读取');
+      return;
+    }
+    if(size===st.size && size>0){
+      const head=await headOf(f);
+      if(head!==headSnap) await reload(f,'文件被重写，已重新读取');
+      return;
+    }
+    if(size===st.size) return;
+    headSnap = size<=HEAD ? await headOf(f) : headSnap;
+    const text=await f.slice(st.size).text();
+    st.size=size; st.lastF=f;
+    ingest(text);
+  }catch(e){
+    console.error('[mcplog] 读取失败',e);
+    // 后台久了授权可能被浏览器收回：停掉监测，把「重新授权」按钮点亮
+    st.perm = (e&&e.name==='NotAllowedError') ? 'prompt' : 'unknown';
+    stopWatch();
+    renderBar();
+    if(e&&e.name==='NotAllowedError') toast('文件授权已失效，点「重新授权」继续监测',true);
+  }finally{
+    rg.pending=false;
+  }
+}
+
+/* 整份重读（截断 / 原地重写后） */
+async function reload(f,msg){
+  const text=await f.text();
+  resetStream();
+  st.size=f.size;
+  st.lastF=f;
+  headSnap=await headOf(f);
+  rg.base=parse(text);
+  rows=rg.base.slice();
+  render(); renderBar();
+  if(msg) toast(msg);
+}
+
+/* 按行切分，最后一段不完整就留着等换行 */
+function ingest(text){
+  st.buf+=text;
+  const nl=st.buf.lastIndexOf('\n');
+  if(nl<0){ renderBar(); return; }
+  const head=st.buf.slice(0,nl+1);
+  st.buf=st.buf.slice(nl+1);
+  commit(parse(head));
+}
+
+/* ---------- 打开文件 ---------- */
+/* 注意顺序：queryPermission 只是「一次查询」，把 getFile 提到它前面会踩 NotAllowedError——
+   因为授权不足时 getFile 就是会抛，跟浏览器支不支持无关。 */
+async function openHandle(h,quiet){
+  if(!h) return false;
+  if(h.kind && h.kind!=='file'){ toast('请选择文件，不要目录',true); return false; }
+
+  const seq=++st.seq;
+  let f,perm;
+  try{
+    const snap=await snapshot(h);
+    f=snap.f; perm=snap.perm;
+  }catch(e){
+    if(seq!==st.seq) return false;          // 期间用户已经选了别的文件，别拿旧的去占位
+    // 拿不到内容，但句柄是好的 —— 记下来，等用户点一下再续期，别丢掉「记住的文件」
+    console.warn('[mcplog] 读取文件失败',e);
+    holdHandle(h,e,st.lastF);
+    return false;
+  }
+  // 读取期间（读整份内容可能不短）如果已有更新的打开动作，本次作废。
+  // 否则启动期的自动恢复会晚一步落地，把用户刚选的文件顶掉。
+  if(seq!==st.seq) return false;
+
+  stopWatch();
+  resetStream();
+  st.handle=h; st.file=f; st.perm=perm; st.lastF=f;
+  st.size=f.size;
+  headSnap=await headOf(f);
+  rg.base=f.size?parse(await f.text()):[];
+  rows=rg.base.slice();
+  flt='all'; q=''; $('#q').value=''; shown=300;
+
+  render(); startWatch(); renderBar();
+  dropEl.classList.remove('dev');
+  if(!quiet){
+    toast(perm==='granted'
+      ? (rg.base.length?`已载入 ${rg.base.length} 条，开始实时监测`:'文件为空，等待写入…')
+      : `已恢复 ${f.name}，点「重新授权」继续监测`);
+  }
+  await idbPut(h);
+  rememberDir(h);          // 记住目录，下次 picker 从这儿开
+  return true;
+}
+
+/* 句柄在手但读不了：保留句柄，状态条给续期入口，不静默消失 */
+async function holdHandle(h,err,cachedF){
+  if(st.seq) st.seq++;    // 进入「待授权」也算一次状态变更，避免旧的恢复流程回写
+  stopWatch();
+  let size=cachedF?.size ?? 0;
+  st.handle=h;
+  if(st.file==null){
+    // 连 File 都没有：用文件名占位，让用户看得见「记住了哪个文件」
+    st.file={name:h.name||'（已记住的文件）'};
+  }
+  // 我们就是因为权限不足才走到这里，直接标成待续期（denied 也仍可尝试）
+  st.perm = 'prompt';
+  st.size=size||st.size||0;
+  await idbPut(h);
+  rememberDir(h);
+  renderBar();
+  dropEl.classList.remove('dev');
+  return false;
+}
+
+function stopWatch(){
+  if(st.observer){ try{ st.observer.disconnect(); }catch(e){} st.observer=null; }
+  if(st.watchStop){ try{ st.watchStop(); }catch(e){} st.watchStop=null; }
+  if(st.poll){ clearInterval(st.poll); st.poll=null; }
+  st.observing=false;
+}
+
+async function startWatch(){
+  stopWatch();
+  if(!st.handle) return;
+  if(HAS_OBSERVER){
+    try{
+      const obs=new FileSystemObserver(()=>readMore());
+      const stop=await obs.observe(st.handle);
+      st.observer=obs; st.watchStop=typeof stop==='function'?stop:null;
+      st.observing=true; renderBar(); return;
+    }catch(e){
+      console.warn('[mcplog] FileSystemObserver 不可用，退回轮询',e);
+      st.observer=null;
+    }
+  }
+  st.poll=setInterval(()=>{ if(!document.hidden) readMore(); },1000);
+  renderBar();
+}
+
+/* 唯一的用户手势入口：选文件、续期、重选都走这里 */
+async function pick(){
+  if(!HAS_PICKER){ toast('当前浏览器不支持实时监测，请改用 Chrome / Edge',true); return; }
+  try{
+    const [h]=await window.showOpenFilePicker(await pickerOpts());
+    await openHandle(h);
+  }catch(e){
+    if(e && e.name!=='AbortError') toast('打开失败：'+(e.message||e),true);
+  }
+}
+
+/* 「重新授权 / 重新选择」：先试着给已记住的句柄续期，
+   续不上（或本来就没句柄）再让用户重选，不会白跑一趟 picker */
+async function reopen(){
+  const h=st.handle;
+  if(h){
+    st.perm=await requestPerm(h);
+    if(st.perm==='granted'){
+      if(await openHandle(h,true)){ toast('已重新授权，继续实时监测'); return; }
+    }
+    if(st.perm==='denied'){
+      toast('授权被拒绝，请在地址栏左侧的站点设置里允许文件访问',true);
+    }
+  }
+  await pick();
+}
+
+/* ---------- 拖放（保留 index.html 的兜底） ---------- */
+async function fromDrop(dt){
+  if(!dt) return false;
+  // 优先拿句柄：有了句柄才能持续监测
+  for(const it of (dt.items||[])){
+    if(it.kind!=='file') continue;
+    let h=null;
+    try{ if(HAS_PICKER && it.getAsFileSystemHandle) h=await it.getAsFileSystemHandle(); }catch(e){}
+    if(!h) continue;
+    if(h.kind==='directory'){
+      const f=await findLogIn(h,0);
+      if(!f){ toast('目录里没找到 .mcp.log',true); return false; }
+      return openHandle(f);
+    }
+    return openHandle(h);
+  }
+  // 没有句柄就静态读一次，能看不能监测
+  const f=dt.files&&dt.files[0];
+  if(f){
+    load(await f.text(),f.name);
+    toast('已静态载入；该入口不支持实时监测，请用「打开日志」');
+    return true;
+  }
+  return false;
+}
+
+/* 目录里找日志：优先 .mcp.log，其次任意 .log */
+async function findLogIn(dir,depth){
+  if(depth>2) return null;
+  const dirs=[];
+  let loose=null;
+  for await(const [name,h] of dir.entries()){
+    if(h.kind==='directory'){ dirs.push(h); continue; }
+    if(/^\.?mcp.*\.log$/i.test(name)) return h;
+    if(!loose && /\.log$/i.test(name)) loose=h;
+  }
+  if(loose) return loose;
+  for(const d of dirs){
+    const r=await findLogIn(d,depth+1);
+    if(r) return r;
+  }
+  return null;
+}
+
+/* ---------- 事件绑定 ---------- */
+openBtn.onclick=pick;
+reopenBtn.onclick=reopen;
+dropEl.onclick=()=>HAS_PICKER?pick():fileEl.click();
+
+forgetBtn.onclick=async()=>{
+  await forget();
+  toast('已忘掉该文件，下次打开不会再自动恢复');
+  dropEl.classList.add('dev');
+};
+
+pauseBtn.onclick=()=>{
+  st.paused=!st.paused;
+  pauseBtn.textContent=st.paused?'继续':'暂停';
+  pauseBtn.classList.toggle('on',st.paused);
+  renderBar();
+  if(!st.paused) readMore();
+};
+
+followBtn.onclick=()=>{
+  st.follow=!st.follow;
+  renderBar();
+  if(st.follow) window.scrollTo({top:0,behavior:'smooth'});
+};
+
+let dragDepth=0;
+document.addEventListener('dragenter',e=>{
+  e.preventDefault();
+  if(++dragDepth===1 && !st.file) dropEl.classList.add('over','dev');
+});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('dragleave',e=>{
+  e.preventDefault();
+  if(--dragDepth<=0){ dragDepth=0; dropEl.classList.remove('over'); if(st.file) dropEl.classList.remove('dev'); }
+});
+document.addEventListener('drop',async e=>{
+  e.preventDefault(); dragDepth=0;
+  dropEl.classList.remove('over');
+  const done=await fromDrop(e.dataTransfer);
+  if(!done && st.file) dropEl.classList.remove('dev');
+});
+
+document.addEventListener('paste',e=>{
+  const t=(e.clipboardData||window.clipboardData)?.getData('text');
+  if(t&&t.trim()){
+    e.preventDefault();
+    load(t,'剪贴板');
+    toast('已静态载入；粘贴的内容不会继续监测');
+  }
+});
+
+/* 标签页回到前台补一次（轮询模式期间是暂停的） */
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden) readMore();
+});
+
+window.addEventListener('beforeunload',()=>stopWatch());
+
+/* ---------- 启动 ---------- */
+(async function boot(){
+  renderBar();
+  if(!HAS_PICKER){
+    openBtn.disabled=true;
+    openBtn.title='当前浏览器不支持 File System Access API';
+    dropEl.classList.add('dev');
+    $('#dropTitle').innerHTML='拖入 <code>.mcp.log</code> 文件';
+    $('#dropSub').innerHTML=
+      '当前浏览器不支持边读边监测（File System Access API）'+
+      ' · 建议用 Chrome / Edge 打开本页'+
+      ' · 也可以 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴文本';
+    return;
+  }
+
+  const h=await idbGet();
+  if(!h){ dropEl.classList.add('dev'); return; }
+
+  // 有句柄就先静默试读一次；读不到不是「失败」，而是「等一次点击续期」
+  if(!await openHandle(h,true)) console.warn('[mcplog] 恢复需要重新授权，已保留文件句柄');
+})();
+
+/* 每次渲染顺手刷状态条 */
+render=((inner)=>function(){ inner(); renderBar(); })(render);
+render();
+
+</script>
+</body>
+</html>
