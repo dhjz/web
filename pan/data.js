@@ -1,6 +1,7 @@
 var apps = [
-  { name: 'pansou.pro', url: 'https://pansou.pro/search?q=%s' },
+  { name: '影盘社', url: 'https://www.yingpanshe.com/search?q=%s' },
   { name: '神族九帝', url: 'https://panhub.shenzjd.com/?q=%s' },
+  { name: 'pansou.pro', url: 'https://pansou.pro/search?q=%s' },
   { name: '网盘搜', url: 'https://www.wangpansou.com/search.php?kw=%s' },
   { name: 'pansou.so', url: 'https://www.pansou.co/s/%s.html' },
   { name: 'pansou.de', url: 'https://pansou.de/search?q=%s' },
