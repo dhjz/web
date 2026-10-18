@@ -7,8 +7,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>软件仓库聚合</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='.55' stop-color='%233b82f6'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ccircle cx='28' cy='28' r='12' fill='none' stroke='%23fff' stroke-width='5'/%3E%3Cline x1='37' y1='37' x2='49' y2='49' stroke='%23fff' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
-  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
-  <script src="/static/vue.global.prod.js"></script>
+  <script>
+    var apps = [
+      { name: '果核剥壳', url: 'https://www.ghxi.com/?s=%s' },
+      { name: '枫音6B', url: 'https://www.fy6b.com/?s=%s' },
+      { name: '六音软件', url: 'https://www.sixyin.com/?s=%s' },
+      { name: '克隆窝', url: 'https://www.uy5.net/?s=%s' },
+      { name: '辉哥博客', url: 'https://www.haah.net/?s=%s' },
+      { name: '绿软部落', url: 'https://www.ludown.com/?s=%s' },
+      { name: 'APP喵', url: 'https://www.appmiu.com/?s=%s&type=post' },
+      { name: '乐享', url: 'https://www.lxapk.com/?s=%s&type=post' },
+      { name: '大眼仔', url: 'https://www.dayanzai.me/?s=%s' },
+
+      { name: '软件No1', url: 'https://www.rjno1.com/?s=%s' },
+      { name: 'SUG软件', url: 'https://sug.xyz/rj/?s=%s&post_type=app' },
+    ]
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-size: 14px; }
     body { font-family: Arial, sans-serif; height: 100dvh; overflow: hidden; }
@@ -69,117 +83,187 @@
   <div id="app">
     <div class="sidebar">
       <div class="input-row">
-        <input type="text" v-model="keyword" placeholder="关键词回车搜索" @keyup.enter="doSearch">
-        <button class="clear-btn" title="清空" @click="clearKeyword">✕</button>
+        <input id="keywordInput" type="text" placeholder="关键词回车搜索">
+        <button class="clear-btn" id="clearBtn" title="清空">✕</button>
       </div>
-      <ul class="sidebar-list">
-        <li v-for="(site, index) in appData" :key="index" :class="{ active: currInd === index }"
-          @click="selectSite(site, index)" :title="site.name">
-          {{ site.name }} <i @click.stop="open(site.url)">{{ site.blank ? '↗' : '🔗' }}</i>
-        </li>
-      </ul>
+      <ul class="sidebar-list" id="siteList"></ul>
     </div>
-    <div class="content">
-      <button class="toggle-btn" @click="toggleSidebar">
-        {{ isSbHide ? '▶' : '◀' }}
-      </button>
-      <template v-for="(site, ind) in appData">
-        <iframe v-if="site.load && !site.blank" v-show="ind == currInd" :src="site.url" class="iframe-container" frameborder="0" allowfullscreen>
-        </iframe>
-      </template>
-      <div class="blank-tip" v-if="currSite && currSite.blank">该站点不支持内嵌，点击左侧导航将在新页面打开 ↗</div>
+    <div class="content" id="content">
+      <button class="toggle-btn" id="toggleBtn">◀</button>
+      <div class="blank-tip" id="blankTip" hidden>该站点不支持内嵌，点击左侧导航将在新页面打开 ↗</div>
     </div>
-    <div class="intro-mask" v-if="showIntro" @click.self="closeIntro">
+    <div class="intro-mask" id="introMask">
       <div class="intro-card">
         <div class="intro-logo">🔍</div>
         <div class="intro-title">软件仓库聚合</div>
-        <!-- <div class="intro-sub">支 持 全 网 软 件 搜 索</div> -->
         <div class="intro-search">
-          <input ref="introInput" type="text" v-model="keyword" placeholder="请输入软件搜索关键字"
-            @keyup.enter="introSearch">
-          <button class="intro-go" @click="introSearch">搜索</button>
+          <input id="introInput" type="text" placeholder="请输入软件搜索关键字">
+          <button class="intro-go" id="introGo">搜索</button>
         </div>
-        <div class="intro-skip" @click="closeIntro">跳过，直接浏览 →</div>
+        <div class="intro-skip" id="introSkip">跳过，直接浏览 →</div>
       </div>
     </div>
   </div>
-  <script src="data.js"></script>
+  <!-- <script src="data.js"></script> -->
   <script>
-    var vueApp = Vue.createApp({
-      data() {
-        return {
-          currInd: 0,
-          keyword: '',
-          showIntro: true,
-          isSbHide: false,
-          originalData: apps,
-          appData: []
+    (function () {
+      var $list = document.getElementById('siteList');
+      var $content = document.getElementById('content');
+      var $blankTip = document.getElementById('blankTip');
+      var $keyword = document.getElementById('keywordInput');
+      var $introInput = document.getElementById('introInput');
+      var $introMask = document.getElementById('introMask');
+      var $toggleBtn = document.getElementById('toggleBtn');
+
+      var sites = [];
+      var currInd = 0;
+      var isSbHide = false;
+
+      // 按关键词生成各站点的实际地址，并重置加载状态
+      function resetSites() {
+        var keyword = $keyword.value;
+        sites = apps.map(function (item) {
+          var url;
+          if (keyword) {
+            url = item.url.indexOf('%s') > -1 ? item.url.replace('%s', encodeURIComponent(keyword)) : item.url;
+          } else {
+            url = new URL(item.url).origin;
+          }
+          return { name: item.name, url: url, blank: !!item.blank, loaded: false, el: null };
+        });
+
+        Array.prototype.forEach.call($content.querySelectorAll('.iframe-container'), function (el) {
+          el.parentNode.removeChild(el);
+        });
+
+        var firstInd = -1;
+        for (var i = 0; i < sites.length; i++) {
+          if (!sites[i].blank) { firstInd = i; break; }
         }
-      },
-      computed: {
-        currSite() {
-          return this.appData[this.currInd];
+        if (firstInd > -1) {
+          sites[firstInd].loaded = true;
+          currInd = firstInd;
         }
-      },
-      created() {
-        this.resetAppData();
-      },
-      mounted() {
-        document.body.classList.toggle('sb-hide', this.isSbHide);
-        this.$nextTick(() => {
-          if (this.showIntro && this.$refs.introInput) {
-            this.$refs.introInput.focus();
+
+        renderList();
+        syncView();
+      }
+
+      function renderList() {
+        $list.innerHTML = '';
+        sites.forEach(function (site, index) {
+          var li = document.createElement('li');
+          li.title = site.name;
+          li.className = index === currInd ? 'active' : '';
+          li.appendChild(document.createTextNode(site.name + ' '));
+
+          var icon = document.createElement('i');
+          icon.textContent = site.blank ? '↗' : '🔗';
+          icon.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.open(site.url);
+          });
+          li.appendChild(icon);
+
+          li.addEventListener('click', function () {
+            selectSite(index);
+          });
+          $list.appendChild(li);
+        });
+      }
+
+      function updateActive() {
+        Array.prototype.forEach.call($list.children, function (li, index) {
+          li.className = index === currInd ? 'active' : '';
+        });
+      }
+
+      // 同步 iframe 的创建与显隐
+      function syncView() {
+        sites.forEach(function (site, index) {
+          if (site.blank) return;
+          if (site.loaded && !site.el) {
+            var iframe = document.createElement('iframe');
+            iframe.className = 'iframe-container';
+            iframe.setAttribute('frameborder', '0');
+            iframe.setAttribute('allowfullscreen', '');
+            iframe.src = site.url;
+            $content.insertBefore(iframe, $blankTip);
+            site.el = iframe;
+          }
+          if (site.el) {
+            site.el.style.display = index === currInd ? '' : 'none';
           }
         });
-      },
-      methods: {
-        resetAppData() {
-          this.appData = this.originalData.map(item => ({
-            ...item,
-            url: this.keyword
-              ? item.url.includes('%s') ? item.url.replace('%s', encodeURIComponent(this.keyword)) : item.url
-              : new URL(item.url).origin,
-            load: false
-          }));
-          const firstInd = this.appData.findIndex(item => !item.blank);
-          if (firstInd > -1) {
-            this.appData[firstInd].load = true;
-            this.currInd = firstInd;
-          }
-        },
-        doSearch() {
-          this.resetAppData();
-          // document.body.classList.add('sb-hide');
-        },
-        clearKeyword() {
-          this.keyword = '';
-          this.doSearch();
-        },
-        introSearch() {
-          this.doSearch();
-          this.showIntro = false;
-        },
-        closeIntro() {
-          this.showIntro = false;
-        },
-        open(url) {
-          window.open(url);
-        },
-        selectSite(site, ind) {
-          if (site.blank) {
-            this.open(site.url);
-            return;
-          }
-          site.load = true;
-          this.currInd = ind;
-          // this.toggleSidebar()
-        },
-        toggleSidebar() {
-          this.isSbHide = !this.isSbHide;
-          document.body.classList.toggle('sb-hide', this.isSbHide);
-        }
+
+        var currSite = sites[currInd];
+        $blankTip.hidden = !(currSite && currSite.blank);
       }
-    }).mount('#app');
+
+      function selectSite(index) {
+        var site = sites[index];
+        if (!site) return;
+        if (site.blank) {
+          window.open(site.url);
+          return;
+        }
+        site.loaded = true;
+        currInd = index;
+        updateActive();
+        syncView();
+      }
+
+      function doSearch() {
+        resetSites();
+      }
+
+      function closeIntro() {
+        $introMask.style.display = 'none';
+      }
+
+      $keyword.addEventListener('input', function () {
+        $introInput.value = $keyword.value;
+      });
+      $keyword.addEventListener('keyup', function (e) {
+        if (e.key === 'Enter') doSearch();
+      });
+
+      $introInput.addEventListener('input', function () {
+        $keyword.value = $introInput.value;
+      });
+      $introInput.addEventListener('keyup', function (e) {
+        if (e.key === 'Enter') {
+          doSearch();
+          closeIntro();
+        }
+      });
+
+      document.getElementById('clearBtn').addEventListener('click', function () {
+        $keyword.value = '';
+        $introInput.value = '';
+        doSearch();
+      });
+
+      document.getElementById('introGo').addEventListener('click', function () {
+        doSearch();
+        closeIntro();
+      });
+
+      document.getElementById('introSkip').addEventListener('click', closeIntro);
+
+      $introMask.addEventListener('click', function (e) {
+        if (e.target === $introMask) closeIntro();
+      });
+
+      $toggleBtn.addEventListener('click', function () {
+        isSbHide = !isSbHide;
+        document.body.classList.toggle('sb-hide', isSbHide);
+        $toggleBtn.textContent = isSbHide ? '▶' : '◀';
+      });
+
+      resetSites();
+      $introInput.focus();
+    })();
   </script>
 </body>
 </html>
