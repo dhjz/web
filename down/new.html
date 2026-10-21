@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多线程加速下载器</title>
+    <style>
+        html[data-theme="light"] { --bg-color: #f8fafc; --card-bg: #ffffff; --inner-bg: #f1f5f9; --text-color: #0f172a; --text-sub: #64748b; --primary: #2563eb; --primary-hover: #1d4ed8; --warning: #f59e0b; --warning-hover: #d97706; --success: #10b981; --danger: #ef4444; --danger-hover: #dc2626; --border: #e2e8f0; --chunk-default: #cbd5e1; --chunk-loading: #3b82f6; --chunk-success: #10b981; --chunk-error: #ef4444; --shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        html[data-theme="dark"] { --bg-color: #0b0f19; --card-bg: #131b2e; --inner-bg: #0f172a; --text-color: #f8fafc; --text-sub: #94a3b8; --primary: #3b82f6; --primary-hover: #2563eb; --warning: #f59e0b; --warning-hover: #d97706; --success: #10b981; --danger: #ef4444; --danger-hover: #dc2626; --border: #243049; --chunk-default: #243049; --chunk-loading: #3b82f6; --chunk-success: #10b981; --chunk-error: #ef4444; --shadow: 0 2px 8px rgba(0,0,0,0.4); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        html, body { height: 100%; width: 100%; overflow: hidden; }
+        body { width: 97%; margin: 0 auto; max-width: 1200px; background-color: var(--bg-color); color: var(--text-color); padding: 8px; display: flex; flex-direction: column; font-size: 13px; }
+        .container { display: flex; flex-direction: column; flex: 1; background: var(--card-bg); border-radius: 8px; padding: 10px 14px; border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; gap: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .header h3 { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+        .theme-btn { background: var(--inner-bg); border: 1px solid var(--border); color: var(--text-color); padding: 3px 8px; margin-left: 6px; border-radius: 4px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; height: 24px; }
+        .controls-grid { display: flex; flex-direction: column; gap: 6px; }
+        .input-row { display: flex; gap: 6px; }
+        .config-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        input, select { background: var(--inner-bg); border: 1px solid var(--border); color: var(--text-color); padding: 5px 8px; border-radius: 4px; font-size: 13px; outline: none; transition: border 0.15s; }
+        input:focus, select:focus { border-color: var(--primary); }
+        .input-url { flex: 1; }
+        .input-number { width: 56px; text-align: center; }
+        .cfg-item { display: flex; align-items: center; gap: 4px; color: var(--text-sub); }
+        .btn-group { display: flex; gap: 6px; margin-left: auto; }
+        button.btn-action { background: var(--primary); color: #fff; border: none; padding: 5px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: background 0.15s; height: 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+        button.btn-action:hover { background: var(--primary-hover); }
+        button.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.btn-action.warning { background: var(--warning); }
+        button.btn-action.warning:hover { background: var(--warning-hover); }
+        button.btn-action.danger { background: var(--danger); }
+        button.btn-action.danger:hover { background: var(--danger-hover); }
+        .info-panel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--inner-bg); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); }
+        .info-item { display: flex; flex-direction: column; }
+        .info-item .label { font-size: 13px; color: var(--text-sub); }
+        .info-item .value { font-size: 13px; font-weight: bold; }
+        .progress-box { display: flex; flex-direction: column; gap: 3px; }
+        .progress-desc { display: flex; justify-content: space-between; font-size: 13px; }
+        .progress-bg { width: 100%; height: 7px; background: var(--inner-bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.15s ease; }
+        .chunk-section { display: flex; flex-direction: column; gap: 4px; }
+        .chunk-meta { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-sub); }
+        .chunks-legend { display: flex; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 3px; }
+        .legend-box { width: 7px; height: 7px; border-radius: 1px; }
+        .chunk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8px, 1fr)); gap: 2px; max-height: 70px; overflow-y: auto; padding: 4px; background: var(--inner-bg); border-radius: 5px; border: 1px solid var(--border); }
+        .chunk-box { height: 9px; border-radius: 1px; background-color: var(--chunk-default); transition: background 0.15s; }
+        .chunk-box.loading { background-color: var(--chunk-loading); animation: pulse 0.7s infinite alternate; }
+        .chunk-box.success { background-color: var(--chunk-success); }
+        .chunk-box.error { background-color: var(--chunk-error); cursor: pointer; }
+        @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+        .log-section { flex: 1; display: flex; flex-direction: column; min-height: 40px; overflow: hidden; margin-top: 2px; }
+        .log-box { flex: 1; overflow-y: auto; background: var(--inner-bg); border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; font-size: 13px; font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; color: var(--text-sub); }
+        .log-box .err { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h3>⚡ 极速下载加速器</h3>
+        <div>
+          <button class="theme-btn" onclick="downloadBat()">脚本</button>
+          <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙 深色</button>
+        </div>
+    </div>
+
+    <div class="controls-grid">
+        <div class="input-row">
+            <input type="text" id="target-url" class="input-url" placeholder="下载直链 (需支持 CORS & Range)" />
+        </div>
+        <div class="config-row">
+            <div class="cfg-item">
+                <span>模式</span>
+                <select id="storage-mode" title="写盘模式支持数十GB大文件且零内存压力">
+                    <option value="memory" selected>内存暂存 (全兼容)</option>
+                    <option value="disk">直接写盘 (大文件推荐)</option>
+                </select>
+            </div>
+            <div class="cfg-item">
+                <span>线程</span>
+                <input type="number" id="concurrency" class="input-number" min="1" max="32" value="6" />
+            </div>
+            <div class="cfg-item">
+                <span>分片</span>
+                <select id="chunk-size">
+                    <option value="524288">512K</option>
+                    <option value="1048576" selected>1M</option>
+                    <option value="2097152">2M</option>
+                    <option value="5242880">5M</option>
+                    <option value="10485760">10M</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button id="btn-start" class="btn-action" onclick="handleStartOrResume()">开始下载</button>
+                <button id="btn-pause" class="btn-action warning" onclick="pauseDownload()" style="display: none;">暂停</button>
+                <button id="btn-retry" class="btn-action warning" onclick="retryFailedChunks()" style="display: none;">重试失败(0)</button>
+                <button id="btn-stop" class="btn-action danger" onclick="stopDownload()" disabled>终止</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-item">
+            <span class="label">文件大小</span>
+            <span class="value" id="val-total-size">-</span>
+        </div>
+        <div class="info-item">
+            <span class="label">实时速率</span>
+            <span class="value" id="val-speed">0 B/s</span>
+        </div>
+        <div class="info-item">
+            <span class="label">完成分片</span>
+            <span class="value" id="val-chunks">- / -</span>
+        </div>
+        <div class="info-item">
+            <span class="label">耗时/剩余</span>
+            <span class="value" id="val-time">0s / -</span>
+        </div>
+    </div>
+
+    <div class="progress-box">
+        <div class="progress-desc">
+            <span id="val-status">就绪</span>
+            <span id="val-percent" style="font-weight: 600; color: var(--primary);">0%</span>
+        </div>
+        <div class="progress-bg">
+            <div class="progress-bar" id="progress-fill"></div>
+        </div>
+    </div>
+
+    <div class="chunk-section">
+        <div class="chunk-meta">
+            <span>分片切片状态</span>
+            <div class="chunks-legend">
+                <div class="legend-item"><div class="legend-box" style="background:var(--chunk-default)"></div>待下</div>
+                <div class="legend-item"><div class="legend-box" style="background:var(--chunk-loading)"></div>传输</div>
+                <div class="legend-item"><div class="legend-box" style="background:var(--chunk-success)"></div>完成</div>
+                <div class="legend-item"><div class="legend-box" style="background:var(--chunk-error)"></div>错误</div>
+            </div>
+        </div>
+        <div class="chunk-grid" id="chunk-grid"></div>
+    </div>
+
+    <div class="log-section">
+        <div class="log-box" id="log-box"></div>
+    </div>
+</div>
+
+<script>
+    const STATUS = { IDLE: 'IDLE', DOWNLOADING: 'DOWNLOADING', PAUSED: 'PAUSED', FINISHED: 'FINISHED' };
+    let currentStatus = STATUS.IDLE;
+
+    let abortController = null;
+    let chunks = [];
+    let fileSize = 0;
+    let fileName = 'download_file';
+    let downloadedBytes = 0;
+    let downloadedChunksCount = 0;
+    let startTime = 0;
+    let speedTimer = null;
+    let lastLoadedBytes = 0;
+
+    let fileHandle = null;
+    let writableFileStream = null;
+    let diskWriteQueue = Promise.resolve();
+
+    const urlInput = document.getElementById('target-url');
+    const storageModeSelect = document.getElementById('storage-mode');
+    const concurrencyInput = document.getElementById('concurrency');
+    const chunkSizeSelect = document.getElementById('chunk-size');
+    const btnStart = document.getElementById('btn-start');
+    const btnPause = document.getElementById('btn-pause');
+    const btnRetry = document.getElementById('btn-retry');
+    const btnStop = document.getElementById('btn-stop');
+    const progressFill = document.getElementById('progress-fill');
+    const valPercent = document.getElementById('val-percent');
+    const valStatus = document.getElementById('val-status');
+    const valTotalSize = document.getElementById('val-total-size');
+    const valSpeed = document.getElementById('val-speed');
+    const valChunks = document.getElementById('val-chunks');
+    const valTime = document.getElementById('val-time');
+    const chunkGrid = document.getElementById('chunk-grid');
+    const logBox = document.getElementById('log-box');
+
+    function formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024, sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatTime(sec) {
+        if (!sec || !isFinite(sec)) return '-';
+        sec = Math.round(sec);
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m > 0 ? m + 'm ' : ''}${s}s`;
+    }
+
+    function log(msg, isErr = false) {
+        const div = document.createElement('div');
+        if (isErr) div.className = 'err';
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logBox.appendChild(div);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function getConcurrency() {
+        let val = parseInt(concurrencyInput.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 32) val = 32;
+        concurrencyInput.value = val;
+        return val;
+    }
+
+    function initTheme() {
+        const params = new URLSearchParams(window.location.search);
+        const urlTheme = params.get('theme');
+        let theme = 'light';
+
+        if (urlTheme === 'dark' || urlTheme === 'light') {
+            theme = urlTheme;
+        } else {
+            const savedTheme = localStorage.getItem('dl_theme');
+            if (savedTheme === 'dark' || savedTheme === 'light') theme = savedTheme;
+        }
+        applyTheme(theme);
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('dl_theme', theme);
+        const themeBtn = document.getElementById('theme-btn');
+        if (themeBtn) themeBtn.textContent = theme === 'dark' ? '☀️ 浅色' : '🌙 深色';
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    function initStoragePersistence() {
+        const params = new URLSearchParams(window.location.search);
+
+        const urlParam = params.get('url');
+        if (urlParam) {
+            try { urlInput.value = decodeURIComponent(urlParam); } catch(e) { urlInput.value = urlParam; }
+            localStorage.setItem('dl_url', urlInput.value);
+        } else {
+            urlInput.value = localStorage.getItem('dl_url') || '';
+        }
+        urlInput.addEventListener('input', () => localStorage.setItem('dl_url', urlInput.value.trim()));
+
+        const concParam = params.get('concurrency');
+        if (concParam) {
+            concurrencyInput.value = concParam;
+            localStorage.setItem('dl_concurrency', concParam);
+        } else {
+            concurrencyInput.value = localStorage.getItem('dl_concurrency') || '6';
+        }
+        concurrencyInput.addEventListener('input', () => localStorage.setItem('dl_concurrency', concurrencyInput.value));
+
+        const chunkParam = params.get('chunk_size');
+        if (chunkParam) {
+            chunkSizeSelect.value = chunkParam;
+            localStorage.setItem('dl_chunk_size', chunkParam);
+        } else {
+            chunkSizeSelect.value = localStorage.getItem('dl_chunk_size') || '1048576';
+        }
+        chunkSizeSelect.addEventListener('change', () => localStorage.setItem('dl_chunk_size', chunkSizeSelect.value));
+
+        const modeParam = params.get('mode');
+        if (modeParam) {
+            storageModeSelect.value = modeParam;
+            localStorage.setItem('dl_mode', modeParam);
+        } else {
+            storageModeSelect.value = localStorage.getItem('dl_mode') || 'memory';
+        }
+        storageModeSelect.addEventListener('change', () => localStorage.setItem('dl_mode', storageModeSelect.value));
+    }
+
+    function updateButtonUI() {
+        const failedCount = chunks.filter(c => c.status === 'error').length;
+        if (failedCount > 0 && currentStatus !== STATUS.DOWNLOADING) {
+            btnRetry.style.display = 'inline-flex';
+            btnRetry.textContent = `重试失败(${failedCount})`;
+        } else {
+            btnRetry.style.display = 'none';
+        }
+
+        switch (currentStatus) {
+            case STATUS.IDLE:
+                btnStart.style.display = 'inline-flex';
+                btnStart.textContent = '开始下载';
+                btnPause.style.display = 'none';
+                btnStop.disabled = true;
+                storageModeSelect.disabled = false;
+                break;
+            case STATUS.DOWNLOADING:
+                btnStart.style.display = 'none';
+                btnPause.style.display = 'inline-flex';
+                btnPause.textContent = '暂停';
+                btnStop.disabled = false;
+                storageModeSelect.disabled = true;
+                break;
+            case STATUS.PAUSED:
+                btnStart.style.display = 'inline-flex';
+                btnStart.textContent = '继续下载';
+                btnPause.style.display = 'none';
+                btnStop.disabled = false;
+                storageModeSelect.disabled = true;
+                break;
+            case STATUS.FINISHED:
+                btnStart.style.display = 'inline-flex';
+                btnStart.textContent = '重新下载';
+                btnPause.style.display = 'none';
+                btnStop.disabled = true;
+                storageModeSelect.disabled = false;
+                break;
+        }
+    }
+
+    async function handleStartOrResume() {
+        if (currentStatus === STATUS.PAUSED) {
+            resumeDownload();
+            return;
+        }
+
+        const url = urlInput.value.trim();
+        if (!url) {
+            alert('请提供有效的下载直链！');
+            return;
+        }
+
+        resetDownloadContext();
+        currentStatus = STATUS.DOWNLOADING;
+        updateButtonUI();
+
+        valStatus.textContent = '探测元数据...';
+        abortController = new AbortController();
+
+        try {
+            await fetchMetadata(url);
+
+            if (storageModeSelect.value === 'disk') {
+                if (!('showSaveFilePicker' in window)) {
+                    throw new Error('当前浏览器不支持 File System API，请切换为“内存暂存”模式！');
+                }
+                log('请选择保存位置 (自动恢复上次目录，默认定位至桌面)...');
+
+                // 核心亮点：
+                // 1. id: 浏览器会自动记忆此 ID 上次选择过的目录
+                // 2. startIn: 'desktop': 首次无记忆时，强制打开系统桌面，而不是“我的文档”
+                fileHandle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    id: 'fast-downloader-save-dir',
+                    startIn: 'desktop'
+                });
+
+                writableFileStream = await fileHandle.createWritable();
+                log('本地写入流就绪，切片将实时写盘。');
+            }
+
+            initChunks(parseInt(chunkSizeSelect.value));
+
+            valStatus.textContent = '极速传输中...';
+            startTime = Date.now();
+            startSpeedMonitor();
+
+            await runConcurrencyPool();
+            await checkAndFinish();
+
+        } catch (err) {
+            if (err.name === 'AbortError') return;
+            log(err.message, true);
+            pauseDownload(err.message);
+        }
+    }
+
+    function pauseDownload(reason) {
+        if (currentStatus !== STATUS.DOWNLOADING) return;
+        currentStatus = STATUS.PAUSED;
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+        clearInterval(speedTimer);
+        valSpeed.textContent = '0 B/s';
+        valStatus.textContent = reason || '已暂停';
+        
+        chunks.forEach(c => {
+            if (c.status === 'loading') {
+                c.status = 'pending';
+                updateChunkUI(c.index, 'default');
+            }
+        });
+        updateButtonUI();
+        log(reason || '下载已暂停');
+    }
+
+    async function resumeDownload() {
+        if (currentStatus !== STATUS.PAUSED) return;
+
+        let autoResetCount = 0;
+        chunks.forEach(c => {
+            if (c.status === 'error' || c.status === 'loading') {
+                c.status = 'pending';
+                c.retries = 0;
+                updateChunkUI(c.index, 'default');
+                autoResetCount++;
+            }
+        });
+
+        if (autoResetCount > 0) {
+            log(`已自动将 ${autoResetCount} 个中断/失败分片重新加入队列。`);
+        }
+
+        currentStatus = STATUS.DOWNLOADING;
+        updateButtonUI();
+        valStatus.textContent = '正在恢复传输...';
+        abortController = new AbortController();
+        startSpeedMonitor();
+
+        try {
+            await runConcurrencyPool();
+            await checkAndFinish();
+        } catch (err) {
+            if (err.name === 'AbortError') return;
+            log(err.message, true);
+            pauseDownload(err.message);
+        }
+    }
+
+    async function stopDownload() {
+        if (abortController) abortController.abort();
+        clearInterval(speedTimer);
+
+        if (writableFileStream) {
+            try { await writableFileStream.abort(); } catch(e){}
+            writableFileStream = null;
+            fileHandle = null;
+        }
+
+        currentStatus = STATUS.IDLE;
+        resetDownloadContext();
+        valStatus.textContent = '已终止并重置';
+        valSpeed.textContent = '0 B/s';
+        updateButtonUI();
+        log('下载任务已终止，状态完全清空。');
+    }
+
+    async function retryFailedChunks() {
+        const errorChunks = chunks.filter(c => c.status === 'error');
+        if (errorChunks.length === 0) return;
+
+        log(`开始手动重试 ${errorChunks.length} 个失败分片...`);
+        errorChunks.forEach(c => {
+            c.status = 'pending';
+            c.retries = 0;
+            updateChunkUI(c.index, 'default');
+        });
+
+        if (currentStatus === STATUS.PAUSED || currentStatus === STATUS.IDLE) {
+            resumeDownload();
+        }
+    }
+
+    function resetDownloadContext() {
+        downloadedBytes = 0;
+        downloadedChunksCount = 0;
+        lastLoadedBytes = 0;
+        chunks = [];
+        chunkGrid.innerHTML = '';
+        logBox.innerHTML = '';
+        progressFill.style.width = '0%';
+        valPercent.textContent = '0%';
+        valChunks.textContent = '- / -';
+        valTotalSize.textContent = '-';
+        valTime.textContent = '0s / -';
+    }
+
+    async function fetchMetadata(url) {
+        log('正在探测目标支持情况 (Range / Content-Length)...');
+        let res = null;
+        try {
+            res = await fetch(url, { method: 'HEAD', signal: abortController.signal });
+        } catch (e) {}
+
+        if (!res || !res.ok) {
+            res = await fetch(url, {
+                method: 'GET',
+                headers: { 'Range': 'bytes=0-0' },
+                signal: abortController.signal
+            });
+            if (!res.ok) throw new Error('网络请求失败，目标服务器可能拒绝请求或跨域(CORS)受阻！');
+        }
+
+        const disposition = res.headers.get('Content-Disposition');
+        if (disposition && disposition.includes('filename')) {
+            const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''));
+        } else {
+            try {
+                const p = new URL(url).pathname.split('/').pop();
+                if (p) fileName = decodeURIComponent(p);
+            } catch(e) {}
+        }
+
+        const contentRange = res.headers.get('Content-Range');
+        if (contentRange) {
+            const match = contentRange.match(/\/(\d+)/);
+            if (match) fileSize = parseInt(match[1]);
+        } else {
+            const len = res.headers.get('Content-Length');
+            if (len) fileSize = parseInt(len);
+        }
+
+        if (!fileSize || isNaN(fileSize)) {
+            throw new Error('无法读取文件体积，服务端必须支持 Range 头并返回文件长度！');
+        }
+
+        valTotalSize.textContent = formatBytes(fileSize);
+        log(`探测成功: 文件名: ${fileName}, 大小: ${formatBytes(fileSize)}`);
+    }
+
+    function initChunks(sizePerChunk) {
+        const totalChunks = Math.ceil(fileSize / sizePerChunk);
+        chunks = new Array(totalChunks);
+        const fragment = document.createDocumentFragment();
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * sizePerChunk;
+            const end = Math.min(start + sizePerChunk - 1, fileSize - 1);
+            
+            chunks[i] = {
+                index: i,
+                start,
+                end,
+                size: end - start + 1,
+                data: null,
+                status: 'pending',
+                retries: 0
+            };
+
+            const box = document.createElement('div');
+            box.className = 'chunk-box';
+            box.id = `chunk-${i}`;
+            box.title = `#${i + 1}: ${start}-${end} (${formatBytes(end - start + 1)})`;
+            box.onclick = () => {
+                if (chunks[i].status === 'error') {
+                    chunks[i].status = 'pending';
+                    chunks[i].retries = 0;
+                    updateChunkUI(i, 'default');
+                    if (currentStatus === STATUS.PAUSED || currentStatus === STATUS.IDLE) {
+                        resumeDownload();
+                    }
+                }
+            };
+            fragment.appendChild(box);
+        }
+
+        chunkGrid.appendChild(fragment);
+        valChunks.textContent = `0 / ${totalChunks}`;
+    }
+
+    async function runConcurrencyPool() {
+        const pool = new Set();
+        const pendingQueue = chunks.filter(c => c.status === 'pending');
+        const maxConcurrency = getConcurrency();
+
+        async function processChunk(chunk) {
+            chunk.status = 'loading';
+            updateChunkUI(chunk.index, 'loading');
+
+            const success = await downloadChunkWithRetry(chunk, 3);
+            if (!success) {
+                chunk.status = 'error';
+                updateChunkUI(chunk.index, 'error');
+                updateButtonUI();
+                return;
+            }
+
+            if (storageModeSelect.value === 'disk') {
+                await writeChunkToDisk(chunk);
+            }
+
+            chunk.status = 'success';
+            updateChunkUI(chunk.index, 'success');
+            downloadedChunksCount++;
+            downloadedBytes += chunk.size;
+            
+            const percent = Math.min(100, ((downloadedBytes / fileSize) * 100)).toFixed(1);
+            progressFill.style.width = percent + '%';
+            valPercent.textContent = percent + '%';
+            valChunks.textContent = `${downloadedChunksCount} / ${chunks.length}`;
+            updateButtonUI();
+        }
+
+        return new Promise((resolve, reject) => {
+            function next() {
+                if (currentStatus !== STATUS.DOWNLOADING) return resolve();
+
+                if (pendingQueue.length === 0 && pool.size === 0) {
+                    return resolve();
+                }
+
+                while (pool.size < maxConcurrency && pendingQueue.length > 0) {
+                    const chunk = pendingQueue.shift();
+                    const promise = processChunk(chunk);
+                    pool.add(promise);
+
+                    promise.then(() => {
+                        pool.delete(promise);
+                        next();
+                    }).catch(err => {
+                        pool.delete(promise);
+                        reject(err);
+                    });
+                }
+            }
+            next();
+        });
+    }
+
+    async function downloadChunkWithRetry(chunk, maxRetries) {
+        const url = urlInput.value.trim();
+        while (chunk.retries <= maxRetries) {
+            if (currentStatus !== STATUS.DOWNLOADING) return false;
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Range': `bytes=${chunk.start}-${chunk.end}` },
+                    signal: abortController.signal
+                });
+
+                if (response.status !== 206 && response.status !== 200) {
+                    throw new Error(`HTTP状态码: ${response.status}`);
+                }
+
+                chunk.data = await response.arrayBuffer();
+                return true;
+            } catch (e) {
+                if (e.name === 'AbortError') return false;
+                chunk.retries++;
+                log(`分片 #${chunk.index + 1} 异常 (重试 ${chunk.retries}/${maxRetries}): ${e.message}`, true);
+                if (chunk.retries > maxRetries) return false;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+        return false;
+    }
+
+    function writeChunkToDisk(chunk) {
+        return new Promise((resolve, reject) => {
+            diskWriteQueue = diskWriteQueue.then(async () => {
+                try {
+                    await writableFileStream.seek(chunk.start);
+                    await writableFileStream.write(chunk.data);
+                    chunk.data = null;
+                    resolve();
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+    }
+
+    async function checkAndFinish() {
+        const hasError = chunks.some(c => c.status === 'error');
+        const allDone = chunks.every(c => c.status === 'success');
+
+        if (hasError) {
+            pauseDownload('部分分片异常，点击“继续下载”将自动重试失败分片');
+            return;
+        }
+
+        if (allDone) {
+            clearInterval(speedTimer);
+            valSpeed.textContent = '0 B/s';
+            valStatus.textContent = '数据封包校验中...';
+
+            if (storageModeSelect.value === 'disk') {
+                await diskWriteQueue;
+                await writableFileStream.close();
+                writableFileStream = null;
+                fileHandle = null;
+                log(`🎉 文件数据已成功写盘保存：${fileName}`);
+            } else {
+                log('正在将内存 ArrayBuffer 合并为 Blob...');
+                const buffers = chunks.map(c => c.data);
+                const blob = new Blob(buffers, { type: 'application/octet-stream' });
+                
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(downloadUrl), 40000);
+                log('🎉 触发浏览器保存成功！');
+            }
+
+            currentStatus = STATUS.FINISHED;
+            valStatus.textContent = '🎉 下载圆满完成！';
+            updateButtonUI();
+        }
+    }
+
+    function updateChunkUI(index, status) {
+        const el = document.getElementById(`chunk-${index}`);
+        if (!el) return;
+        el.className = `chunk-box ${status}`;
+    }
+
+    function startSpeedMonitor() {
+        clearInterval(speedTimer);
+        speedTimer = setInterval(() => {
+            const now = Date.now();
+            const elapsedTotal = (now - startTime) / 1000;
+            const diffBytes = downloadedBytes - lastLoadedBytes;
+            lastLoadedBytes = downloadedBytes;
+
+            valSpeed.textContent = `${formatBytes(diffBytes)}/s`;
+
+            const remainBytes = fileSize - downloadedBytes;
+            const eta = diffBytes > 0 ? remainBytes / diffBytes : 0;
+            valTime.textContent = `${formatTime(elapsedTotal)} / ${formatTime(eta)}`;
+        }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initTheme();
+        initStoragePersistence();
+        updateButtonUI();
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('autostart') === 'true' || params.get('autostart') === '1') {
+            handleStartOrResume();
+        }
+    });
+
+  function downloadBat() {
+      const content = `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --disable-web-security --user-data-dir=E:\\AllCache\\Chrome --allow-running-insecure-content "https://u.199311.xyz/down/"\r\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = "多线程下载Chrome.bat";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      log("已下载：多线程下载Chrome.bat（仅用于本机开发测试）");
+    }
+</script>
+
+</body>
+</html>
