@@ -1,5 +1,5 @@
   var DEFAULT_REPOS = [
-    { id:'r5', name:'hubproxy_new', custom: 'http://192.168.3.222:20003?name=$sn', repo:'dhjz/hubproxy', branch:'main', ref:'', ide:'webide' },
+    { id:'r5', name:'hubproxy_new', custom: 'http://192.168.3.222:20003?name=$sn', repo:'dhjzz/hubproxy', branch:'main', ref:'', ide:'webide' },
     { id:'r4', name:'WeKnora1', custom: 'http://192.168.3.222:20002?name=$sn', repo:'tei333/WeKnora1', branch:'main', ref:'', ide:'webide' },
     { id:'r5', name:'Funasr', custom: 'http://192.168.3.222:20003?name=$sn', repo:'tei333/funasr-docker', branch:'main', ref:'', ide:'webide' },
     { id:'r1', name:'hubproxy', custom: 'http://192.168.3.222:20001?name=$sn', repo:'tei333/hubproxy', branch:'main', ref:'', ide:'webide' },
