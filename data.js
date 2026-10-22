@@ -38,7 +38,7 @@ window.config = {
         // { name: '数据库DBX', short: 'DBX', url: 'http://home.199311.xyz:44224', color: '#0045DE' },
         { name: '字体压缩', short: 'Font', url: 'http://home.199311.xyz:40050', color: '#610782' },
         { name: 'New Api', short: 'Api', url: 'http://home.199311.xyz:40099', color: '#9d07d3' },
-        { name: 'OnePanel', short: '1Panel', url: 'http://home.199311.xyz:41666', color: '#005EEB' },
+        { name: 'OnePanel', short: '1Panel', url: 'http://home.199311.xyz:41666/webdev', color: '#005EEB' },
         { name: 'Logs', short: 'Logs', url: './log/index.html', color: '#2ca55f' },
       ]
     },
