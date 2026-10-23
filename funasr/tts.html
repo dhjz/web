@@ -294,6 +294,20 @@
         </div>
       </div>
     </div>
+    <div>
+      <pre>
+// voice:  zh_1, zh_female_qinqienv_uranus_bigtts,  zh_female_qinqienv_uranus_bigtts , zh_female_zhixingnv_uranus_bigtts
+fetch("https://home.199311.xyz:40097/tts/v1/audio/speech", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: "{\"model\":\"moss-tts-nano-onnx\",\"input\":\"你好，hello，这是用于第三方对接的通用语音合成接口。\",\"response_format\":\"mp3\",\"speed\":1,\"stream\":false,\"voice\":\"zh_female_qinqienv_uranus_bigtts\"}"})
+  .then(r => r.blob())
+  .then(b => Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(b),
+    download: "tts.mp3"
+  }).click());
+      </pre>
+    </div>
   </div>
 
 <script>
