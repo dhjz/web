@@ -1,24 +1,47 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>网盘搜索聚合</title>
+  <title>聚合搜索</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='.55' stop-color='%233b82f6'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ccircle cx='28' cy='28' r='12' fill='none' stroke='%23fff' stroke-width='5'/%3E%3Cline x1='37' y1='37' x2='49' y2='49' stroke='%23fff' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
   <script>
+    // 数据配置：新增一类搜索（搜索引擎聚合、AI 聚合等）只需往 apps 里追加一项
     var apps = [
-      { name: '影盘社', url: 'https://www.yingpanshe.com/search?q=%s' },
-      { name: '神族九帝', url: 'https://panhub.shenzjd.com/?q=%s' },
-      { name: 'pansou.pro', url: 'https://pansou.pro/search?q=%s' },
-      { name: '网盘搜', url: 'https://www.wangpansou.com/search.php?kw=%s' },
-      { name: 'pansou.so', url: 'https://www.pansou.co/s/%s.html' },
-      { name: 'pansou.de', url: 'https://pansou.de/search?q=%s' },
-      { name: 'dddisk.com', url: 'https://so.dddisk.com/list.html?q=%s' },
-      { name: '网盘搜索', url: 'https://www.wangpansousuo.com/s/%s.html' },
-      { name: 'pansou.us', url: 'https://www.pansou.us' },
-      { name: 'pansou.app', url: 'https://pansou.app', blank: false },
+      {
+        name: '网盘', // tab 显示
+        type: 'pan',
+        list: [
+          { name: '影盘社', url: 'https://www.yingpanshe.com/search?q=%s' },
+          { name: '神族九帝', url: 'https://panhub.shenzjd.com/?q=%s' },
+          { name: 'pansou.pro', url: 'https://pansou.pro/search?q=%s' },
+          { name: '网盘搜', url: 'https://www.wangpansou.com/search.php?kw=%s' },
+          { name: 'pansou.so', url: 'https://www.pansou.co/s/%s.html' },
+          { name: 'pansou.de', url: 'https://pansou.de/search?q=%s' },
+          { name: 'dddisk.com', url: 'https://so.dddisk.com/list.html?q=%s' },
+          { name: '网盘搜索', url: 'https://www.wangpansousuo.com/s/%s.html' },
+          { name: 'pansou.us', url: 'https://www.pansou.us' },
+          { name: 'pansou.app', url: 'https://pansou.app', blank: false },
+        ]
+      },
+      {
+        name: '软件',
+        type: 'soft',
+        list: [
+          { name: '果核剥壳', url: 'https://www.ghxi.com/?s=%s' },
+          { name: '枫音6B', url: 'https://www.fy6b.com/?s=%s' },
+          { name: '六音软件', url: 'https://www.sixyin.com/?s=%s' },
+          { name: '克隆窝', url: 'https://www.uy5.net/?s=%s' },
+          { name: '辉哥博客', url: 'https://www.haah.net/?s=%s' },
+          { name: '绿软部落', url: 'https://www.ludown.com/?s=%s' },
+          { name: 'APP喵', url: 'https://www.appmiu.com/?s=%s&type=post' },
+          { name: '乐享', url: 'https://www.lxapk.com/?s=%s&type=post' },
+          { name: '大眼仔', url: 'https://www.dayanzai.me/?s=%s' },
+          { name: '软件No1', url: 'https://www.rjno1.com/?s=%s' },
+          { name: 'SUG软件', url: 'https://sug.xyz/rj/?s=%s&post_type=app' },
+        ]
+      },
     ]
   </script>
   <style>
@@ -58,13 +81,20 @@
     /* 进入弹框 */
     .intro-mask { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center;
       background: rgba(15, 23, 42, .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-    .intro-card { width: min(520px, 88vw); background: #fff; border-radius: 20px; padding: 44px 40px 36px; text-align: center;
+    .intro-card { width: min(520px, 88vw); background: #fff; border-radius: 20px; padding: 40px 40px 32px; text-align: center;
       box-shadow: 0 24px 80px rgba(15, 23, 42, .35); }
-    .intro-logo { width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    .intro-logo { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
       font-size: 28px; background: linear-gradient(135deg, #2563eb, #3b82f6 55%, #0ea5e9); box-shadow: 0 10px 24px rgba(59, 130, 246, .35); }
-    .intro-title { font-size: 24px; margin-bottom: 14px; font-weight: 700; letter-spacing: 2px;
+    .intro-title { font-size: 24px; margin-bottom: 16px; font-weight: 700; letter-spacing: 2px;
       background: linear-gradient(90deg, #2563eb, #3b82f6 55%, #0ea5e9); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .intro-sub { margin: 10px 0 26px; color: #94a3b8; font-size: 13px; letter-spacing: 4px; }
+    /* 类型切换 tab */
+    .intro-tabs { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 4px; margin: 0 auto 20px;
+      border-radius: 999px; background: #f1f5f9; }
+    .intro-tab { border: none; background: transparent; color: #64748b; font-size: 13px; line-height: 30px; padding: 0 18px;
+      border-radius: 999px; cursor: pointer; white-space: nowrap; transition: color .2s ease, background .2s ease, box-shadow .2s ease; }
+    .intro-tab:hover { color: #2563eb; }
+    .intro-tab.active { color: #fff; background: linear-gradient(135deg, #2563eb, #3b82f6 55%, #0ea5e9);
+      box-shadow: 0 6px 14px rgba(59, 130, 246, .35); }
     .intro-search { display: flex; align-items: center; padding: 4px 4px 4px 18px; border-radius: 999px; border: 1px solid #e2e8f0;
       background: #f8fafc; transition: all .25s ease; }
     .intro-search:focus-within { border-color: #93c5fd; background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, .12); }
@@ -93,7 +123,8 @@
     <div class="intro-mask" id="introMask">
       <div class="intro-card">
         <div class="intro-logo">🔍</div>
-        <div class="intro-title">网盘搜索聚合</div>
+        <div class="intro-title" id="introTitle">网盘搜索聚合</div>
+        <div class="intro-tabs" id="introTabs"></div>
         <div class="intro-search">
           <input id="introInput" type="text" placeholder="请输入网盘搜索关键字">
           <button class="intro-go" id="introGo">搜索</button>
@@ -102,7 +133,6 @@
       </div>
     </div>
   </div>
-  <!-- <script src="data.js"></script> -->
   <script>
     (function () {
       var $list = document.getElementById('siteList');
@@ -111,16 +141,23 @@
       var $keyword = document.getElementById('keywordInput');
       var $introInput = document.getElementById('introInput');
       var $introMask = document.getElementById('introMask');
+      var $introTabs = document.getElementById('introTabs');
+      var $introTitle = document.getElementById('introTitle');
       var $toggleBtn = document.getElementById('toggleBtn');
 
       var sites = [];
       var currInd = 0;
+      var currAppInd = 0;
       var isSbHide = false;
+
+      function currApp() {
+        return apps[currAppInd] || { name: '', list: [] };
+      }
 
       // 按关键词生成各站点的实际地址，并重置加载状态
       function resetSites() {
         var keyword = $keyword.value;
-        sites = apps.map(function (item) {
+        sites = currApp().list.map(function (item) {
           var url;
           if (keyword) {
             url = item.url.indexOf('%s') > -1 ? item.url.replace('%s', encodeURIComponent(keyword)) : item.url;
@@ -138,10 +175,8 @@
         for (var i = 0; i < sites.length; i++) {
           if (!sites[i].blank) { firstInd = i; break; }
         }
-        if (firstInd > -1) {
-          sites[firstInd].loaded = true;
-          currInd = firstInd;
-        }
+        currInd = firstInd > 0 ? firstInd : 0;
+        if (firstInd > -1) sites[firstInd].loaded = true;
 
         renderList();
         syncView();
@@ -211,6 +246,39 @@
         syncView();
       }
 
+      // 渲染顶部分类 tab
+      function renderTabs() {
+        $introTabs.innerHTML = '';
+        apps.forEach(function (app, index) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'intro-tab' + (index === currAppInd ? ' active' : '');
+          btn.textContent = app.name;
+          btn.addEventListener('click', function () {
+            switchApp(index);
+          });
+          $introTabs.appendChild(btn);
+        });
+      }
+
+      // 切换分类：更新标题、占位符，并按新分类重建站点列表
+      function switchApp(index) {
+        if (index === currAppInd || !apps[index]) return;
+        currAppInd = index;
+        var app = currApp();
+        var title = app.name + '搜索聚合';
+
+        Array.prototype.forEach.call($introTabs.children, function (el, i) {
+          el.className = 'intro-tab' + (i === currAppInd ? ' active' : '');
+        });
+        $introTitle.textContent = title;
+        $introInput.placeholder = '请输入' + app.name + '搜索关键字';
+        document.title = title;
+
+        resetSites();
+        $list.scrollTop = 0;
+      }
+
       function doSearch() {
         resetSites();
       }
@@ -259,6 +327,7 @@
         $toggleBtn.textContent = isSbHide ? '▶' : '◀';
       });
 
+      renderTabs();
       resetSites();
       $introInput.focus();
     })();
