@@ -38,13 +38,13 @@
     .cursor { cursor: pointer; }
     i { font-style: normal; }
     .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .btn { padding: 0.3rem 0.5rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
+    .btn { padding: 0.2rem 0.3rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem; background-color: var(--accent-color); color: white; }
     .btn.small { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .btn-secondary { background-color: transparent; border: 1px solid rgba(255,255,255,0.3); }
     .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
     .theme-selector { display: flex; gap: 0.5rem; align-items: center; }
-    .theme-selector select { padding: 0.3rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; }
+    .theme-selector select { padding: 0.2rem 0.3rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; }
     main { flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; padding: 2rem; position: relative; }
     .drop-zone { border: 3px dashed var(--border-color); border-radius: 12px; padding: 3rem; text-align: center; transition: all 0.3s ease; background-color: var(--bg-secondary); margin-bottom: 2rem; }
     .drop-zone.dragover { border-color: var(--accent-color); background-color: var(--accent-color); opacity: 0.1; }
@@ -82,14 +82,14 @@
     .toc-level-6 { padding-left: 5.5rem; }
     .main-content { flex: 1; min-width: 0; }
     .markdown-body { background-color: var(--bg-primary); padding: 0 1rem 1rem; border-radius: 8px; line-height: 1.6; overflow-x: auto; }
-    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 { margin-top: 1.5rem; margin-bottom: 1rem; font-weight: 600; line-height: 1.25; scroll-margin-top: 100px; }
-    .markdown-body h1 { font-size: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 { margin-top: 1.2rem; margin-bottom: 0.8rem; font-weight: 600; line-height: 1.25; scroll-margin-top: 100px; }
+    .markdown-body h1 { font-size: 1.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
     .markdown-body h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
     .markdown-body h3 { font-size: 1.25rem; }
     .markdown-body h4 { font-size: 1rem; }
     .markdown-body h5 { font-size: 0.875rem; }
     .markdown-body h6 { font-size: 0.85rem; }
-    .markdown-body p { margin-bottom: 1rem; }
+    .markdown-body p { margin-bottom: 0.3rem; }
     .markdown-body a { color: var(--accent-color); text-decoration: none; }
     .markdown-body a:hover { text-decoration: underline; }
     .markdown-body ul, .markdown-body ol { margin-bottom: 1rem; padding-left: 2rem; }
@@ -152,7 +152,8 @@
           <input type="file" ref="fileInput" accept=".md,.markdown,.txt" style="display: none;" @change="handleFileSelect">
           <button class="btn" @click="triggerFileInput">📂 打开文件</button>
           <button class="btn btn-secondary" @click="openTempModal">📝 临时预览</button>
-          <button class="btn btn-secondary" onclick="window.open('../ueditor/index.html')">📝 Html2md</button>
+          <button class="btn btn-secondary" onclick="window.open('../ueditor/index.html')">📝Html2md</button>
+          <button class="btn btn-secondary" onclick="window.open('./excel.html')">excel2md</button>
           <button class="btn btn-secondary" @click="resetContent">🔄 重置</button>
           <button class="btn btn-secondary" @click="toggleZen">🧘 禅</button>
           <button class="btn btn-secondary" @click="clearCache" v-if="showClearCacheBtn">🗑️ 清除缓存</button>

@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>excel2md.js — 表格转 Markdown 演示</title>
+<style>
+  ::-webkit-scrollbar {	width: 8px;	height: 8px; }
+  ::-webkit-scrollbar-thumb {	background-color: #ddd; border-radius: 6px; }
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --line: #e3e6ea;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2f6feb;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 12px 12px 28px;
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.5 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 10px; font-size: 12px; }
+  .sub code, .src code { background: #eef1f5; padding: 0 4px; border-radius: 3px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .card h2 { font-size: 13.5px; margin: 0 0 2px; display: flex; align-items: center; gap: 6px; }
+  .card h2 .tag {
+    font-size: 10px; font-weight: 400; color: var(--accent);
+    background: #eaf1ff; border-radius: 20px; padding: 0 7px;
+  }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+  textarea, .dropzone {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fbfcfd;
+  }
+  textarea { padding: 8px 10px; resize: vertical; min-height: 120px; }
+  /* 输出框：跟输入框长一样，能直接改、能复制改完的样子 */
+  textarea.out { height: 200px; min-height: 200px; white-space: pre; overflow: auto; }
+  textarea.out.edited { border-color: var(--accent); background: #f7faff; }
+  select { padding: 2px 4px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: inherit; font: inherit; font-size: 12px; }
+  /* 输入/输出同一块面板：高度对齐，一起滚动 */
+  .pane { display: flex; flex-direction: column; min-width: 0; }
+  .pane > .label { margin: 0 0 4px; }
+  .pane textarea { height: 200px; min-height: 200px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .label { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  button {
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 3px 9px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { opacity: .9; color: #fff; }
+  .opts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+  .opts label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .opts input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); margin: 0; }
+  .opts input[type="number"] { width: 52px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12px; }
+  .dropzone {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 60px; color: var(--muted); border-style: dashed; cursor: pointer;
+    text-align: center; padding: 8px; font-size: 12px;
+  }
+  .dropzone.on { border-color: var(--accent); color: var(--accent); background: #f2f7ff; }
+  .paste-area {
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+    padding: 10px;
+    background: #fbfcfd;
+    height: 60px;
+    overflow: auto;
+    outline: none;
+    display: flex; align-items: center;
+    font-size: 12px;
+  }
+  .paste-area:focus { border-color: var(--accent); }
+  .paste-area .ph { color: #9aa3ae; pointer-events: none; }
+  .status { font-size: 11px; color: var(--ok); margin-left: auto; }
+  .status.warn { color: var(--warn); }
+  .out { margin-top: 8px; }
+  .global {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 10px;
+    font-size: 12px;
+  }
+  .global strong { font-size: 12.5px; font-weight: 600; }
+  .global .sw {
+    display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text);
+  }
+  .global .sw input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+  .global .lbl { color: var(--muted); }
+  .global .note { color: var(--muted); flex: 1 0 auto; }
+  .global .note b { color: var(--warn); font-weight: 600; }
+  .src { font-size: 11px; color: var(--muted); margin: 4px 0 0; }
+  .pick {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border: 1px solid var(--line); border-radius: 20px;
+    background: #fff; cursor: pointer; font-size: 12px;
+  }
+  .pick:has(input:checked) { border-color: var(--accent); color: var(--accent); background: #f2f7ff; }
+  .pick input { margin: 0; width: 12px; height: 12px; accent-color: var(--accent); }
+  .pick .tip { color: var(--muted); font-size: 11px; }
+  .fmt { color: var(--accent); }
+  /* 转换提示（本地图片被替换之类）：一条淡黄条，别抢输出的位置 */
+  .note {
+    padding: 4px 8px; border-radius: 5px;
+    background: #fff8e5; border: 1px solid #f0e0b8; color: var(--warn);
+    font-size: 11.5px;
+  }
+  .note[hidden] { display: none; }
+  footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>excel2md.js</h1>
+  <!-- 全局开关：一行管住下面所有示例 -->
+  <section class="global">
+    <strong>全局设置</strong>
+    <label class="sw"><input type="checkbox" id="g-keepText" checked> 保留非表格内容</label>
+    <label class="sw"><input type="checkbox" id="g-merge" checked> 合并同表头</label>
+    <label class="sw"><input type="checkbox" id="g-heading" checked> 多表加标题</label>
+    <label class="sw"><input type="checkbox" id="g-titleHash"> 保留标题</label>
+    <span class="note" id="g-title-note">h1-h6 转成 # / ###…</span>
+    <label class="sw"><span class="lbl">合并单元格</span>
+      <select id="g-mergeCells">
+        <option value="blank" selected>平铺留空</option>
+        <option value="fill">复制填充</option>
+        <option value="section">另附清单</option>
+        <option value="html">降级 HTML</option>
+      </select>
+    </label>
+    <label class="sw"><span class="lbl">输出格式</span>
+      <select id="g-format">
+        <option value="markdown" selected>Markdown</option>
+        <option value="raw">原始 HTML</option>
+        <option value="clean">净化 HTML</option>
+      </select>
+    </label>
+  </section>
+
+  <!-- 1. 直接传入 HTML -->
+  <section class="card">
+    <h2>1. 直接传入 HTML 代码 <span class="tag">excel2md.html()</span></h2>
+    <p class="hint">粘网页 / Word / Excel 复制出来的 HTML（整页也行，只取 table）。表头相同的表格自动合并；<b>输出格式</b>在顶部全局选：Markdown（标题转 # 只在这一种）/ 原始 HTML（样式全留）/ 净化 HTML（只留结构，标题仍是 <code>&lt;hN&gt;</code>）。</p>
+    <div class="grid">
+      <div class="pane">
+        <p class="label">HTML 输入</p>
+        <textarea id="html-input" spellcheck="false"></textarea>
+      </div>
+      <div class="pane">
+        <p class="label">输出 · <span class="fmt" id="html-fmt">Markdown</span>（可编辑）</p>
+        <textarea id="html-output" class="out" spellcheck="false" wrap="off" aria-label="转换结果（可编辑）"></textarea>
+        <p class="note" id="html-note" hidden></p>
+      </div>
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-convert">转换</button>
+      <button id="btn-base">载入示例</button>
+      <button id="btn-clear-html">清空</button>
+      <button data-copy="html-output">复制结果</button>
+      <span class="status" id="html-status"></span>
+    </div>
+  </section>
+
+  <!-- 2. 粘贴监听 -->
+  <section class="card">
+    <h2>2. 监听粘贴事件 <span class="tag">excel2md.bind()</span></h2>
+    <p class="hint">在这个框里 Ctrl+V：Excel / Word / 网页复制的表格、以及 <b>HTML 源码文本</b>都会被拦下，只输出到结果区，框里不落原文。普通文字照常粘贴。</p>
+    <div class="row">
+      <span class="label" style="margin:0">粘贴后转成</span>
+      <label class="pick"><input type="radio" name="paste-fmt" value="markdown" checked> Markdown</label>
+      <label class="pick"><input type="radio" name="paste-fmt" value="raw"> 原始 HTML<span class="tip">样式全留</span></label>
+      <label class="pick"><input type="radio" name="paste-fmt" value="clean"> 净化 HTML<span class="tip">去冗余</span></label>
+    </div>
+    <div class="paste-area" id="paste-area" contenteditable="true" aria-label="粘贴区（不显示原文）"><span class="ph" id="paste-ph">点这里，然后 Ctrl+V…</span></div>
+    <p class="src" id="paste-src"></p>
+    <div class="out">
+      <p class="label">输出 · <span class="fmt" id="paste-fmt-label">Markdown</span>（可编辑）</p>
+      <textarea id="paste-output" class="out" spellcheck="false" wrap="off" aria-label="粘贴转换结果（可编辑）"></textarea>
+    </div>
+    <div class="row">
+      <button data-copy="paste-output">复制结果</button>
+      <button id="btn-preview" hidden>预览 HTML</button>
+      <button id="btn-clear-paste">清空</button>
+      <span class="status" id="paste-status"></span>
+    </div>
+    <p class="note" id="paste-note" hidden></p>
+  </section>
+
+  <!-- 3. 文件 -->
+  <section class="card">
+    <h2>3. 拖入本地文件 / 整页 HTML <span class="tag">drag &amp; drop</span></h2>
+    <p class="hint">把 .html / .htm / .mht / .doc / .md / .txt / .csv / .tsv 拖进来（或点一下选文件）。Excel / Word 另存为「网页(.html)」后直接拖最省事，样式会完整保留到原始 HTML 输出里。</p>
+    <div class="dropzone" id="dropzone">拖到这里，或点击选择文件</div>
+    <input type="file" id="file-input" accept=".html,.htm,.mht,.doc,.md,.txt,.csv,.tsv" hidden>
+    <div class="out">
+      <p class="label">输出 · <span class="fmt" id="file-fmt">Markdown</span>（可编辑）</p>
+      <textarea id="file-output" class="out" spellcheck="false" wrap="off" aria-label="文件转换结果（可编辑）"></textarea>
+      <p class="note" id="file-note" hidden></p>
+    </div>
+    <div class="row">
+      <button data-copy="file-output">复制结果</button>
+      <span class="status" id="file-status"></span>
+    </div>
+  </section>
+
+  <!-- 4. API 试玩 -->
+  <section class="card">
+    <h2>4. 其他输入形态 <span class="tag">parseAny() / detect()</span></h2>
+    <p class="hint">从 Excel 直接复制常常是 TSV，从表格工具复制可能是 Markdown 源码。库会自动识别：html / markdown / tsv / csv。</p>
+    <p class="label">任意文本（TSV、CSV、Markdown 表格）</p>
+    <textarea id="any-input" spellcheck="false"></textarea>
+    <div class="row">
+      <button class="primary" id="btn-any">识别并转换</button>
+      <button id="btn-tsv">载入 TSV 示例</button>
+      <button data-copy="any-output">复制结果</button>
+      <span class="status" id="any-status"></span>
+    </div>
+    <div class="out"><p class="label">输出 · <span class="fmt" id="any-fmt">Markdown</span>（可编辑）</p><textarea id="any-output" class="out" spellcheck="false" wrap="off" aria-label="文本转换结果（可编辑）"></textarea></div>
+  </section>
+
+  <footer>excel2md.js · 纯原生实现，无任何第三方依赖</footer>
+</div>
+
+<script src="./excel2md.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  var textarea = $('html-input');
+  var htmlOut = $('html-output');
+  var htmlStatus = $('html-status');
+  var keepToggle = $('g-keepText');
+  var keepNote = $('g-note');
+
+  var KINDS = { html: 'HTML', tsv: 'TSV', csv: 'CSV', markdown: 'Markdown' };
+
+  var pasteArea = $('paste-area');
+  var pastePh = $('paste-ph');
+  var pasteOut = $('paste-output');
+  var pasteSrc = $('paste-src');
+  var pasteStatus = $('paste-status');
+
+  var fileOut = $('file-output');
+  var fileStatus = $('file-status');
+
+  var anyInput = $('any-input');
+  var anyOut = $('any-output');
+  var anyStatus = $('any-status');
+
+  var lastPasteSrc = null;   // 粘贴原文，改全局开关时重算用
+  var lastFile = null;       // { name, text }
+
+  /* ---------- 输出框：一律 textarea，能改，复制的就是改完的样子 ---------- */
+  // 上次由代码写进去的值：拿它判断「用户手改过没有」
+  var autoValue = new WeakMap();
+
+  // 值没变就不写：每次实时重算都 .value = x 会把光标顶回开头，改一个字就没法接着打
+  function setOut(el, text) {
+    var next = text == null ? '' : String(text);
+    if (el.value !== next) el.value = next;
+    autoValue.set(el, next);
+    el.classList.remove('edited');
+  }
+
+  // 手改过的输出框描个蓝边：说明复制出去的是你改的这份，不是库里算的
+  function watchEdited(el) {
+    el.addEventListener('input', function () {
+      el.classList.toggle('edited', el.value !== (autoValue.get(el) || ''));
+    });
+  }
+  ['html-output', 'paste-output', 'file-output', 'any-output'].forEach(function (id) { watchEdited($(id)); });
+
+  // 实时重算：输入框每次敲键都跑一遍太吵，压到 120ms 一次
+  function schedule(fn) {
+    if (schedule.timer) clearTimeout(schedule.timer);
+    schedule.timer = setTimeout(function () {
+      schedule.timer = null;
+      fn();
+    }, 120);
+  }
+
+  /* ---------- 全局选项：四个示例共用这一份 ---------- */
+  var FORMAT_LABEL = { markdown: 'Markdown', raw: '原始 HTML', clean: '净化 HTML' };
+
+  function opts(format) {
+    return {
+      merge: $('g-merge').checked,
+      heading: $('g-heading').checked,
+      keepText: keepToggle.checked,
+      headingAsHash: $('g-titleHash').checked,
+      mergeCells: $('g-mergeCells').value,
+      format: format || $('g-format').value
+    };
+  }
+
+  // 三份结果一次算出来：切格式只是换个格子显示，不用重算
+  function allOutcomes(result) {
+    if (!result) return { markdown: '', raw: '', clean: '' };
+    return {
+      markdown: (result.markdown || '').trim(),
+      raw: (result.html || '').trim(),
+      clean: (result.htmlClean || '').trim()
+    };
+  }
+
+  // 原始 HTML 就是「原样」：库的 format 只决定返回哪一种 HTML，
+  // 所以切到 raw 时拿原文现算一次，别指望 clean 那次的结果顺带带上
+  function htmlOf(src, format) {
+    if (format === 'markdown') return '';
+    var result = excel2md.parseAny(src, opts(format));
+    return format === 'raw' ? result.html : result.htmlClean;
+  }
+
+  function pickFormat(result, src) {
+    var all = allOutcomes(result);
+    var fmt = $('g-format').value;
+    var text = all[fmt] || '';
+    // Markdown 由主解析给出；两种 HTML 在主解析里只有一格被填，其余现算
+    if (fmt !== 'markdown' && src) text = (htmlOf(src, fmt) || '').trim();
+    return { all: all, text: text, format: fmt };
+  }
+
+  // 输出框上的格式标签：勾了「保留标题」时 Markdown 那格要说清标题的去向
+  function fmtLabel(id, format) {
+    var label = FORMAT_LABEL[format] || format;
+    if (format === 'markdown' && $('g-titleHash').checked) label += ' · 标题转 #';
+    $(id).textContent = label;
+  }
+
+  var titleToggle = $('g-titleHash');
+
+  // 转换提示（图片被占位之类）：贴在输出下面，不占状态栏
+  function showNote(notes, el) {
+    var box = el || pasteNote;
+    var list = (notes || []).filter(Boolean);
+    box.textContent = list.join('；');
+    box.hidden = !list.length;
+  }
+
+  function setStatus(el, text, warn) {
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'status' + (warn ? ' warn' : '');
+  }
+
+  /* ---------- 复制结果：每张卡片都有（data-copy 指向输出节点） ---------- */
+  function copyText(btn, src) {
+    // 输出是 textarea：复制的是它**现在**的内容（用户改过就是改过的），不是上次算出来的
+    var text = ('value' in src ? src.value : src.textContent || '').trim();
+    var status = btn.closest('.card').querySelector('.status');
+    if (!text) return setStatus(status, '还没有结果可复制', true);
+    var done = function (ok) { setStatus(status, ok ? '已复制 ' + text.length + ' 字符' : '复制失败，请手动选中', !ok); };
+    var fallback = function () {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('button[data-copy]'), function (btn) {
+    btn.addEventListener('click', function () { copyText(btn, $(btn.getAttribute('data-copy'))); });
+  });
+
+  /* ---------- 1. HTML 直传 ---------- */
+  function convertHtml() {
+    var html = textarea.value.trim();
+    if (!html) {
+      setOut(htmlOut, '');
+      fmtLabel('html-fmt', $('g-format').value);
+      return setStatus(htmlStatus, '请先粘贴 HTML', true);
+    }
+    var result = excel2md.parseAny({ html: html }, opts('clean'));  // 三份一起算
+    if (!result.tables.length) {
+      setOut(htmlOut, '');
+      showNote([], $('html-note'));
+      return setStatus(htmlStatus, '未检测到表格', true);
+    }
+    var picked = pickFormat(result, { html: html });
+    setOut(htmlOut, picked.text);
+    fmtLabel('html-fmt', picked.format);
+    showNote(result.notes, $('html-note'));
+    var merged = result.groups.filter(function (g) { return g.count > 1; }).length;
+    var spans = result.tables.reduce(function (n, t) { return n + (t.spans ? t.spans.length : 0); }, 0);
+    setStatus(htmlStatus, '表格 ' + result.tables.length + ' 个 · 输出 ' + result.groups.length + ' 组' +
+      (merged ? ' · 其中 ' + merged + ' 组合并' : '') +
+      (spans ? ' · 合并单元格 ' + spans + ' 处' : '') +
+      (result.texts.length ? ' · 表格外文字 ' + result.texts.length + ' 段' : '') +
+      (picked.format === 'markdown' ? '' : ' · ' + picked.text.length + ' 字符 HTML'));
+  }
+
+  $('btn-convert').addEventListener('click', convertHtml);
+  // 边改边转：粘贴 / 敲字都立刻出结果，不用点按钮
+  textarea.addEventListener('input', function () { schedule(convertHtml); });
+  $('btn-base').addEventListener('click', function () {
+    textarea.value = SAMPLE;
+    convertHtml();
+  });
+  // 清空：输入、输出、提示一起清，状态栏给个回执（不然点了像没反应）
+  $('btn-clear-html').addEventListener('click', function () {
+    if (!textarea.value && !htmlOut.value) return setStatus(htmlStatus, '已经是空的了');
+    textarea.value = '';
+    convertHtml();                 // 走一遍正常流程：结果框、格式标签、提示条一起复位
+    textarea.focus();
+    setStatus(htmlStatus, '已清空输入');
+  });
+
+  /* ---------- 2. 粘贴监听：格式由这块的 radio 决定，跟顶部全局格式无关 ---------- */
+  var lastPasteSrc = null;       // 上次粘贴的原文，改全局开关时用它重算
+  var lastPasteResult = null;    // 最近一次解析结果（三份都在里面）
+  var btnPreview = $('btn-preview');
+  var pasteNote = $('paste-note');
+  var lastBlobUrl = null;
+
+  function pasteFormat() {
+    var checked = document.querySelector('input[name="paste-fmt"]:checked');
+    return checked ? checked.value : 'markdown';
+  }
+
+  function renderPaste(result) {
+    lastPasteResult = result || null;
+    if (!result || !result.tables.length) {
+      setOut(pasteOut, '');
+      showNote([]);
+      fmtLabel('paste-fmt-label', pasteFormat());
+      return setStatus(pasteStatus, '剪贴板里没识别到表格', true);
+    }
+    var all = allOutcomes(result);
+    var format = pasteFormat();
+    var text = all[format] || '';
+    setOut(pasteOut, text);
+    fmtLabel('paste-fmt-label', format);
+    // 预览只在 HTML 两种格式下有意义
+    btnPreview.hidden = format === 'markdown';
+    showNote(format === 'markdown' ? [] : result.notes);
+    setStatus(pasteStatus, '来源 ' + (KINDS[result.kind] || result.kind) +
+      ' · 表格 ' + (result.tables.length || '-') + ' 个' +
+      (result.texts && result.texts.length ? ' · 含表格外文字 ' + result.texts.length + ' 段' : '') +
+      (format === 'markdown' ? '' : ' · ' + text.length + ' 字符 HTML'));
+  }
+
+  // 预览：把 HTML 包成 Blob 开一个新窗口。比塞 iframe 省事，地址栏里也不会留下 f 盘路径
+  btnPreview.addEventListener('click', function () {
+    var text = pasteOut.value || '';
+    if (!text) return setStatus(pasteStatus, '还没有可预览的 HTML', true);
+    // 预览的就是输出框里**现在**这份：改过 HTML 再点预览，看的是改完的效果
+    var html = '<!DOCTYPE html><meta charset="utf-8"><title>预览</title><style>body{font:13px/1.5 system-ui,sans-serif;padding:12px}' +
+      'table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:3px 8px}</style>' + text;
+    var url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    window.open(url);
+    // 新窗口已经拿到内容，旧 URL 可以回收了（不回收的话每次预览都漏一份 HTML 在内存里）
+    if (lastBlobUrl) setTimeout(function () { URL.revokeObjectURL(lastBlobUrl); }, 0);
+    lastBlobUrl = url;
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="paste-fmt"]'), function (radio) {
+    radio.addEventListener('change', function () {
+      if (lastPasteResult) renderPaste(lastPasteResult);
+      else fmtLabel('paste-fmt-label', pasteFormat());
+    });
+  });
+
+  // 显式给上初始选项：bind() 会把 handler 当配置读一次，不给就是默认值
+  var pasteHandler = {
+    keepText: keepToggle.checked,
+    merge: $('g-merge').checked,
+    heading: $('g-heading').checked,
+    headingAsHash: $('g-titleHash').checked,
+    mergeCells: $('g-mergeCells').value,
+    onResult: function (result, event) {
+      lastPasteSrc = pasteSource(event);
+      pasteArea.innerHTML = '';       // 原文不落框，只留结果
+      pastePh.hidden = false;
+      pasteSrc.textContent = '';
+      renderPaste(result);
+    },
+    onText: function (source, result) {
+      lastPasteSrc = { text: source };
+      pasteArea.innerHTML = '';
+      pastePh.hidden = false;
+      pasteSrc.innerHTML = '识别到粘贴的是 <code>HTML 源码文本</code>（' + source.length + ' 字符），已按 HTML 解析。';
+      renderPaste(result);
+    }
+  };
+  excel2md.bind(pasteArea, pasteHandler);
+
+  // 记下原文，改全局开关时用同一份输入重算。
+  // 带 text/html 时不要再把 text/plain 塞进 {text}：那个字段是「纯文本输入」，
+  // 两样都给的话第二次解析会走纯文本那条路，表格外的文字就丢了。
+  function pasteSource(event) {
+    var data = event && event.clipboardData;
+    if (!data || typeof data.getData !== 'function') return null;
+    var html = data.getData('text/html') || '';
+    if (html && html.indexOf('<') !== -1) return { html: html, text: '' };
+    var text = data.getData('text/plain') || '';
+    return text ? { text: text } : null;
+  }
+
+  // 普通文字粘贴：库不拦，浏览器会插进框里，这里清掉
+  pasteArea.addEventListener('paste', function () {
+    setTimeout(function () {
+      if (pasteArea.textContent.trim() !== '') {
+        pasteArea.innerHTML = '';
+        pastePh.hidden = false;
+      }
+    }, 0);
+  });
+
+  $('btn-clear-paste').addEventListener('click', function () {
+    pasteArea.innerHTML = '';
+    pastePh.hidden = false;
+    setOut(pasteOut, '');
+    pasteSrc.textContent = '';
+    lastPasteSrc = null;
+    setStatus(pasteStatus, '');
+  });
+
+  /* ---------- 3. 文件 ---------- */
+  var dropzone = $('dropzone');
+  var fileInput = $('file-input');
+
+  function showFile(text, name) {
+    var result = excel2md.parseAny({ html: text, text: text }, opts('clean'));
+    var picked = pickFormat(result, { html: text, text: text });
+    setOut(fileOut, picked.text);
+    fmtLabel('file-fmt', picked.format);
+    showNote(result.notes, $('file-note'));
+    setStatus(fileStatus, picked.text ? name + ' · 表格 ' + (result.tables.length || '-') + ' 个' : '没找到表格', !picked.text);
+  }
+
+  function readFile(file) {
+    if (!file) return;
+    setStatus(fileStatus, '读取 ' + file.name + '…');
+    var reader = new FileReader();
+    reader.onload = function () {
+      lastFile = { name: file.name, text: String(reader.result || '') };
+      showFile(lastFile.text, lastFile.name);
+    };
+    reader.onerror = function () { setStatus(fileStatus, '读取失败', true); };
+    reader.readAsText(file);
+  }
+
+  dropzone.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () { readFile(fileInput.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.add('on'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) { e.preventDefault(); dropzone.classList.remove('on'); });
+  });
+  dropzone.addEventListener('drop', function (e) {
+    readFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+  document.addEventListener('dragover', function (e) { e.preventDefault(); });
+  document.addEventListener('drop', function (e) {
+    e.preventDefault();
+    if (e.target === dropzone || dropzone.contains(e.target)) return;
+    readFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+
+  /* ---------- 4. 任意文本 ---------- */
+  function convertAny() {
+    var text = anyInput.value;
+    if (!text.trim()) {
+      setOut(anyOut, '');
+      fmtLabel('any-fmt', $('g-format').value);
+      return setStatus(anyStatus, '请先输入文本', true);
+    }
+    var result = excel2md.parseAny({ html: text, text: text }, opts('clean'));
+    var picked = pickFormat(result, /<\/?table/i.test(text) ? { html: text } : { text: text });
+    setOut(anyOut, picked.text);
+    fmtLabel('any-fmt', picked.format);
+    setStatus(anyStatus, '识别类型：' + excel2md.detect(text));
+  }
+
+  $('btn-any').addEventListener('click', convertAny);
+  anyInput.addEventListener('input', function () { schedule(convertAny); });
+  $('btn-tsv').addEventListener('click', function () {
+    anyInput.value = '姓名\t部门\t工号\n张三\t研发\tA01\n李四\t设计\tB02\n王五\t研发\tA03';
+    convertAny();
+  });
+
+  /* ---------- 全局开关：改一下重算所有示例，并存 localStorage ---------- */
+  var OPTS_KEY = 'excel2md.opts';
+  var OPT_FIELDS = ['g-keepText', 'g-merge', 'g-heading', 'g-titleHash', 'g-mergeCells', 'g-format'];
+
+  // 读回上次的勾选；存的值不合法的字段单独丢掉，不影响其余字段
+  function loadOpts() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(OPTS_KEY) || 'null'); } catch (e) { saved = null; }
+    if (!saved || typeof saved !== 'object') return;
+    OPT_FIELDS.forEach(function (id) {
+      if (!(id in saved)) return;
+      var el = $(id);
+      if (el.type === 'checkbox') el.checked = !!saved[id];
+      else if (String(saved[id]) !== '' && el.querySelector('option[value="' + saved[id] + '"]')) el.value = saved[id];
+    });
+  }
+
+  // 键名直接用元素 id：loadOpts 按同一个键回填，中间不做映射
+  function saveOpts() {
+    var saved = {};
+    OPT_FIELDS.forEach(function (id) {
+      var el = $(id);
+      saved[id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    try { localStorage.setItem(OPTS_KEY, JSON.stringify(saved)); } catch (e) { /* 隐私模式/被禁用，忽略 */ }
+  }
+
+  function applyOpts() {
+    // bind() 每次粘贴现读 handler 上的选项，把当前全局选项同步进去
+    var o = opts('clean');
+    pasteHandler.merge = o.merge;
+    pasteHandler.heading = o.heading;
+    pasteHandler.keepText = o.keepText;
+    pasteHandler.headingAsHash = o.headingAsHash;
+    pasteHandler.mergeCells = o.mergeCells;
+    if (textarea.value.trim()) convertHtml();
+    // 粘贴那块：有原文就按新开关重算；只有结果就直接重渲染
+    if (lastPasteSrc) renderPaste(excel2md.parseAny(lastPasteSrc, opts('clean')));
+    else if (lastPasteResult) renderPaste(lastPasteResult);
+    if (anyInput.value.trim()) convertAny();
+    if (lastFile) showFile(lastFile.text, lastFile.name);
+  }
+
+  OPT_FIELDS.forEach(function (id) {
+    $(id).addEventListener('change', function () {
+      applyOpts();
+      saveOpts();
+    });
+  });
+
+  loadOpts();
+  applyOpts();
+
+  /* ---------- 示例数据 ---------- */
+  var SAMPLE = [
+    '<div style="font-family:Calibri;font-size:11pt">',
+    '<h1 style="font-family:黑体;font-size:16pt;color:#2F5496">一、年度汇总</h1>',
+    '<h3 style="font-size:12pt">1.1 数据来源</h3>',
+    '<p class="MsoNormal">下面是从 Word 里复制过来的内容，前面有文字，后面有两个表格，表头一样。</p>',
+    '<table border="1" cellspacing="0" style="border-collapse:collapse;width:60%">',
+    '  <thead><tr style="background:#eee"><th>姓名</th><th>年龄</th><th>城市</th></tr></thead>',
+    '  <tbody>',
+    '    <tr><td>张三</td><td>18</td><td>北京</td></tr>',
+    '    <tr><td>李四</td><td>20</td><td>上海</td></tr>',
+    '  </tbody>',
+    '</table>',
+    '<p class="MsoNormal">&nbsp;</p>',
+    '<table border="1"><tr><th>姓名</th><th>年龄</th><th>城市</th></tr>',
+    '<tr><td>王五</td><td>22</td><td>广州</td></tr></table>',
+    '<p class="MsoNormal">然后是一个结构完全不同的表，还是带合并单元格的（Excel 里最常见的样式）：</p>',
+    '<table border="1" style="border-collapse:collapse">',
+    '  <tr><td colspan="2" rowspan="2">区域</td><td colspan="2">销量</td></tr>',
+    '  <tr><td>Q1</td><td>Q2</td></tr>',
+    '  <tr><td rowspan="2">华东</td><td>上海</td><td>10</td><td>20</td></tr>',
+    '  <tr><td>杭州</td><td>11</td><td>21</td></tr>',
+    '</table>',
+    '<p class="MsoNormal"><span style="color:#C00000;font-size:10.5pt">注：</span><img width="48" height="48" src="file:///C:/Users/ADMINI~1/AppData/Local/Temp/ksohtml28796/wps2.jpg"> 这个位置原本有张 Word 里的截图。</p>',
+    '<p class="MsoNormal">再来一个没有合并的普通表：</p>',
+    '<table border="1"><tr><th>产品</th><th>单价</th></tr>',
+    '<tr><td>键盘</td><td>199</td></tr><tr><td>鼠标</td><td>89</td></tr></table>',
+    '</div>'
+  ].join('\n');
+
+  // 首屏直接给结果（此时全局开关已按 localStorage 恢复并重算过一次）
+  textarea.value = SAMPLE;
+  convertHtml();
+})();
+</script>
+</body>
+</html>
