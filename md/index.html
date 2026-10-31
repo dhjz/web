@@ -45,6 +45,10 @@
     .btn-secondary:hover { background-color: rgba(255,255,255,0.1); }
     .theme-selector { display: flex; gap: 0.5rem; align-items: center; }
     .theme-selector select { padding: 0.2rem 0.3rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; }
+    .font-size-selector { display: flex; align-items: center; gap: 0.3rem; }
+    .font-size-selector .btn.small { min-width: 26px; justify-content: center; padding: 0.15rem 0.45rem; font-size: 0.95rem; line-height: 1; }
+    .font-size-selector .btn.small:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .font-size-value { color: white; font-size: 0.85rem; min-width: 18px; text-align: center; }
     main { flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; padding: 2rem; position: relative; }
     .drop-zone { border: 3px dashed var(--border-color); border-radius: 12px; padding: 3rem; text-align: center; transition: all 0.3s ease; background-color: var(--bg-secondary); margin-bottom: 2rem; }
     .drop-zone.dragover { border-color: var(--accent-color); background-color: var(--accent-color); opacity: 0.1; }
@@ -166,6 +170,11 @@
               <option value="vscode">VS Code</option>
             </select>
           </div>
+          <div class="font-size-selector">
+            <button class="btn btn-secondary small" :disabled="fontSize <= 10" @click="changeFontSize(-1)" title="减小字号">-</button>
+            <span class="font-size-value">{{ fontSize }}</span>
+            <button class="btn btn-secondary small" :disabled="fontSize >= 20" @click="changeFontSize(1)" title="增大字号">+</button>
+          </div>
         </div>
       </div>
     </header>
@@ -272,6 +281,7 @@
       data() {
         return {
           theme: localStorage.getItem('markdownTheme') || 'github',
+          fontSize: Math.min(20, Math.max(10, parseInt(localStorage.getItem('markdownFontSize') || '16') || 16)),
           currentFile: null,
           showContent: false,
           markdownHtml: '',
@@ -330,6 +340,7 @@
         window.addEventListener('scroll', this.handleScroll);
         window.addEventListener('keydown', this.handleKeydown);
         this.applyTheme();
+        this.applyFontSize();
         document.addEventListener('dragover', (e) => { e.preventDefault(); this.isDragOver = true; });
         document.addEventListener('dragleave', (e) => { e.preventDefault(); this.isDragOver = false; });
         document.addEventListener('drop', (e) => { 
@@ -504,6 +515,16 @@
         },
         applyTheme() {
           document.documentElement.setAttribute('data-theme', this.theme);
+        },
+        changeFontSize(delta) {
+          const next = Math.min(20, Math.max(10, this.fontSize + delta));
+          if (next === this.fontSize) return;
+          this.fontSize = next;
+          this.applyFontSize();
+          localStorage.setItem('markdownFontSize', String(next));
+        },
+        applyFontSize() {
+          document.documentElement.style.fontSize = this.fontSize + 'px';
         },
         showTooltip(message, x, y) {
           this.tooltip = { show: true, message, x, y };
