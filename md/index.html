@@ -136,6 +136,7 @@
     body.zen-mode header { display: none; }
     body.zen-mode .history-bar { display: none; }
     body.zen-mode main { max-width: 100%; padding: 1rem; }
+    .source-view { background-color: var(--code-bg); color: var(--text-primary); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); white-space: pre-wrap; word-break: break-word; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6; max-height: calc(100vh - 140px); overflow: auto; }
     .zen-exit { position: fixed; top: 10px; right: 10px; display: none; z-index: 200; }
     body.zen-mode .zen-exit { display: inline-flex; }
   </style>
@@ -193,6 +194,7 @@
               {{ currentFile?.name || '未命名文件' }} ({{ formatFileSize(currentFile?.size || 0) }})
               <span class="cursor" @click="downloadFile" v-if="currentFile" title="下载原文">⬇️</span>
               <span class="cursor" @click="copySource" v-if="currentFile" title="复制原文">📋</span>
+              <span class="cursor" @click="toggleSourceView" v-if="currentFile" :title="showSource ? '返回渲染视图' : '显示原文'">{{ showSource ? '📄' : '👁️' }}</span>
             </div>
             <div class="file-stats" v-if="currentFile"><i>{{ totalChars }} 字符</i><i>{{ nonEmptyChars }} 非空</i></div>
           </div>
@@ -227,7 +229,8 @@
         </div>
         
         <div class="main-content">
-          <div class="markdown-body" ref="markdownContent" v-html="markdownHtml"></div>
+          <div class="markdown-body" ref="markdownContent" v-html="markdownHtml" v-show="!showSource"></div>
+          <pre class="source-view" v-show="showSource">{{ rawContent }}</pre>
         </div>
       </div>
     </main>
@@ -283,7 +286,9 @@
           tooltip: { show: false, message: '', x: 0, y: 0 },
           showTempModal: false,
           tempContent: localStorage.getItem('tempMarkdown') || '# 临时预览\n\n在这里输入Markdown内容...',
-          zenMode: false
+          zenMode: false,
+          showSource: false,
+          rawContent: ''
         };
       },
       computed: {
@@ -349,6 +354,9 @@
             this.toggleZen();
           }
         },
+        toggleSourceView() {
+          this.showSource = !this.showSource;
+        },
         handleFileSelect(e) {
           const file = e.target.files[0];
           if (file) this.processFile(file);
@@ -367,6 +375,7 @@
         },
         displayMarkdown(content, file) {
           this.currentFile = file;
+          this.rawContent = content;
           this.markdownHtml = marked.parse(content);
           this.showContent = true;
           
@@ -468,6 +477,8 @@
           this.showContent = false;
           this.currentFile = null;
           this.markdownHtml = '';
+          this.rawContent = '';
+          this.showSource = false;
           this.headings = [];
           this.currentHistoryId = null;
           if (this.$refs.fileInput) this.$refs.fileInput.value = '';
