@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频真实格式识别与内置字幕提取工具</title>
+  <!-- 本地依赖（纯离线，无需网络） -->
+  <script src="vendor/mp4box.all.min.js"></script>
+  <script src="vendor/mkv-subtitle-extractor.js"></script>
+  <style>
+*{box-sizing:border-box}
+:root{--bg:#f8fafc;--panel:#ffffff;--surface:#ffffff;--surface2:#f1f5f9;--deep:#f8fafc;--header-bg:rgba(255,255,255,.85);--line:#e2e8f0;--line2:#cbd5e1;--text:#0f172a;--soft:#1e293b;--muted:#64748b;--muted2:#94a3b8;--brand:#4f46e5;--brand2:#4338ca;--brand3:#4f46e5;--brand-soft:rgba(99,102,241,.1);--brand-border:rgba(99,102,241,.25);--hover:#f8fafc;--shadow:0 6px 16px rgba(15,23,42,.07);--ok:#047857;--ok-soft:rgba(16,185,129,.1);--ok-border:rgba(16,185,129,.25);--warn:#b45309;--warn-soft:rgba(245,158,11,.12);--warn-border:rgba(245,158,11,.35);--on-brand:#ffffff}
+html.dark{--bg:#020617;--panel:#0f172a;--surface:rgba(15,23,42,.8);--surface2:#1e293b;--deep:#020617;--header-bg:rgba(15,23,42,.6);--line:#1e293b;--line2:#334155;--text:#f1f5f9;--soft:#e2e8f0;--muted:#94a3b8;--muted2:#64748b;--brand:#6366f1;--brand2:#4f46e5;--brand3:#818cf8;--brand-soft:rgba(99,102,241,.2);--brand-border:rgba(99,102,241,.3);--hover:rgba(30,41,59,.6);--shadow:0 10px 28px rgba(0,0,0,.35);--ok:#34d399;--ok-soft:rgba(16,185,129,.1);--ok-border:rgba(16,185,129,.2);--warn:#fcd34d;--warn-soft:rgba(245,158,11,.1);--warn-border:rgba(245,158,11,.3);--on-brand:#ffffff}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
+::selection{background:var(--brand-soft);color:var(--text)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surface2)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9999px}
+::-webkit-scrollbar-thumb:hover{background:var(--brand3)}
+.hidden{display:none!important}
+.site-header{position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);background:var(--header-bg);backdrop-filter:blur(8px);padding:10px 16px}
+.header-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--brand-soft);border:1px solid var(--brand-border);color:var(--brand3)}
+.brand-logo svg{width:22px;height:22px}
+.brand-title{margin:0;font-size:17px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.brand-ver{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--brand-soft);color:var(--brand3);font-family:ui-monospace,monospace;font-weight:400}
+.brand-sub{margin:1px 0 0;font-size:12px;color:var(--muted)}
+.header-actions{display:flex;align-items:center;gap:8px}
+.privacy-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok-border)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.theme-toggle{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid var(--line2);background:var(--surface2);color:var(--text);cursor:pointer;font-size:15px;line-height:1;transition:.2s}
+.theme-toggle:hover{border-color:var(--brand);background:var(--hover)}
+.main{max-width:1280px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.drop-zone{position:relative;border:2px dashed var(--line2);background:var(--surface);border-radius:14px;padding:10px;text-align:center;cursor:pointer;box-shadow:var(--shadow);transition:.2s}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--brand);background:var(--brand-soft)}
+.file-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:10}
+.drop-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;pointer-events:none}
+.drop-icon{display:flex;align-items:center;justify-content:center;width:50px;height:40px;border-radius:14px;background:var(--surface2);border:1px solid var(--line2);color:var(--muted);transition:.2s}
+.drop-icon svg{width:34px;height:34px}
+.drop-zone:hover .drop-icon{transform:scale(1.06);background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand3)}
+.drop-title{margin:0;font-size:15px;font-weight:600}
+.drop-desc{margin:3px 0 0;font-size:13px;color:var(--muted)}
+.tag-row{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:var(--muted2);font-family:ui-monospace,monospace}
+.tag{padding:2px 8px;border-radius:4px;background:var(--surface2);border:1px solid var(--line)}
+.progress-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.progress-head{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.progress-status{font-weight:500;color:var(--brand3)}
+.progress-pct{font-family:ui-monospace,monospace;color:var(--muted)}
+.progress-track{width:100%;height:6px;border-radius:999px;overflow:hidden;background:var(--surface2)}
+.progress-bar{height:100%;width:0;background:var(--brand);transition:width .15s}
+.analysis{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:1024px){.analysis{grid-template-columns:1fr 2fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}
+.panel-title{display:flex;align-items:center;gap:8px;margin:0;font-size:15px;font-weight:700}
+.title-icon{font-size:17px;line-height:1}
+.duration-text{font-size:12px;color:var(--muted)}
+.badge{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:600;text-transform:uppercase;background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+.badge.ok{background:var(--brand-soft);color:var(--brand3);border-color:var(--brand-border)}
+.badge.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-border)}
+.meta-list{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.meta-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--line)}
+.meta-row:last-child{border-bottom:0}
+.meta-label{color:var(--muted)}
+.meta-value{color:var(--soft);font-family:ui-monospace,monospace;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta-value.strong{color:var(--brand3);font-weight:700}
+.meta-value.small{font-size:11px}
+.alert{display:flex;align-items:flex-start;gap:8px;margin-top:10px; padding: 4px 8px;border-radius:10px;font-size:12px;background:var(--warn-soft);border:1px solid var(--warn-border);color:var(--warn)}
+.alert-title{display:block;font-weight:600}
+.alert-msg{color:var(--warn);opacity:.85}
+.alert-icon{flex:0 0 auto;margin-top:1px}
+.track-grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:640px){.track-grid{grid-template-columns:repeat(3,1fr)}}
+.mini-card{background:var(--deep);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.mini-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:3px}
+.mini-value{font-size:13px;font-weight:600;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-value.highlight{color:var(--brand3)}
+.note{display:flex;align-items:center;gap:6px;margin-top:10px;padding:9px;border-radius:10px;font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--line)}
+.subs-section{display:flex;flex-direction:column;gap:12px}
+.subs-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.subs-title{display:flex;align-items:center;gap:8px;margin:0;font-size:16px;font-weight:700}
+.subs-hint{font-size:12px;color:var(--muted)}
+.tracks-list{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:768px){.tracks-list{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1024px){.tracks-list{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1400px){.tracks-list{grid-template-columns:repeat(4,1fr)}}
+.track-card{cursor:pointer;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);transition:.2s;position:relative;overflow:hidden}
+.track-card:hover{background:var(--surface2)}
+.track-card.is-active{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 2px var(--brand-border)}
+.track-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.track-id{font-size:11px;font-family:ui-monospace,monospace;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--brand-soft);color:var(--brand3);border:1px solid var(--brand-border)}
+.track-lang{font-size:11px;text-transform:uppercase;font-weight:600;color:var(--muted);transition:.2s}
+.track-card:hover .track-lang{color:var(--soft)}
+.track-name{font-weight:700;font-size:13px;color:var(--soft);margin-bottom:3px;transition:.2s}
+.track-card:hover .track-name{color:var(--brand3)}
+.track-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted2)}
+.track-size{font-family:ui-monospace,monospace;color:var(--soft)}
+.track-count{font-family:ui-monospace,monospace;color:var(--brand3);opacity:.9}
+.preview{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface2)}
+.preview-title-wrap{display:flex;align-items:center;gap:10px}
+.preview-icon{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:var(--brand-soft);color:var(--brand3);font-size:15px}
+.preview-title{margin:0;font-size:13px;font-weight:700;color:var(--text)}
+.preview-info{margin:0;font-size:11px;color:var(--muted)}
+.preview-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.format-switch{display:inline-flex;align-items:center;padding:2px;gap:2px;border:1px solid var(--line2);border-radius:8px;background:var(--surface2)}
+.format-option{position:relative;cursor:pointer}
+.format-option input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.format-option span{display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;color:var(--muted);transition:.15s}
+.format-option:hover span{color:var(--soft)}
+.format-option input:checked + span{background:var(--brand2);color:var(--on-brand);box-shadow:0 2px 8px rgba(79,70,229,.25)}
+.format-option input:focus-visible + span{outline:2px solid var(--brand-border);outline-offset:1px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:500;border:1px solid var(--line2);background:var(--surface2);color:var(--soft);cursor:pointer;transition:.15s}
+.btn:hover{background:var(--line2)}
+.btn-primary{padding:5px 12px;background:var(--brand2);border-color:var(--brand2);color:var(--on-brand);font-weight:600;box-shadow:0 4px 12px rgba(79,70,229,.3)}
+.btn-primary:hover{background:var(--brand)}
+.preview-body{padding:10px;background:var(--deep)}
+.preview-text{display:block;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;color:var(--soft);resize:vertical;outline:none}
+.empty{padding:24px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.empty-icon{width:44px;height:44px;border-radius:50%;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:19px}
+.empty-title{margin:0;font-size:14px;font-weight:600;color:var(--soft)}
+.empty-desc{margin:4px auto 0;font-size:12px;color:var(--muted);max-width:440px}
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航栏 -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2.5" y="4" width="14" height="16" rx="2.5"></rect>
+            <path d="M16.5 9.5 21 6.5v11l-4.5-3"></path>
+            <path d="M6 8.5v7"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">
+            SubtitleExtractor <span class="brand-ver">v1.0 Local</span>
+          </h1>
+          <p class="brand-sub">Magic Bytes 文件鉴别 · MP4Box.js · MKV/EBML 提取</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="privacy-chip">
+          <span class="dot"></span>
+          纯客户端解析 · 隐私无泄漏
+        </span>
+        <button id="themeToggle" class="theme-toggle" type="button" title="切换深浅色主题">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- 上传区域 -->
+    <div id="dropZone" class="drop-zone">
+      <input type="file" id="fileInput" accept=".mp4,.mkv,.webm,.mov,.m4v" class="file-input" />
+      <div class="drop-inner">
+        <div class="drop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 17.5A4.5 4.5 0 0 1 6 8.6a5.5 5.5 0 0 1 10.5-1.2A4.2 4.2 0 0 1 18 17.5"></path>
+            <path d="M12 12.5v8"></path>
+            <path d="m8.8 15.3 3.2-3.2 3.2 3.2"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="drop-title">拖拽视频文件至此，或点击选择文件</h3>
+          <p class="drop-desc">支持 MP4, MKV, WebM, MOV 等 (自动鉴别真伪后缀并提取内置字幕)</p>
+        </div>
+        <div class="tag-row">
+          <span class="tag">Magic Bytes 识别</span>
+          <span class="tag">分块流式解析</span>
+          <span class="tag">SRT / VTT 导出</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 处理进度条 (隐现) -->
+    <div id="progressContainer" class="progress-box hidden">
+      <div class="progress-head">
+        <span id="progressStatus" class="progress-status">正在分析视频结构...</span>
+        <span id="progressPercent" class="progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- 分析结果总览网格 -->
+    <div id="analysisSection" class="analysis hidden">
+      <!-- 格式鉴别报告 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="title-icon">🧾</span>
+            <span>文件真实格式识别</span>
+          </div>
+          <span id="formatBadge" class="badge">未知</span>
+        </div>
+
+        <div class="meta-list">
+          <div class="meta-row">
+            <span class="meta-label">原始文件名</span>
+            <span id="metaFileName" class="meta-value">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">申报扩展名</span>
+            <span>
+              （<span id="metaFileSize" class="meta-value">-</span>）
+              <span id="metaReportedExt" class="meta-value">-</span>
+            </span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">真实容器类型</span>
+            <span id="metaRealFormat" class="meta-value strong">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Magic 识别签名</span>
+            <span id="metaSignature" class="meta-value small">-</span>
+          </div>
+        </div>
+
+        <!-- 扩展名篡改警告 -->
+        <div id="tamperAlert" class="alert hidden">
+          <span class="alert-icon">⚠️</span>
+          <div>
+            <span class="alert-title">扩展名与真实格式不符！</span>
+            <span id="tamperMessage" style="display: none;" class="alert-msg"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 媒体轨道总览 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="title-icon">🗂️</span>
+            <span>媒体容器结构</span>
+          </div>
+          <div class="duration-text" id="durationText">时长: -</div>
+        </div>
+
+        <div class="track-grid">
+          <div class="mini-card">
+            <div class="mini-label"><span>🎞️</span>视频轨道</div>
+            <div id="videoTracksSummary" class="mini-value">未检测到</div>
+          </div>
+
+          <div class="mini-card">
+            <div class="mini-label"><span>🔊</span>音频轨道</div>
+            <div id="audioTracksSummary" class="mini-value">未检测到</div>
+          </div>
+
+          <div class="mini-card">
+            <div class="mini-label"><span>💬</span>字幕轨道</div>
+            <div id="subtitleTracksCount" class="mini-value highlight">0 个轨道</div>
+          </div>
+        </div>
+
+        <div class="note">
+          <span>ℹ️</span>
+          <span>支持内嵌格式：WebVTT (wvtt), 3GPP Timed Text (tx3g), MKV UTF-8 (S_TEXT/UTF8), ASS/SSA (S_TEXT/ASS)。</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 字幕轨道与预览区 -->
+    <div id="subtitlesSection" class="subs-section hidden">
+      <div class="subs-head">
+        <h2 class="subs-title"><span>💬</span>发现内置字幕轨道</h2>
+        <span class="subs-hint">请选择字幕轨道并提取预览或下载</span>
+      </div>
+
+      <!-- 字幕轨道列表 -->
+      <div id="tracksList" class="tracks-list">
+        <!-- 动态注入轨道卡片 -->
+      </div>
+
+      <!-- 字幕预览与代码查看器 -->
+      <div id="previewCard" class="preview hidden">
+        <div class="preview-head">
+          <div class="preview-title-wrap">
+            <div class="preview-icon">📄</div>
+            <div>
+              <h3 id="previewTitle" class="preview-title">字幕内容预览</h3>
+              <p id="previewSubtitleInfo" class="preview-info">0 条字幕记录</p>
+            </div>
+          </div>
+          <div class="preview-actions">
+            <div class="format-switch" role="radiogroup" aria-label="输出字幕格式">
+              <label class="format-option"><input type="radio" name="subFormat" value="srt" checked><span>SRT</span></label>
+              <label class="format-option"><input type="radio" name="subFormat" value="vtt"><span>VTT</span></label>
+            </div>
+            <button id="copySubBtn" class="btn">📋 复制全文</button>
+            <button id="downloadSrtBtn" class="btn btn-primary">⬇️ 下载 .srt 文件</button>
+          </div>
+        </div>
+
+        <div class="preview-body">
+          <textarea id="subtitlePreviewText" readonly rows="16" class="preview-text" placeholder="字幕提取中或尚未选择..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 无字幕提示 -->
+    <div id="noSubtitlesNotice" class="empty hidden">
+      <div class="empty-icon">💬</div>
+      <h3 class="empty-title">该视频中未检测到内置文本字幕轨道</h3>
+      <p class="empty-desc">
+        可能是视频没有软字幕（仅有硬编码压制字幕），或者字幕为位图格式（如 PGS / VobSub 图形字幕暂不支持直接转文本）。
+      </p>
+    </div>
+  </main>
+
+  <script>
+    // 主题切换（默认白天模式）
+    const themeToggle = document.getElementById('themeToggle');
+    function applyTheme(dark) {
+      document.documentElement.classList.toggle('dark', dark);
+      themeToggle.textContent = dark ? '☀️' : '🌙';
+    }
+    let isDarkMode = localStorage.getItem('theme') === 'dark';
+    applyTheme(isDarkMode);
+    themeToggle.addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+      applyTheme(isDarkMode);
+    });
+
+    // DOM 元素引用
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressStatus = document.getElementById('progressStatus');
+    const progressPercent = document.getElementById('progressPercent');
+
+    const analysisSection = document.getElementById('analysisSection');
+    const formatBadge = document.getElementById('formatBadge');
+    const metaFileName = document.getElementById('metaFileName');
+    const metaReportedExt = document.getElementById('metaReportedExt');
+    const metaRealFormat = document.getElementById('metaRealFormat');
+    const metaSignature = document.getElementById('metaSignature');
+    const metaFileSize = document.getElementById('metaFileSize');
+    const tamperAlert = document.getElementById('tamperAlert');
+    const tamperMessage = document.getElementById('tamperMessage');
+
+    const durationText = document.getElementById('durationText');
+    const videoTracksSummary = document.getElementById('videoTracksSummary');
+    const audioTracksSummary = document.getElementById('audioTracksSummary');
+    const subtitleTracksCount = document.getElementById('subtitleTracksCount');
+
+    const subtitlesSection = document.getElementById('subtitlesSection');
+    const tracksList = document.getElementById('tracksList');
+    const previewCard = document.getElementById('previewCard');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewSubtitleInfo = document.getElementById('previewSubtitleInfo');
+    const subtitlePreviewText = document.getElementById('subtitlePreviewText');
+    const copySubBtn = document.getElementById('copySubBtn');
+    const downloadSrtBtn = document.getElementById('downloadSrtBtn');
+    const subFormatRadios = document.querySelectorAll('input[name="subFormat"]');
+    const noSubtitlesNotice = document.getElementById('noSubtitlesNotice');
+
+    let currentFile = null;
+    let currentParsedSubtitles = {}; // trackId -> [{start, end, text}]
+    let activeTrackId = null;
+    let currentFormat = 'srt'; // 输出格式：srt | vtt
+
+    // 工具函数：格式化大小
+    function formatBytes(bytes, decimals = 2) {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // 工具函数：秒转 SRT 时间戳 (00:00:00,000)
+    function formatSrtTime(totalSeconds) {
+      if (isNaN(totalSeconds) || totalSeconds < 0) totalSeconds = 0;
+      const hrs = Math.floor(totalSeconds / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = Math.floor(totalSeconds % 60);
+      const millis = Math.floor((totalSeconds - Math.floor(totalSeconds)) * 1000);
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(millis).padStart(3, '0')}`;
+    }
+
+    // 复制剪贴板 (兼容性方案)
+    copySubBtn.addEventListener('click', () => {
+      subtitlePreviewText.select();
+      try {
+        document.execCommand('copy');
+        const oldText = copySubBtn.innerHTML;
+        copySubBtn.innerHTML = '✅ 已复制';
+        setTimeout(() => {
+          copySubBtn.innerHTML = oldText;
+        }, 2000);
+      } catch (err) {
+        console.error('复制失败', err);
+      }
+    });
+
+    // 下载字幕（跟随当前选择的 SRT / VTT 格式）
+    downloadSrtBtn.addEventListener('click', () => {
+      if (!activeTrackId || !currentParsedSubtitles[activeTrackId]) return;
+      const isVtt = currentFormat === 'vtt';
+      const content = buildSubtitleText(currentParsedSubtitles[activeTrackId]);
+      const blob = new Blob([content], {
+        type: isVtt ? 'text/vtt;charset=utf-8' : 'application/x-subrip;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const baseName = currentFile.name.replace(/\.[^/.]+$/, "");
+      a.href = url;
+      a.download = `${baseName}.track_${activeTrackId}.${isVtt ? 'vtt' : 'srt'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // 切换 SRT / VTT：实时重建预览与下载目标
+    subFormatRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (!radio.checked) return;
+        currentFormat = radio.value;
+        refreshFormatUI();
+      });
+    });
+
+    // 拖拽与文件选择处理
+    // 拖拽高亮（仅在拖入拖放区时提示）
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    // 全页面拖拽监听：文件拖到窗口任意位置都能接收
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files[0]) {
+        processFile(files[0]);
+      }
+    });
+
+    // 拖到浏览器窗口外时清除高亮
+    window.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget === null) {
+        dropZone.classList.remove('dragover');
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        processFile(e.target.files[0]);
+      }
+    });
+
+    // 更新进度状态
+    function setProgress(percent, status) {
+      if (percent < 0) {
+        progressContainer.classList.add('hidden');
+        return;
+      }
+      progressContainer.classList.remove('hidden');
+      progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      progressPercent.textContent = `${Math.round(percent)}%`;
+      if (status) progressStatus.textContent = status;
+    }
+
+    /* ========================================================
+       1. MAGIC BYTES 检测引擎
+       ======================================================== */
+    async function identifyFileFormat(file) {
+      const slice = await file.slice(0, 128).arrayBuffer();
+      const bytes = new Uint8Array(slice);
+
+      // MKV / WebM: EBML Header 0x1A, 0x45, 0xDF, 0xA3
+      if (bytes[0] === 0x1A && bytes[1] === 0x45 && bytes[2] === 0xDF && bytes[3] === 0xA3) {
+        // 读取 DocType 标签
+        let docType = "matroska";
+        const text = new TextDecoder('latin1').decode(bytes);
+        if (text.includes('webm')) {
+          docType = "webm";
+        }
+        return {
+          format: docType === 'webm' ? 'WebM' : 'MKV',
+          mime: docType === 'webm' ? 'video/webm' : 'video/x-matroska',
+          signature: '1A 45 DF A3 (EBML Header)',
+          isMatroska: true,
+          isMP4: false
+        };
+      }
+
+      // MP4 / MOV 容器特征
+      // 通常在 offset 4 处有 'ftyp' 或 'moov', 'mdat'
+      const fourCC = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
+      const magicPrefix = Array.from(bytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+
+      if (fourCC === 'ftyp' || fourCC === 'moov' || fourCC === 'mdat') {
+        const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+        let formatName = 'MP4 (ISO Base Media)';
+        if (brand === 'qt  ') formatName = 'QuickTime (MOV)';
+        return {
+          format: formatName,
+          mime: 'video/mp4',
+          signature: `${magicPrefix} [${fourCC}]`,
+          isMatroska: false,
+          isMP4: true
+        };
+      }
+
+      // 默认/未知
+      return {
+        format: '未知二进制',
+        mime: 'application/octet-stream',
+        signature: magicPrefix,
+        isMatroska: false,
+        isMP4: false
+      };
+    }
+
+    /* ========================================================
+       主调度流程
+       ======================================================== */
+    async function processFile(file) {
+      currentFile = file;
+      currentParsedSubtitles = {};
+      activeTrackId = null;
+
+      // 重置界面
+      analysisSection.classList.remove('hidden');
+      subtitlesSection.classList.add('hidden');
+      previewCard.classList.add('hidden');
+      noSubtitlesNotice.classList.add('hidden');
+      tamperAlert.classList.add('hidden');
+      tracksList.innerHTML = '';
+      subtitlePreviewText.value = '';
+
+      metaFileName.textContent = file.name;
+      metaFileSize.textContent = formatBytes(file.size);
+
+      const reportedExtMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+      const reportedExt = reportedExtMatch ? reportedExtMatch[1].toLowerCase() : '无';
+      metaReportedExt.textContent = `.${reportedExt}`;
+
+      setProgress(10, '检查文件二进制特征 (Magic Bytes)...');
+
+      const fileInfo = await identifyFileFormat(file);
+      metaRealFormat.textContent = fileInfo.format;
+      metaSignature.textContent = fileInfo.signature;
+      formatBadge.textContent = fileInfo.format.split(' ')[0];
+
+      // 扩展名篡改检测逻辑
+      let isTampered = false;
+      let tamperMsg = "";
+
+      if (fileInfo.isMatroska) {
+        if (!['mkv', 'webm'].includes(reportedExt)) {
+          isTampered = true;
+          tamperMsg = `该文件具有标准的 EBML 头签名，真实格式为 Matroska (${fileInfo.format})，但扩展名却伪装为 .${reportedExt}。`;
+        }
+      } else if (fileInfo.isMP4) {
+        if (!['mp4', 'mov', 'm4v'].includes(reportedExt)) {
+          isTampered = true;
+          tamperMsg = `该文件具有标准的 ISO 媒体盒子结构，真实格式为 MP4/MOV，但扩展名为 .${reportedExt}。`;
+        }
+      }
+
+      if (isTampered) {
+        tamperAlert.classList.remove('hidden');
+        tamperMessage.textContent = tamperMsg;
+        formatBadge.className = 'badge warn';
+      } else {
+        formatBadge.className = 'badge ok';
+      }
+
+      // 根据真实格式启动解析
+      if (fileInfo.isMP4) {
+        await parseMP4Subtitles(file);
+      } else if (fileInfo.isMatroska) {
+        await parseMKVSubtitles(file);
+      } else {
+        setProgress(-1);
+        noSubtitlesNotice.classList.remove('hidden');
+        videoTracksSummary.textContent = "无法解析容器";
+        audioTracksSummary.textContent = "无法解析容器";
+        subtitleTracksCount.textContent = "0";
+      }
+    }
+
+    /* ========================================================
+       2. MP4Box.js 解析器 (提取 tx3g, wvtt 等字幕)
+       ======================================================== */
+    async function parseMP4Subtitles(file) {
+      setProgress(25, '正在使用 MP4Box 初始化媒体轨道...');
+
+      const mp4boxfile = MP4Box.createFile();
+      let extractedSamples = {}; // trackId -> []
+
+      mp4boxfile.onError = function (e) {
+        console.error("MP4Box 错误:", e);
+        setProgress(-1);
+      };
+
+      mp4boxfile.onReady = function (info) {
+        setProgress(60, '已检索到 MP4 moov 头信息，过滤字幕轨道...');
+
+        const duration = info.duration ? (info.duration / info.timescale).toFixed(1) + 's' : '未知';
+        durationText.textContent = `时长: ${duration}`;
+
+        const vTracks = info.videoTracks.map(t => `${t.codec} (${t.video.width}x${t.video.height})`).join(', ');
+        const aTracks = info.audioTracks.map(t => `${t.codec} (${t.audio.channel_count}ch)`).join(', ');
+        videoTracksSummary.textContent = vTracks || '无视频轨';
+        audioTracksSummary.textContent = aTracks || '无音频轨';
+
+        // 识别字幕轨道: subtitleTracks or otherTracks with subtitle codecs
+        const subTracks = info.subtitleTracks.concat(
+          info.otherTracks.filter(t => ['wvtt', 'tx3g', 'stpp', 'c608'].includes(t.codec))
+        );
+
+        subtitleTracksCount.textContent = `${subTracks.length} 个轨道`;
+
+        if (subTracks.length === 0) {
+          setProgress(-1);
+          noSubtitlesNotice.classList.remove('hidden');
+          return;
+        }
+
+        subTracks.forEach(track => {
+          extractedSamples[track.id] = {
+            track: track,
+            samples: []
+          };
+          mp4boxfile.setExtractionOptions(track.id, null, { nbSamples: 100000 });
+        });
+
+        mp4boxfile.start();
+      };
+
+      mp4boxfile.onSamples = function (id, user, samples) {
+        if (extractedSamples[id]) {
+          extractedSamples[id].samples.push(...samples);
+        }
+      };
+
+      // 分块喂给 MP4Box
+      const chunkSize = 1024 * 1024 * 4; // 4MB
+      let offset = 0;
+      const total = file.size;
+
+      const readNextChunk = () => {
+        const slice = file.slice(offset, offset + chunkSize);
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const buffer = e.target.result;
+          buffer.fileStart = offset;
+          mp4boxfile.appendBuffer(buffer);
+          offset += buffer.byteLength;
+
+          const progress = Math.min(95, 30 + (offset / total) * 65);
+          setProgress(progress, `读取样本数据 (${formatBytes(offset)} / ${formatBytes(total)})...`);
+
+          if (offset < total) {
+            readNextChunk();
+          } else {
+            mp4boxfile.flush();
+            setProgress(100, '字幕样本解析完成');
+            setTimeout(() => {
+              setProgress(-1);
+              finishMP4SubtitleExtraction(extractedSamples);
+            }, 300);
+          }
+        };
+        reader.readAsArrayBuffer(slice);
+      };
+
+      readNextChunk();
+    }
+
+    function finishMP4SubtitleExtraction(extractedSamples) {
+      const trackIds = Object.keys(extractedSamples);
+      if (trackIds.length === 0) {
+        noSubtitlesNotice.classList.remove('hidden');
+        return;
+      }
+
+      subtitlesSection.classList.remove('hidden');
+      tracksList.innerHTML = '';
+
+      trackIds.forEach(id => {
+        const item = extractedSamples[id];
+        const track = item.track;
+        const timescale = track.timescale || 1000;
+        const srtEntries = [];
+
+        item.samples.forEach((sample) => {
+          const startTime = sample.cts / timescale;
+          const endTime = (sample.cts + sample.duration) / timescale;
+          let text = '';
+
+          // 解码 tx3g / wvtt 数据
+          if (track.codec === 'tx3g') {
+            // tx3g: 前2字节是文本长度
+            const dataView = new DataView(sample.data.buffer, sample.data.byteOffset, sample.data.byteLength);
+            if (dataView.byteLength >= 2) {
+              const textLen = dataView.getUint16(0);
+              if (textLen > 0 && 2 + textLen <= dataView.byteLength) {
+                const textBytes = new Uint8Array(sample.data.buffer, sample.data.byteOffset + 2, textLen);
+                text = new TextDecoder('utf-8').decode(textBytes);
+              }
+            }
+          } else if (track.codec === 'wvtt') {
+            // WebVTT ISO BMFF payload: 包含 vttc box 或 payload
+            const textBytes = new Uint8Array(sample.data.buffer, sample.data.byteOffset, sample.data.byteLength);
+            const raw = new TextDecoder('utf-8').decode(textBytes);
+            // 过滤 box 头部不可见字符
+            text = raw.replace(/[^\x20-\x7E\u4e00-\u9fa5\r\n\t]/g, '').trim();
+          } else {
+            const rawBytes = new Uint8Array(sample.data.buffer, sample.data.byteOffset, sample.data.byteLength);
+            text = new TextDecoder('utf-8').decode(rawBytes).trim();
+          }
+
+          if (text) {
+            srtEntries.push({
+              start: startTime,
+              end: endTime,
+              text: text
+            });
+          }
+        });
+
+        currentParsedSubtitles[id] = srtEntries;
+        const sizeText = formatBytes(measureSubtitleSize(srtEntries), 1);
+        renderTrackCard(id, track.codec, track.language || 'und', srtEntries.length, track.name || `Track #${id}`, sizeText);
+      });
+
+      // 默认激活第一个有字幕的轨道
+      const firstId = trackIds.find(id => currentParsedSubtitles[id].length > 0) || trackIds[0];
+      if (firstId) {
+        selectTrack(firstId);
+      }
+    }
+
+    /* ========================================================
+       3. MKV / WebM 字幕提取（mkv-subtitle-extractor）
+       ======================================================== */
+    async function parseMKVSubtitles(file) {
+      setProgress(20, '扫描 MKV EBML Tracks 元数据...');
+
+      try {
+        // 读取头部解析 EBML 元数据（音视频轨道 + 时长）
+        const headerSize = Math.min(file.size, 1024 * 1024 * 3);
+        const headerBytes = new Uint8Array(await file.slice(0, headerSize).arrayBuffer());
+        const meta = parseMkvMetadata(headerBytes);
+
+        videoTracksSummary.textContent = summarizeMkvTracks(meta.tracks.filter(t => t.type === 1), '视频流');
+        audioTracksSummary.textContent = summarizeMkvTracks(meta.tracks.filter(t => t.type === 2), '音频流');
+        if (meta.durationSec) {
+          durationText.textContent = `时长: ${meta.durationSec.toFixed(1)}s`;
+        }
+
+        setProgress(35, '加载 MKV 字幕解析模块...');
+        if (!window.MKVSubs || typeof window.MKVSubs.extractSubtitles !== 'function') {
+          throw new Error('本地 MKV 解析模块未加载，请检查 vendor/mkv-subtitle-extractor.js 是否存在。');
+        }
+        const { extractSubtitles } = window.MKVSubs;
+
+        setProgress(45, '定位 MKV 字幕轨道...');
+
+        // 解析库通过 HTTP Range 请求读取数据；这里把本地 File 切片包装成 206 响应，
+        // 避免整文件载入内存，也避免 blob URL 不支持 Range 导致失败。
+        const rangeFetch = async (url, options = {}) => {
+          const range = options.headers && options.headers.Range
+            ? String(options.headers.Range) : '';
+          const match = range.match(/bytes=(\d+)-(\d*)/);
+          let start = match ? Number(match[1]) : 0;
+          let end = match && match[2] ? Number(match[2]) : file.size - 1;
+          start = Math.min(start, Math.max(0, file.size - 1));
+          end = Math.min(end, file.size - 1);
+          const buf = await file.slice(start, end + 1).arrayBuffer();
+          return new Response(buf, {
+            status: 206,
+            headers: {
+              'Content-Range': `bytes ${start}-${end}/${file.size}`,
+              'Content-Length': String(buf.byteLength),
+            },
+          });
+        };
+
+        const subTracks = await extractSubtitles('local://subtitle-extractor', {
+          verbose: false,
+          fetch: rangeFetch,
+        });
+
+        subtitleTracksCount.textContent = `${subTracks.length} 个轨道`;
+
+        if (!subTracks.length) {
+          setProgress(-1);
+          noSubtitlesNotice.classList.remove('hidden');
+          return;
+        }
+
+        setProgress(80, '重组字幕时间轴...');
+        subtitlesSection.classList.remove('hidden');
+        tracksList.innerHTML = '';
+
+        subTracks.forEach((track, trackIndex) => {
+          const meta = track.metadata || {};
+          const id = String(meta.trackNumber ?? trackIndex + 1);
+          const lang = meta.language || 'und';
+          const codec = (track.type || 'srt').toUpperCase();
+          const label = meta.trackName || `Track #${id}`;
+          // 解析库返回的 subtitle 可能是 Uint8Array 字节或字符串，统一解码为文本
+          const rawSub = track.output && track.output.subtitle;
+          let raw = '';
+          if (rawSub instanceof Uint8Array) {
+            raw = new TextDecoder('utf-8').decode(rawSub);
+          } else if (rawSub) {
+            raw = String(rawSub);
+          }
+          const isAss = track.type === 'ass' || track.type === 'ssa';
+          const entries = isAss ? assTextToEntries(raw) : srtTextToEntries(raw);
+
+          currentParsedSubtitles[id] = entries;
+          const sizeText = formatBytes(measureSubtitleSize(entries), 1);
+          renderTrackCard(id, codec, lang, entries.length, label, sizeText);
+        });
+
+        setProgress(-1);
+        const ids = Object.keys(currentParsedSubtitles);
+        const firstId = ids.find(k => currentParsedSubtitles[k].length > 0) || ids[0];
+        if (firstId) selectTrack(firstId);
+      } catch (err) {
+        console.error('MKV 解析失败:', err);
+        setProgress(-1);
+        noSubtitlesNotice.classList.remove('hidden');
+        subtitleTracksCount.textContent = '0 个轨道';
+      }
+    }
+
+    // ===== SRT / ASS 文本 -> 时间轴条目 =====
+    function parseTimeToken(str) {
+      // 兼容 SRT (hh:mm:ss,mmm) / VTT (hh:mm:ss.mmm) / ASS (h:mm:ss.cc)
+      const m = String(str).match(/(\d{1,2}):(\d{2}):(\d{2})(?:[,.](\d{1,3}))?/);
+      if (!m) return null;
+      const frac = m[4] ? Number(m[4].padEnd(3, '0')) / 1000 : 0;
+      return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + frac;
+    }
+
+    function srtTextToEntries(srtText) {
+      const entries = [];
+      const blocks = String(srtText).replace(/\r/g, '').split(/\n{2,}/);
+      for (const block of blocks) {
+        const lines = block.split('\n');
+        const idx = lines.findIndex(line => line.includes('-->'));
+        if (idx === -1) continue;
+        const [startToken, endToken] = lines[idx].split('-->');
+        const start = parseTimeToken(startToken);
+        const end = parseTimeToken(endToken);
+        if (start === null || end === null) continue;
+        const text = lines.slice(idx + 1).join('\n').trim();
+        if (!text) continue;
+        entries.push({ start, end, text });
+      }
+      return entries;
+    }
+
+    function assTextToEntries(assText) {
+      const entries = [];
+      const lines = String(assText).replace(/\r/g, '').split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('Dialogue:')) continue;
+        const parts = line.slice('Dialogue:'.length).split(',');
+        if (parts.length < 10) continue;
+        const start = parseTimeToken(parts[1]);
+        const end = parseTimeToken(parts[2]);
+        if (start === null || end === null) continue;
+        const text = parts.slice(9).join(',')
+          .replace(/\{[^}]*\}/g, '')
+          .replace(/\\N/gi, '\n')
+          .replace(/\\h/g, ' ')
+          .trim();
+        if (!text) continue;
+        entries.push({ start, end, text });
+      }
+      return entries;
+    }
+
+    // ===== EBML 结构化解析：读取 Tracks / Info 元数据 =====
+    const EBML_IDS = {
+      SEGMENT: 0x18538067,
+      INFO: 0x1549A966,
+      TIMESTAMP_SCALE: 0x2AD7B1,
+      DURATION: 0x4489,
+      TRACKS: 0x1654AE6B,
+      TRACK_ENTRY: 0xAE,
+      TRACK_NUMBER: 0xD7,
+      TRACK_TYPE: 0x83,
+      CODEC_ID: 0x86,
+      LANGUAGE: 0x22B59C,
+      TRACK_NAME: 0x536E,
+      VIDEO: 0xE0,
+      PIXEL_WIDTH: 0xB0,
+      PIXEL_HEIGHT: 0xBA,
+    };
+
+    function vintLength(first) {
+      for (let len = 1; len <= 8; len++) {
+        if (first & (0x80 >> (len - 1))) return len;
+      }
+      return 0;
+    }
+
+    function readVintSize(bytes, offset, length) {
+      // 7~8 字节的 VINT 会超过 Number 精度，用 BigInt 精确计算
+      if (length <= 6) {
+        let raw = 0;
+        for (let i = 0; i < length; i++) raw = raw * 256 + bytes[offset + i];
+        const marker = Math.pow(2, 7 * length);
+        const size = raw - marker;
+        return size === marker - 1 ? -1 : size;
+      }
+      let raw = 0n;
+      for (let i = 0; i < length; i++) raw = raw * 256n + BigInt(bytes[offset + i]);
+      const marker = 1n << BigInt(7 * length);
+      const size = raw - marker;
+      return size === marker - 1n ? -1 : Number(size);
+    }
+
+    function readElementHeader(bytes, offset) {
+      if (offset >= bytes.length || bytes[offset] === 0) return null;
+
+      const idLen = vintLength(bytes[offset]);
+      if (!idLen || offset + idLen >= bytes.length) return null;
+      let id = 0;
+      for (let i = 0; i < idLen; i++) id = id * 256 + bytes[offset + i];
+
+      const sizeOffset = offset + idLen;
+      if (sizeOffset >= bytes.length || bytes[sizeOffset] === 0) return null;
+      const sizeLen = vintLength(bytes[sizeOffset]);
+      if (!sizeLen || sizeOffset + sizeLen > bytes.length) return null;
+
+      const size = readVintSize(bytes, sizeOffset, sizeLen);
+      const dataOffset = sizeOffset + sizeLen;
+      return { id, size, dataOffset, end: size < 0 ? bytes.length : dataOffset + size };
+    }
+
+    function* mkvChildren(bytes, start, end) {
+      const limit = Math.min(end, bytes.length);
+      let p = start;
+      while (p < limit) {
+        const el = readElementHeader(bytes, p);
+        if (!el) return;
+        if (el.size < 0 || el.dataOffset >= limit) {
+          yield { ...el, end: limit };
+          return;
+        }
+        yield el;
+        p = el.dataOffset + el.size;
+      }
+    }
+
+    function readUint(bytes, start, len) {
+      let value = 0;
+      for (let i = 0; i < len; i++) value = value * 256 + bytes[start + i];
+      return value;
+    }
+
+    function readMkvFloat(bytes, start, len) {
+      if (len !== 4 && len !== 8) return 0;
+      const view = new DataView(bytes.buffer, bytes.byteOffset + start, len);
+      return len === 4 ? view.getFloat32(0) : view.getFloat64(0);
+    }
+
+    function decodeMkvText(bytes, start, len) {
+      return new TextDecoder('utf-8').decode(bytes.subarray(start, start + len)).trim();
+    }
+
+    function parseMkvMetadata(bytes) {
+      const result = { tracks: [], durationSec: null };
+
+      // 顶层：EBML 头 -> Segment
+      let segment = null;
+      let p = 0;
+      while (p < bytes.length) {
+        const el = readElementHeader(bytes, p);
+        if (!el) break;
+        if (el.id === EBML_IDS.SEGMENT) { segment = el; break; }
+        if (el.size < 0) break;
+        p = el.dataOffset + el.size;
+      }
+      if (!segment) return result;
+
+      const segEnd = segment.size < 0 ? bytes.length : Math.min(segment.end, bytes.length);
+      let timestampScale = 1000000;
+
+      for (const el of mkvChildren(bytes, segment.dataOffset, segEnd)) {
+        if (el.id === EBML_IDS.INFO) {
+          for (const info of mkvChildren(bytes, el.dataOffset, Math.min(el.end, bytes.length))) {
+            if (info.size < 0) continue;
+            if (info.id === EBML_IDS.TIMESTAMP_SCALE) {
+              timestampScale = readUint(bytes, info.dataOffset, info.size) || timestampScale;
+            } else if (info.id === EBML_IDS.DURATION) {
+              const duration = readMkvFloat(bytes, info.dataOffset, info.size);
+              if (duration > 0) result.durationSec = duration * timestampScale / 1e9;
+            }
+          }
+        } else if (el.id === EBML_IDS.TRACKS) {
+          for (const entry of mkvChildren(bytes, el.dataOffset, Math.min(el.end, bytes.length))) {
+            if (entry.id !== EBML_IDS.TRACK_ENTRY) continue;
+            const track = { number: 0, type: 0, codec: '', lang: 'und', name: '', width: 0, height: 0 };
+            for (const field of mkvChildren(bytes, entry.dataOffset, Math.min(entry.end, bytes.length))) {
+              if (field.size < 0) continue;
+              switch (field.id) {
+                case EBML_IDS.VIDEO:
+                  for (const v of mkvChildren(bytes, field.dataOffset, Math.min(field.end, bytes.length))) {
+                    if (v.size < 0) continue;
+                    if (v.id === EBML_IDS.PIXEL_WIDTH) track.width = readUint(bytes, v.dataOffset, v.size);
+                    else if (v.id === EBML_IDS.PIXEL_HEIGHT) track.height = readUint(bytes, v.dataOffset, v.size);
+                  }
+                  break;
+                case EBML_IDS.TRACK_NUMBER:
+                  track.number = readUint(bytes, field.dataOffset, field.size);
+                  break;
+                case EBML_IDS.TRACK_TYPE:
+                  track.type = readUint(bytes, field.dataOffset, field.size);
+                  break;
+                case EBML_IDS.CODEC_ID:
+                  track.codec = decodeMkvText(bytes, field.dataOffset, field.size);
+                  break;
+                case EBML_IDS.LANGUAGE:
+                  track.lang = decodeMkvText(bytes, field.dataOffset, field.size) || 'und';
+                  break;
+                case EBML_IDS.TRACK_NAME:
+                  track.name = decodeMkvText(bytes, field.dataOffset, field.size);
+                  break;
+              }
+            }
+            if (track.type > 0) result.tracks.push(track);
+          }
+        }
+      }
+      return result;
+    }
+
+    function summarizeMkvTracks(tracks, fallback) {
+      if (!tracks.length) return '未检测到';
+      const labels = tracks.map(t => {
+        const res = t.width && t.height ? ` (${t.width}x${t.height})` : '';
+        return (t.codec || fallback) + res;
+      });
+      return labels.length > 1 ? `${labels.join(', ')} (${labels.length} 条)` : labels[0];
+    }
+
+    /* ========================================================
+       4. UI 渲染与字幕卡片交互
+       ======================================================== */
+    function renderTrackCard(id, codec, lang, count, label, sizeText) {
+      const card = document.createElement('div');
+      card.id = `track-card-${id}`;
+      card.className = 'track-card';
+      card.innerHTML = `
+        <div class="track-top">
+          <span class="track-id">Track #${id}</span>
+          <span class="track-lang">${lang}</span>
+        </div>
+        <div class="track-name">${label}</div>
+        <div class="track-bottom">
+          <span>编码: ${codec}</span>
+          <span class="track-size">大小: ${sizeText || '0 KB'}</span>
+          <span class="track-count">${count} 条字幕</span>
+        </div>
+      `;
+
+      card.addEventListener('click', () => selectTrack(id));
+      tracksList.appendChild(card);
+    }
+
+    // 将时间轴条目重建为标准 SRT 文本
+    function buildSrtText(entries) {
+      let srtContent = '';
+      entries.forEach((item, index) => {
+        srtContent += `${index + 1}\n`;
+        srtContent += `${formatSrtTime(item.start)} --> ${formatSrtTime(item.end)}\n`;
+        srtContent += `${item.text}\n\n`;
+      });
+      return srtContent.trim();
+    }
+
+    // VTT 时间戳：逗号改为小数点
+    function formatVttTime(totalSeconds) {
+      return formatSrtTime(totalSeconds).replace(',', '.');
+    }
+
+    // 将时间轴条目重建为 WebVTT 文本
+    function buildVttText(entries) {
+      let vtt = 'WEBVTT\n\n';
+      entries.forEach((item, index) => {
+        vtt += `${index + 1}\n`;
+        vtt += `${formatVttTime(item.start)} --> ${formatVttTime(item.end)}\n`;
+        vtt += `${item.text}\n\n`;
+      });
+      return vtt.trim();
+    }
+
+    // 按当前选择的格式生成文本
+    function buildSubtitleText(entries) {
+      return currentFormat === 'vtt' ? buildVttText(entries) : buildSrtText(entries);
+    }
+
+    // 按 SRT 文本的 UTF-8 字节数计算体积（即下载文件的大小）
+    function measureSubtitleSize(entries) {
+      const text = buildSrtText(entries);
+      return new TextEncoder().encode(text).byteLength;
+    }
+
+    // 根据当前格式刷新预览、信息行与下载按钮文案
+    function refreshFormatUI() {
+      const formatLabel = currentFormat.toUpperCase();
+      downloadSrtBtn.innerHTML = `⬇️ 下载 .${currentFormat} 文件`;
+      if (!activeTrackId || !currentParsedSubtitles[activeTrackId]) return;
+      const entries = currentParsedSubtitles[activeTrackId];
+      previewSubtitleInfo.textContent = `共 ${entries.length} 条有效字幕条目 · ${formatLabel}`;
+      subtitlePreviewText.value = buildSubtitleText(entries);
+      subtitlePreviewText.scrollTop = 0;
+    }
+
+    function selectTrack(trackId) {
+      activeTrackId = trackId;
+
+      // 更新选中状态样式
+      document.querySelectorAll('#tracksList > div').forEach(c => {
+        c.classList.remove('is-active');
+      });
+      const selected = document.getElementById(`track-card-${trackId}`);
+      if (selected) {
+        selected.classList.add('is-active');
+      }
+
+      const entries = currentParsedSubtitles[trackId] || [];
+      previewCard.classList.remove('hidden');
+      previewTitle.textContent = `字幕轨道 #${trackId} 预览`;
+
+      // 按当前选择的 SRT / VTT 格式生成预览文本
+      refreshFormatUI();
+    }
+  </script>
+</body>
+</html>
