@@ -36,7 +36,7 @@ window.config = {
         { name: '表格工具', short: 'Excel', url: './excel/index.html', color: '#077c32' },
         // { name: '数据库管理', short: 'SQL', url: 'http://home.199311.xyz:40126', color: '#0f4104' },
         // { name: '数据库DBX', short: 'DBX', url: 'http://home.199311.xyz:44224', color: '#0045DE' },
-        { name: '字体压缩', short: 'Font', url: 'http://home.199311.xyz:40050', color: '#610782' },
+        { name: 'JSON预览', short: 'JSON', url: './ace/json.html', color: '#610782' },
         { name: 'New Api', short: 'Api', url: 'http://home.199311.xyz:40099', color: '#9d07d3' },
         { name: 'OnePanel', short: '1Panel', url: 'http://home.199311.xyz:41666/webdev', color: '#005EEB' },
         { name: 'Logs', short: 'Logs', url: './log/index.html', color: '#2ca55f' },
