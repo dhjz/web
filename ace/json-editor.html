@@ -8,25 +8,111 @@
     <script src="js/jsoneditor.min.js"></script>
 		<style>
 			* { margin:0; padding: 0;box-sizing: border-box; }
-			.wrap { display: flex; padding: 10px; }
-			.wrap > div { width: 40%; height: calc(100vh - 42px);position: relative;  }
-			#text{display:block;height: 100%; width: 98%; padding: 4px;}
-			#jsoneditor { width: 60%; }
+			.wrap { display: flex; padding: 10px; height: calc(100vh - 42px); }
+			.wrap > div { position: relative; }
+			#text{display:block; width: 100%; height: 100%; padding: 4px; resize: none;
+				font-family: Consolas, Menlo, monospace; font-size: 12px; overflow: auto;}
+			.left { width: 40%; display: flex; flex-direction: column; gap: 8px; padding-right: 2%; }
+			#jsoneditor { width: 60%; height: 100%; }
+
+			/* 上半部分：原始文本，固定高度 */
+			.text-box { flex: 0 0 43%; display: flex; flex-direction: column; min-height: 0; }
+
+			/* 下半部分：识别出的 JSON 序号列表 */
+			.list-box { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+				border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+			.list-head { flex: none; display: flex; align-items: center; justify-content: space-between;
+				padding: 4px 8px; background: #f5f5f5; border-bottom: 1px solid #ddd;
+				font-size: 12px; color: #333; }
+			.list-head .tip { color: #999; font-weight: normal; }
+			.list-items { flex: 1 1 auto; overflow: auto; min-height: 0; }
+			.list-item { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px;
+				cursor: pointer; border-bottom: 1px solid #f2f2f2; font-size: 12px; }
+			.list-item:hover { background: #f0f7ff; }
+			.list-item.active { background: #dbeafe; border-left: 3px solid #2563eb; padding-left: 5px; }
+			.list-item .no { flex: none; min-width: 26px; height: 18px; line-height: 18px; text-align: center;
+				background: #eee; border-radius: 9px; color: #555; font-size: 11px; }
+			.list-item.active .no { background: #2563eb; color: #fff; }
+			.list-item .pv { flex: 1 1 auto; color: #444; font-family: Consolas, Menlo, monospace;
+				white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			.list-item .sz { flex: none; color: #999; font-size: 11px; }
+			.empty { padding: 12px; color: #999; font-size: 12px; text-align: center; }
 			.control button { margin-right: 8px;}
+			body .jsoneditor-field {   white-space: nowrap; }
+
+			/* 字符串值全屏预览弹窗 */
+			.modal-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 9999;
+				background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; }
+			.modal-mask[hidden] { display: none; }
+			.modal-panel { width: 96vw; height: 92vh; background: #fff; border-radius: 6px;
+				display: flex; flex-direction: column; overflow: hidden;
+				box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+			.modal-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+				background: #f5f5f5; border-bottom: 1px solid #ddd; font-size: 13px; }
+			.modal-title { flex: 1 1 auto; min-width: 0; color: #333; font-weight: 600;
+				white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			.modal-head label { flex: none; display: flex; align-items: center; gap: 4px;
+				font-size: 12px; color: #555; cursor: pointer; user-select: none; }
+			.modal-head button { flex: none; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+			.modal-body { flex: 1 1 auto; margin: 0; padding: 12px; overflow: auto;
+				white-space: pre-wrap; word-break: break-all; user-select: text;
+				font-family: Consolas, Menlo, monospace; font-size: 14px; line-height: 1.4; color: #222; }
+			.modal-meta { flex: none; padding: 5px 12px; border-top: 1px solid #eee;
+				font-size: 12px; color: #999; }
+
+			/* 悬停字符串值时出现的预览小按钮（不干扰原有点击编辑） */
+			.preview-btn { position: fixed; display: none; z-index: 9998; align-items: center;
+				padding: 1px 6px; font-size: 11px; line-height: 16px; white-space: nowrap;
+				color: #fff; background: #2563eb; border: 0; border-radius: 3px; cursor: pointer;
+				box-shadow: 0 1px 4px rgba(0,0,0,.35);
+				opacity: .5; transition: opacity .15s ease; }
+			.preview-btn.show { display: inline-flex; }
+			.preview-btn:hover { background: #1d4ed8; opacity: 1; }
 		</style>
 </head>
 <body>
 		<div class="control" style=" height:22px; padding-left: 35%;">
+			<button onclick="extractAll(true)">提取JSON</button>
 			<button onclick="genJson()">生成</button>
 			<button onclick="genJson(true)">data生成</button>
 			<button onclick="backJson()">还原</button>
+			<button onclick="clearAll()">清空</button>
 			<button onclick="window.open('index.html')">文本编辑器</button>
 		</div>
     <div class="wrap">
-			<div>
-				<textarea id="text"></textarea>
+			<div class="left">
+				<div class="text-box">
+					<textarea id="text" spellcheck="false" placeholder="粘贴日志/任意文本，点击“提取JSON”自动清洗出其中的所有 JSON"></textarea>
+				</div>
+				<div class="list-box">
+					<div class="list-head">
+						<span>识别结果 <span id="count">0</span> 段</span>
+						<span class="tip">点击序号查看</span>
+					</div>
+					<div class="list-items" id="list">
+						<div class="empty">暂无 JSON，点击“提取JSON”</div>
+					</div>
+				</div>
 			</div>
 			<div id="jsoneditor"></div>
+		</div>
+
+		<button type="button" class="preview-btn" id="previewBtn" title="全屏预览该字符串">预览</button>
+
+		<!-- 字符串值全屏预览 -->
+		<div class="modal-mask" id="modal" hidden>
+			<div class="modal-panel">
+				<div class="modal-head">
+					<span class="modal-title" id="modalTitle">字符串值</span>
+					<label title="把字符串里的 \n、\t、\r 等转义还原成真实换行/制表符">
+						<input type="checkbox" id="unescapeChk" checked> 还原 \n 为换行
+					</label>
+					<button type="button" onclick="copyModal()">复制</button>
+					<button type="button" onclick="closeModal()">关闭</button>
+				</div>
+				<pre class="modal-body" id="modalBody"></pre>
+				<div class="modal-meta" id="modalMeta"></div>
+			</div>
 		</div>
 
     <script>
@@ -34,6 +120,45 @@
         const container = document.getElementById("jsoneditor")
         const options = {}
         const editor = new JSONEditor(container, options)
+
+				/* 展开右侧所有节点（默认全展开） */
+				function expandAllNodes() {
+					// 优先用官方 API（版本支持时最可靠）
+					try {
+						if (editor.mode && typeof editor.mode.expandAll === 'function') {
+							editor.mode.expandAll()
+						} else if (typeof editor.expandAll === 'function') {
+							editor.expandAll()
+						}
+					} catch (e) {
+						console.log(e)
+					}
+					// 再补一遍 DOM 层：点击所有仍折叠的展开按钮，直到没有新的折叠节点
+					const visited = new Set()
+					let changed = true
+					let guard = 0
+					while (changed && guard++ < 500) {
+						changed = false
+						const btns = container.querySelectorAll('.jsoneditor-expand:not(.jsoneditor-expanded)')
+						Array.prototype.forEach.call(btns, function (btn) {
+							if (visited.has(btn)) return
+							visited.add(btn)
+							btn.click()
+							changed = true
+						})
+					}
+				}
+
+				/* 统一的 set：写入后默认全部展开 */
+				function setEditorValue(value) {
+					try {
+						editor.set(value === undefined ? null : value)
+					} catch (e) {
+						console.log(e)
+						return
+					}
+					expandAllNodes()
+				}
 
         // set json
         const initialJson = {
@@ -44,29 +169,447 @@
             "Object": {"a": "b", "c": "d"},
             "String": "Hello World"
         }
-        editor.set(initialJson)
+        setEditorValue(initialJson)
 
-        // get json
-        const updatedJson = editor.get()
-				
-				function genJson(flag) {
-					let temp = ''
-					try {
-						if (flag) {
-							temp = JSON.parse(JSON.parse(document.querySelector('#text').value).data)
-						} else {
-							temp =  JSON.parse(document.querySelector('#text').value)
+        const textEl = document.getElementById('text')
+        const listEl = document.getElementById('list')
+        const countEl = document.getElementById('count')
+
+        let parsedList = []   // [{ start, end, value, raw }]
+        let activeIndex = -1
+
+        /* 从 start 处的 { 或 [ 开始，找到与之配对的结束位置（跳过字符串内部） */
+        function findJsonEnd(text, start) {
+					let depth = 0
+					let inStr = false
+					let esc = false
+					for (let i = start; i < text.length; i++) {
+						const ch = text[i]
+						if (inStr) {
+							if (esc) esc = false
+							else if (ch === '\\') esc = true
+							else if (ch === '"') inStr = false
+							continue
 						}
-						
-					} catch(e) {
-						console.log(e)
-						alert('JSON 格式有误')
+						if (ch === '"') { inStr = true; continue }
+						if (ch === '{' || ch === '[') depth++
+						else if (ch === '}' || ch === ']') {
+							depth--
+							if (depth === 0) return i
+						}
 					}
-					editor.set(temp)
+					return -1
 				}
+
+				/* 尝试解析：先按原文解析，失败再尝试还原被转义（\" 和 \\n）的 JSON 串 */
+				function tryParse(raw) {
+					try {
+						return { ok: true, value: JSON.parse(raw), raw: raw }
+					} catch (e) {}
+					let un = raw.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+					if (un !== raw) {
+						try {
+							return { ok: true, value: JSON.parse(un), raw: un }
+						} catch (e) {}
+					}
+					return { ok: false }
+				}
+
+				/* 扫描整段文本，提取所有互相独立的 JSON */
+				function extractJson(text) {
+					const result = []
+					let i = 0
+					while (i < text.length) {
+						const ch = text[i]
+						if (ch !== '{' && ch !== '[') { i++; continue }
+						const end = findJsonEnd(text, i)
+						if (end < 0) { i++; continue }
+						const raw = text.slice(i, end + 1)
+						const parsed = tryParse(raw)
+						if (parsed.ok && parsed.value !== null && typeof parsed.value === 'object') {
+							result.push({ start: i, end: end, value: parsed.value, raw: parsed.raw })
+							i = end + 1          // 跳过已识别整段，避免把内部对象重复列出
+						} else {
+							i++                  // 当前 { 不是 JSON 起点，从下一个字符继续找
+						}
+					}
+					return result
+				}
+
+				function preview(raw) {
+					return raw.replace(/\s+/g, ' ').slice(0, 120)
+				}
+
+				/* text 不传则读取左侧输入框 */
+				function extractAll(notify) {
+					const text = textEl.value || ''
+					parsedList = extractJson(text)
+					activeIndex = -1
+					renderList()
+					countEl.textContent = parsedList.length
+					if (parsedList.length) {
+						selectJson(0, false)
+					} else {
+						setEditorValue({})
+						if (notify) alert('未识别到 JSON')
+					}
+					return parsedList.length
+				}
+
+				function renderList() {
+					if (!parsedList.length) {
+						listEl.innerHTML = '<div class="empty">暂无 JSON，点击“提取JSON”</div>'
+						return
+					}
+					listEl.innerHTML = ''
+					parsedList.forEach((item, idx) => {
+						const row = document.createElement('div')
+						row.className = 'list-item' + (idx === activeIndex ? ' active' : '')
+						row.dataset.index = idx
+						const no = document.createElement('span')
+						no.className = 'no'
+						no.textContent = idx + 1
+						const pv = document.createElement('span')
+						pv.className = 'pv'
+						pv.textContent = preview(item.raw) || '(空)'
+						const sz = document.createElement('span')
+						sz.className = 'sz'
+						sz.textContent = item.raw.length + ' 字符'
+						row.appendChild(no)
+						row.appendChild(pv)
+						row.appendChild(sz)
+						row.onclick = () => selectJson(idx, true)
+						listEl.appendChild(row)
+					})
+				}
+
+				/* 选中并渲染某个 JSON，同时把左侧原文中对应片段选中 */
+				function selectJson(idx, focusText) {
+					const item = parsedList[idx]
+					if (!item) return
+					activeIndex = idx
+					Array.prototype.forEach.call(listEl.children, (el, i) => {
+						el.classList.toggle('active', i === idx)
+					})
+					setEditorValue(item.value)
+					if (focusText) {
+						textEl.focus()
+						textEl.setSelectionRange(item.start, item.end + 1)
+					}
+				}
+
+				/* 生成：自动提取全部 JSON 并展示第一段 */
+				function genJson(flag) {
+					let n = extractAll(false)
+					if (!n) {
+						alert('未识别到 JSON')
+						return
+					}
+					if (flag) {
+						// data生成：对当前选中项，若为 {data:"..."} 结构则展开其 data
+						const item = parsedList[activeIndex]
+						try {
+							const target = JSON.parse(typeof item.value.data === 'string' ? item.value.data : JSON.stringify(item.value.data))
+							item.value = target
+							setEditorValue(target)
+						} catch (e) {
+							console.log(e)
+							alert('data 字段解析失败')
+						}
+					}
+				}
+
+				/* 还原：把右侧 JSON 写回左侧输入框 */
 				function backJson() {
-					document.querySelector('#text').value = JSON.stringify(editor.get(), null, 2)
+					textEl.value = JSON.stringify(editor.get(), null, 2)
+					extractAll(false)
 				}
+
+				/* ===== 点击 jsoneditor 里的字符串值，全屏预览（支持还原 \n） ===== */
+				const modalEl = document.getElementById('modal')
+				const modalBody = document.getElementById('modalBody')
+				const modalTitle = document.getElementById('modalTitle')
+				const modalMeta = document.getElementById('modalMeta')
+				const unescapeChk = document.getElementById('unescapeChk')
+
+				let modalRaw = ''      // 原始内容（不含首尾引号，保留 \n 字面量）
+
+				/* 把 JSON 字符串里的转义序列还原成真实字符 */
+				function unescapeJsonString(str) {
+					return str.replace(/\\(u[0-9a-fA-F]{4}|[\s\S])/g, function (m, g) {
+						switch (g.charAt(0)) {
+							case 'n': return '\n'
+							case 'r': return '\r'
+							case 't': return '\t'
+							case 'b': return '\b'
+							case 'f': return '\f'
+							case '"': return '"'
+							case '\\': return '\\'
+							case '/': return '/'
+							case 'u': return String.fromCharCode(parseInt(g.slice(1), 16))
+							default: return g
+						}
+					})
+				}
+
+				/* 去掉 JSONEditor 渲染时添加的首尾双引号 */
+				function stripValueQuotes(text) {
+					const s = (text || '').replace(/^\s+|\s+$/g, '')
+					if (s.length >= 2 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+						return s.slice(1, -1)
+					}
+					return text || ''
+				}
+
+				function renderModal() {
+					const restore = unescapeChk.checked
+					const content = restore ? unescapeJsonString(modalRaw) : modalRaw
+					modalBody.textContent = content
+					const lines = restore ? content.split('\n').length : 1
+					modalMeta.textContent = '原文 ' + modalRaw.length + ' 字符'
+						+ (restore ? ' ｜ 还原后 ' + content.length + ' 字符 / ' + lines + ' 行' : ' ｜ 原始转义显示')
+						+ ' ｜ 点击空白处或按 Esc 关闭'
+				}
+
+				function openModal(el) {
+					modalRaw = stripValueQuotes(el.textContent)
+					modalTitle.textContent = '字符串值预览'
+					unescapeChk.checked = true
+					renderModal()
+					modalEl.hidden = false
+					modalBody.scrollTop = 0
+				}
+
+				function closeModal() {
+					modalEl.hidden = true
+					modalBody.textContent = ''
+					modalRaw = ''
+				}
+
+				function copyModal() {
+					const text = modalBody.textContent
+					const done = function () {
+						const old = modalTitle.textContent
+						modalTitle.textContent = '已复制到剪贴板'
+						setTimeout(function () { modalTitle.textContent = old }, 1000)
+					}
+					if (navigator.clipboard && navigator.clipboard.writeText) {
+						navigator.clipboard.writeText(text).then(done, fallback)
+					} else {
+						fallback()
+					}
+					function fallback() {
+						const ta = document.createElement('textarea')
+						ta.value = text
+						document.body.appendChild(ta)
+						ta.select()
+						try { document.execCommand('copy'); done() } catch (e) { console.log(e) }
+						document.body.removeChild(ta)
+					}
+				}
+
+				/* 命中 .jsoneditor-value.jsoneditor-string */
+				function getStringValueEl(target) {
+					if (!target || target.nodeType !== 1) return null
+					const el = target.closest('.jsoneditor-value.jsoneditor-string')
+					return el && container.contains(el) ? el : null
+				}
+
+				/* ===== 悬停出现“预览”按钮：不拦截编辑器原生点击编辑 ===== */
+				const previewBtn = document.getElementById('previewBtn')
+				let hoverEl = null        // 当前悬停的字符串值节点
+				let hideTimer = null
+
+				function showPreviewBtn(el) {
+					const r = el.getBoundingClientRect()
+					if (!r.width) return
+					previewBtn.classList.add('show')
+					previewBtn.style.visibility = 'hidden'
+					const w = previewBtn.offsetWidth || 40
+					const h = previewBtn.offsetHeight || 18
+					// 贴在该值的「右上角」：右边缘对齐，优先放在值上方一行
+					let left = r.right - w
+					if (left + w > window.innerWidth - 4) left = Math.max(4, window.innerWidth - w - 4)
+					if (left < 4) left = 4
+					let top = r.top - h - 2
+					if (top < 2) top = r.top + 1          // 上方没有空间时叠在值的右上角
+					top = Math.max(2, Math.min(top, window.innerHeight - h - 2))
+					previewBtn.style.left = left + 'px'
+					previewBtn.style.top = top + 'px'
+					previewBtn.style.visibility = ''
+				}
+
+				function hidePreviewBtn() {
+					clearTimeout(hideTimer)
+					previewBtn.classList.remove('show')
+					hoverEl = null
+				}
+
+				function scheduleHide() {
+					clearTimeout(hideTimer)
+					hideTimer = setTimeout(hidePreviewBtn, 200)
+				}
+
+				// 事件代理：悬停到字符串值 → 定位并显示预览按钮
+				container.addEventListener('mouseover', function (e) {
+					const el = getStringValueEl(e.target)
+					if (!el) return
+					clearTimeout(hideTimer)
+					hoverEl = el
+					showPreviewBtn(el)
+				})
+
+				container.addEventListener('mouseout', function (e) {
+					const el = getStringValueEl(e.target)
+					if (!el) return
+					// 移动到该值内部子节点时忽略
+					if (e.relatedTarget && el.contains(e.relatedTarget)) return
+					scheduleHide()
+				})
+
+				// 鼠标移到按钮上时保持显示，点击打开弹窗
+				previewBtn.addEventListener('mouseenter', function () {
+					clearTimeout(hideTimer)
+				})
+				previewBtn.addEventListener('mouseleave', scheduleHide)
+				previewBtn.addEventListener('click', function (e) {
+					e.preventDefault()
+					e.stopPropagation()
+					const target = hoverEl
+					hidePreviewBtn()
+					if (target) openModal(target)
+				})
+
+				// 鼠标离开编辑器 / 滚动 / 缩放后位置失效，直接隐藏
+				container.addEventListener('mouseleave', scheduleHide)
+				container.addEventListener('scroll', scheduleHide, true)
+				window.addEventListener('resize', scheduleHide)
+
+				unescapeChk.addEventListener('change', renderModal)
+				modalEl.addEventListener('click', function (e) {
+					// 点遮罩关闭；点面板内部不关闭
+					if (e.target === modalEl) closeModal()
+				})
+				document.addEventListener('keydown', function (e) {
+					if (e.key === 'Escape' && !modalEl.hidden) closeModal()
+				})
+
+				/* ===== 输入缓存：小于 1 万字符时写入 localStorage（gzip + base64） ===== */
+				const CACHE_KEY = 'jsonEditor.cache.v1'
+				const CACHE_LIMIT = 10000      // 超过该长度不缓存
+				let cacheSeq = 0
+
+				function bytesToBase64(bytes) {
+					let bin = ''
+					const chunk = 0x8000
+					for (let i = 0; i < bytes.length; i += chunk) {
+						bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk))
+					}
+					return btoa(bin)
+				}
+
+				function base64ToBytes(b64) {
+					const bin = atob(b64)
+					const bytes = new Uint8Array(bin.length)
+					for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+					return bytes
+				}
+
+				/* 原生 gzip 压缩后转 base64 */
+				async function gzipToBase64(text) {
+					const input = new TextEncoder().encode(text)
+					const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'))
+					const buf = new Uint8Array(await new Response(stream).arrayBuffer())
+					return bytesToBase64(buf)
+				}
+
+				async function gunzipFromBase64(b64) {
+					const bytes = base64ToBytes(b64)
+					const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+					return await new Response(stream).text()
+				}
+
+				async function saveCache(text) {
+					const seq = ++cacheSeq
+					try {
+						// 空内容或超长：不缓存
+						if (!text || text.length >= CACHE_LIMIT) {
+							localStorage.removeItem(CACHE_KEY)
+							return
+						}
+						const payload = { v: 1, ts: Date.now(), len: text.length, enc: 'raw', body: text }
+						if (typeof CompressionStream !== 'undefined') {
+							try {
+								const b64 = await gzipToBase64(text)
+								// 压缩后更小才用 gzip，否则保留明文
+								if (seq !== cacheSeq) return
+								if (b64 && b64.length < text.length) {
+									payload.enc = 'gzip'
+									payload.body = b64
+								}
+							} catch (e) {
+								console.log('gzip 失败，降级明文缓存', e)
+							}
+						}
+						if (seq !== cacheSeq) return
+						localStorage.setItem(CACHE_KEY, JSON.stringify(payload))
+					} catch (e) {
+						console.log('写入缓存失败', e)
+					}
+				}
+
+				async function restoreCache() {
+					let raw = null
+					try { raw = localStorage.getItem(CACHE_KEY) } catch (e) { return false }
+					if (!raw) return false
+					try {
+						const payload = JSON.parse(raw)
+						let text = ''
+						if (payload.enc === 'gzip') {
+							if (typeof DecompressionStream === 'undefined') throw new Error('浏览器不支持解压')
+							text = await gunzipFromBase64(payload.body)
+						} else {
+							text = payload.body || ''
+						}
+						if (!text) return false
+						textEl.value = text
+						extractAll(false)
+						return true
+					} catch (e) {
+						console.log('读取缓存失败，已清除', e)
+						try { localStorage.removeItem(CACHE_KEY) } catch (e2) {}
+						return false
+					}
+				}
+
+				/* 一键清空：textarea + 缓存 + 右侧视图 */
+				function clearAll() {
+					if (textEl.value && !confirm('确定清空左侧文本和本地缓存？')) return
+					clearTimeout(timer)
+					clearTimeout(cacheTimer)
+					cacheSeq++                 // 让进行中的异步写入失效
+					textEl.value = ''
+					parsedList = []
+					activeIndex = -1
+					renderList()
+					countEl.textContent = 0
+					setEditorValue({})
+					try { localStorage.removeItem(CACHE_KEY) } catch (e) { console.log(e) }
+					textEl.focus()
+				}
+
+				// 输入框内容变化后：自动识别 + 缓存（防抖）
+				let timer = null
+				let cacheTimer = null
+				textEl.addEventListener('input', function () {
+					clearTimeout(timer)
+					timer = setTimeout(() => extractAll(false), 400)
+					clearTimeout(cacheTimer)
+					cacheTimer = setTimeout(() => saveCache(textEl.value), 600)
+				})
+
+				// 打开页面时恢复上次缓存（仅 < 1 万字符的内容会被缓存）
+				restoreCache()
     </script>
 </body>
 </html>
