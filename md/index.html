@@ -24,6 +24,9 @@
   <!-- Marked.js Markdown解析器 -->
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/marked/16.1.2/lib/marked.umd.min.js"></script>
   
+  <!-- Mermaid 图表渲染 -->
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/mermaid/11.12.0/mermaid.min.js"></script>
+  
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; word-break: break-all; }
     :root { --toc-width: 300px; --bg-primary: #ffffff; --bg-secondary: #f8f9fa; --bg-header: #2c3e50; --text-primary: #2c3e50; --text-secondary: #6c757d; --border-color: #dee2e6; --accent-color: #3498db; --shadow: 0 2px 10px rgba(0,0,0,0.1); --code-bg: #f6f8fa; --toc-bg: #f8f9fa; }
@@ -133,6 +136,13 @@
     .history-empty { color: var(--text-secondary); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
     .code-block-wrapper { position: relative; margin-bottom: 1rem; }
     .copy-button { position: absolute; top: 8px; right: 8px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); z-index: 10; }
+    .mermaid-wrapper { position: relative; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary); overflow-x: auto; word-break: normal; text-align: center; }
+    .mermaid-diagram { display: flex; justify-content: center; align-items: center; min-height: 40px; }
+    .mermaid-diagram svg { max-width: 100%; height: auto; }
+    .mermaid-download { position: absolute; top: 8px; right: 8px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); z-index: 10; opacity: 0.75; transition: all 0.2s ease; }
+    .mermaid-wrapper:hover .mermaid-download, .mermaid-download:focus { opacity: 1; }
+    .mermaid-download:hover { color: var(--accent-color); border-color: var(--accent-color); }
+    .mermaid-error { color: #e74c3c; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; white-space: pre-wrap; text-align: left; }
     .temp-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .temp-modal.active { display: flex; }
     .temp-modal-content { background: var(--bg-primary); padding: 1.5rem; width: 80%; max-width: 1100px; border-radius: 8px; box-shadow: var(--shadow); }
@@ -277,6 +287,25 @@
 
     const { createApp } = Vue;
 
+    // ===== Mermaid 配置 =====
+    const MERMAID_DARK_THEMES = ['dark', 'vscode'];
+    // 必须使用具体字体栈（不能用 inherit）：mermaid 按此字体测量文本宽度，
+    // 导出的独立 SVG 中 inherit 会失效并回落到默认衬线字体，导致文字变宽被裁切
+    const MERMAID_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
+    function initMermaid() {
+      if (!window.mermaid) return;
+      const dark = MERMAID_DARK_THEMES.includes(document.documentElement.getAttribute('data-theme'));
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: dark ? 'dark' : 'default',
+        fontFamily: MERMAID_FONT_FAMILY,
+        flowchart: { useMaxWidth: true, htmlLabels: true },
+        sequence: { useMaxWidth: true },
+        gantt: { useMaxWidth: true }
+      });
+    }
+
     createApp({
       data() {
         return {
@@ -299,7 +328,8 @@
           tempContent: localStorage.getItem('tempMarkdown') || '# 临时预览\n\n在这里输入Markdown内容...',
           zenMode: false,
           showSource: false,
-          rawContent: ''
+          rawContent: '',
+          mermaidSeq: 0
         };
       },
       computed: {
@@ -336,6 +366,7 @@
         }
       },
       mounted() {
+        initMermaid();
         this.loadHistoryList();
         window.addEventListener('scroll', this.handleScroll);
         window.addEventListener('keydown', this.handleKeydown);
@@ -393,10 +424,117 @@
           
           this.$nextTick(() => {
             this.generateTOC();
+            this.mountMermaid();
             Prism.highlightAllUnder(this.$refs.markdownContent);
             this.addCopyButtons();
             this.updateActiveHeading();
           });
+        },
+        // 将 markdown 中的 ```mermaid 代码块替换为渲染容器
+        mountMermaid() {
+          const container = this.$refs.markdownContent;
+          if (!container || !window.mermaid) return;
+          const codes = Array.from(container.querySelectorAll('pre > code'))
+            .filter(code => /(^|\s)(language|lang)-mermaid(\s|$)/.test(code.className));
+          codes.forEach(code => {
+            const pre = code.parentElement;
+            const source = code.textContent || '';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mermaid-wrapper';
+            const diagram = document.createElement('div');
+            diagram.className = 'mermaid-diagram';
+            diagram.dataset.code = source;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mermaid-download';
+            btn.textContent = '⬇ 下载 SVG';
+            btn.addEventListener('click', () => this.downloadMermaidSvg(diagram));
+            wrapper.appendChild(diagram);
+            wrapper.appendChild(btn);
+            pre.replaceWith(wrapper);
+            this.renderMermaidBlock(diagram);
+          });
+        },
+        async renderMermaidBlock(diagram) {
+          if (!window.mermaid || !diagram) return;
+          const source = diagram.dataset.code || '';
+          const id = 'mermaid-svg-' + (++this.mermaidSeq);
+          try {
+            const { svg } = await window.mermaid.render(id, source);
+            diagram.innerHTML = svg;
+          } catch (e) {
+            diagram.innerHTML = '';
+            const err = document.createElement('div');
+            err.className = 'mermaid-error';
+            err.textContent = 'Mermaid 渲染失败：' + ((e && e.message) || e);
+            diagram.appendChild(err);
+            const orphan = document.getElementById('d' + id);
+            if (orphan && orphan.parentNode) orphan.parentNode.removeChild(orphan);
+          }
+        },
+        renderAllMermaid() {
+          const container = this.$refs.markdownContent;
+          if (!container || !window.mermaid) return;
+          container.querySelectorAll('.mermaid-diagram').forEach(diagram => {
+            this.renderMermaidBlock(diagram);
+          });
+        },
+        downloadMermaidSvg(diagram) {
+          const svg = diagram.querySelector('svg');
+          if (!svg) {
+            this.showTooltip('图表尚未渲染完成', window.innerWidth / 2, window.innerHeight / 2);
+            return;
+          }
+          const clone = svg.cloneNode(true);
+          clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+          // 独立 SVG 没有父元素，inherit 会失效，统一替换为渲染时使用的字体栈
+          const fontFamily = MERMAID_FONT_FAMILY;
+          clone.querySelectorAll('style').forEach(styleEl => {
+            styleEl.textContent = (styleEl.textContent || '').replace(/font-family:\s*inherit/gi, 'font-family:' + fontFamily);
+          });
+          // 防止字体差异导致 foreignObject 内的标签被裁切
+          clone.querySelectorAll('foreignObject').forEach(fo => {
+            fo.setAttribute('overflow', 'visible');
+            if (fo.firstElementChild && fo.firstElementChild.style) {
+              fo.firstElementChild.style.overflow = 'visible';
+            }
+          });
+          const viewBox = (clone.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+          const hasViewBox = viewBox.length === 4 && viewBox.every(n => !isNaN(n));
+          if (hasViewBox) {
+            const pad = 6;
+            const [vx, vy, vw, vh] = viewBox;
+            clone.setAttribute('viewBox', `${vx - pad} ${vy - pad} ${vw + pad * 2} ${vh + pad * 2}`);
+            clone.setAttribute('width', vw + pad * 2);
+            clone.setAttribute('height', vh + pad * 2);
+            clone.removeAttribute('style');
+            const bg = window.getComputedStyle(document.body).backgroundColor;
+            if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
+              const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+              rect.setAttribute('x', vx - pad);
+              rect.setAttribute('y', vy - pad);
+              rect.setAttribute('width', vw + pad * 2);
+              rect.setAttribute('height', vh + pad * 2);
+              rect.setAttribute('fill', bg);
+              clone.insertBefore(rect, clone.firstChild);
+            }
+          }
+          clone.style.setProperty('font-family', fontFamily);
+          clone.style.setProperty('overflow', 'visible');
+          const data = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone);
+          const diagrams = Array.from(document.querySelectorAll('.mermaid-diagram'));
+          const index = diagrams.indexOf(diagram) + 1 || 1;
+          const baseName = this.currentFile && this.currentFile.name
+            ? this.currentFile.name.replace(/\.[^.]+$/, '')
+            : 'mermaid';
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([data], { type: 'image/svg+xml;charset=utf-8' }));
+          a.download = `${baseName}-mermaid-${index}.svg`;
+          document.body.appendChild(a).click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+          this.showTooltip('SVG 已下载', window.innerWidth / 2, window.innerHeight / 2);
         },
         generateTOC() {
           if (!this.$refs.markdownContent) return;
@@ -511,10 +649,13 @@
           if (this.showContent) {
             Prism.highlightAllUnder(this.$refs.markdownContent);
             this.addCopyButtons();
+            initMermaid();
+            this.renderAllMermaid();
           }
         },
         applyTheme() {
           document.documentElement.setAttribute('data-theme', this.theme);
+          initMermaid();
         },
         changeFontSize(delta) {
           const next = Math.min(20, Math.max(10, this.fontSize + delta));
