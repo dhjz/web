@@ -439,9 +439,27 @@ classDef mc_flag fill:#fecaca,stroke:#dc2626,stroke-width:2px,color:#7f1d1d`,
     /* ======================= 视图变换 ======================= */
     function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
+    // 缩放必须作用在 SVG 自身：改 root 的 CSS 宽高，浏览器按新尺寸重新矢量绘制。
+    // 若把 scale() 加在 #preview 上，缩放只是合成器对已栅格化的纹理做插值放大 → 必然模糊。
     function applyTransform(animate) {
-      previewEl.style.transition = animate ? 'transform 0.22s cubic-bezier(.22,.61,.36,1)' : 'none';
-      previewEl.style.transform = 'translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.scale + ')';
+      const easing = 'cubic-bezier(.22,.61,.36,1)';
+      const svg = previewEl.querySelector('svg');
+      const size = getSvgSize();
+
+      previewEl.style.transition = animate ? 'transform 0.22s ' + easing : 'none';
+      previewEl.style.transform = 'translate(' + view.x + 'px, ' + view.y + 'px)';
+
+      if (!svg || !size) {
+        // 拿不到基准尺寸时退回旧行为，至少不会完全失去缩放
+        previewEl.style.transform += ' scale(' + view.scale + ')';
+        return;
+      }
+
+      svg.style.transition = animate
+        ? 'width 0.22s ' + easing + ', height 0.22s ' + easing
+        : 'none';
+      svg.style.width = size.w * view.scale + 'px';
+      svg.style.height = size.h * view.scale + 'px';
     }
 
     function getSvgSize() {
@@ -836,6 +854,12 @@ classDef mc_flag fill:#fecaca,stroke:#dc2626,stroke-width:2px,color:#7f1d1d`,
       const bgColor = (bg && bg !== 'rgba(0, 0, 0, 0)') ? bg : (isDark ? '#0f172a' : '#ffffff');
 
       const clone = svgEl.cloneNode(true);
+
+      // 预览用 CSS 宽高承载缩放，导出时必须清掉，否则下载的 SVG 会被固化成当前缩放尺寸
+      clone.style.width = '';
+      clone.style.height = '';
+      clone.style.transition = '';
+
       clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
