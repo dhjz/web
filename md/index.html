@@ -139,9 +139,10 @@
     .mermaid-wrapper { position: relative; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary); overflow-x: auto; word-break: normal; text-align: center; }
     .mermaid-diagram { display: flex; justify-content: center; align-items: center; min-height: 40px; }
     .mermaid-diagram svg { max-width: 100%; height: auto; }
-    .mermaid-download { position: absolute; top: 8px; right: 8px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); z-index: 10; opacity: 0.75; transition: all 0.2s ease; }
-    .mermaid-wrapper:hover .mermaid-download, .mermaid-download:focus { opacity: 1; }
-    .mermaid-download:hover { color: var(--accent-color); border-color: var(--accent-color); }
+    .mermaid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10; opacity: 0.75; transition: all 0.2s ease; }
+    .mermaid-wrapper:hover .mermaid-actions, .mermaid-actions:focus-within { opacity: 1; }
+    .mermaid-btn { background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); font-family: inherit; }
+    .mermaid-btn:hover { color: var(--accent-color); border-color: var(--accent-color); }
     .mermaid-error { color: #e74c3c; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; white-space: pre-wrap; text-align: left; }
     .temp-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .temp-modal.active { display: flex; }
@@ -444,13 +445,22 @@
             const diagram = document.createElement('div');
             diagram.className = 'mermaid-diagram';
             diagram.dataset.code = source;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'mermaid-download';
-            btn.textContent = '⬇ 下载 SVG';
-            btn.addEventListener('click', () => this.downloadMermaidSvg(diagram));
+            const actions = document.createElement('div');
+            actions.className = 'mermaid-actions';
+            const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
+            copyBtn.className = 'mermaid-btn';
+            copyBtn.textContent = '复制';
+            copyBtn.addEventListener('click', () => this.copyMermaidSvg(diagram, copyBtn));
+            const downloadBtn = document.createElement('button');
+            downloadBtn.type = 'button';
+            downloadBtn.className = 'mermaid-btn';
+            downloadBtn.textContent = '下载SVG';
+            downloadBtn.addEventListener('click', () => this.downloadMermaidSvg(diagram));
+            actions.appendChild(copyBtn);
+            actions.appendChild(downloadBtn);
             wrapper.appendChild(diagram);
-            wrapper.appendChild(btn);
+            wrapper.appendChild(actions);
             pre.replaceWith(wrapper);
             this.renderMermaidBlock(diagram);
           });
@@ -479,12 +489,10 @@
             this.renderMermaidBlock(diagram);
           });
         },
-        downloadMermaidSvg(diagram) {
+        // 生成可独立打开/下载的 SVG 代码，未渲染完成时返回 null
+        buildMermaidSvgCode(diagram) {
           const svg = diagram.querySelector('svg');
-          if (!svg) {
-            this.showTooltip('图表尚未渲染完成', window.innerWidth / 2, window.innerHeight / 2);
-            return;
-          }
+          if (!svg) return null;
           const clone = svg.cloneNode(true);
           clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
           clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
@@ -528,13 +536,55 @@
           const baseName = this.currentFile && this.currentFile.name
             ? this.currentFile.name.replace(/\.[^.]+$/, '')
             : 'mermaid';
+          return { data, filename: `${baseName}-mermaid-${index}.svg` };
+        },
+        downloadMermaidSvg(diagram) {
+          const result = this.buildMermaidSvgCode(diagram);
+          if (!result) {
+            this.showTooltip('图表尚未渲染完成', window.innerWidth / 2, window.innerHeight / 2);
+            return;
+          }
           const a = document.createElement('a');
-          a.href = URL.createObjectURL(new Blob([data], { type: 'image/svg+xml;charset=utf-8' }));
-          a.download = `${baseName}-mermaid-${index}.svg`;
+          a.href = URL.createObjectURL(new Blob([result.data], { type: 'image/svg+xml;charset=utf-8' }));
+          a.download = result.filename;
           document.body.appendChild(a).click();
           document.body.removeChild(a);
           URL.revokeObjectURL(a.href);
           this.showTooltip('SVG 已下载', window.innerWidth / 2, window.innerHeight / 2);
+        },
+        copyMermaidSvg(diagram, button) {
+          const result = this.buildMermaidSvgCode(diagram);
+          if (!result) {
+            this.showTooltip('图表尚未渲染完成', window.innerWidth / 2, window.innerHeight / 2);
+            return;
+          }
+          const done = () => {
+            const text = button.textContent;
+            button.textContent = '✅ 已复制';
+            setTimeout(() => { button.textContent = text; }, 2000);
+          };
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(result.data).then(done).catch(() => {
+              this.fallbackCopy(result.data) ? done() : this.showTooltip('复制失败', window.innerWidth / 2, window.innerHeight / 2);
+            });
+          } else {
+            this.fallbackCopy(result.data) ? done() : this.showTooltip('复制失败', window.innerWidth / 2, window.innerHeight / 2);
+          }
+        },
+        fallbackCopy(text) {
+          try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            return ok;
+          } catch (e) {
+            return false;
+          }
         },
         generateTOC() {
           if (!this.$refs.markdownContent) return;
