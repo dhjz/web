@@ -592,51 +592,242 @@
           if (!this.svgCode.trim()) return this.showToastMessage('没有可导出的SVG代码', 'error');
           this.convertSVGToImage('ico', parseInt(this.icoWidth) || 128);
         },
-        convertSVGToImage(format, width) {
+        // 是否需要在导出前做「自包含」处理（补 xmlns / 内联外部资源）
+        needsExportSanitizing(code) {
+          const s = String(code || '');
+          // 缺 xmlns：作为独立 SVG 文档加载会失败
+          if (!/xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(s)) return true;
+          // 外部位图
+          if (/<image\b[^>]*(?:href|xlink:href)\s*=\s*["'](?!data:|#)/i.test(s)) return true;
+          // 其它外部 href（如跨文档 use、<a>）
+          if (/(?:href|xlink:href)\s*=\s*["'](?!data:|#)/i.test(s)) return true;
+          // CSS 里的远程 url()
+          if (/url\(\s*['"]?(?!data:|#)/i.test(s)) return true;
+          return false;
+        },
+        svgToDataUrl(svgText) {
+          return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+        },
+        fetchAsDataUrl(url) {
+          return fetch(url, { mode: 'cors', credentials: 'omit' })
+            .then((res) => {
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              return res.blob();
+            })
+            .then((blob) => new Promise((resolve, reject) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve(fr.result);
+              fr.onerror = () => reject(new Error('读取外部资源失败'));
+              fr.readAsDataURL(blob);
+            }));
+        },
+        async inlineCssUrls(css) {
+          const re = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+          const targets = [];
+          let m;
+          while ((m = re.exec(css)) !== null) {
+            const raw = (m[2] || '').trim();
+            if (!raw || raw.startsWith('data:') || raw.startsWith('#')) continue;
+            if (!targets.includes(raw)) targets.push(raw);
+          }
+          let out = css, inlined = 0, removed = 0;
+          for (const raw of targets) {
+            const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const one = new RegExp('url\\(\\s*([\'"]?)' + escaped + '\\1\\s*\\)', 'g');
+            try {
+              const dataUrl = await this.fetchAsDataUrl(new URL(raw, location.href).href);
+              out = out.replace(one, 'url("' + dataUrl + '")');
+              inlined++;
+            } catch (e) {
+              out = out.replace(one, 'none');
+              removed++;
+              console.warn('无法内联的 CSS 资源已置空:', raw, e);
+            }
+          }
+          return { text: out, inlined, removed };
+        },
+        // 产出「自包含」的 SVG 字符串：外链全部转 base64，转不了的就删掉，
+        // 保证后续放进 canvas 时不会被判定为跨源污染
+        async prepareSvgForExport(code) {
+          let svgText = String(code || '');
+          if (!/xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(svgText)) {
+            svgText = svgText.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+          }
           try {
-            // 创建SVG blob
-            const svgBlob = new Blob([this.svgCode], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(svgBlob);
+            const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+            if (doc.querySelector('parsererror')) return svgText;
+            const svg = doc.querySelector('svg');
+            if (!svg) return svgText;
 
-            // 创建Image对象
+            let inlined = 0, removed = 0;
+
+            for (const img of Array.from(svg.querySelectorAll('image'))) {
+              const href = img.getAttribute('href') || img.getAttribute('xlink:href') || '';
+              if (!href || href.startsWith('data:') || href.startsWith('#')) continue;
+              try {
+                const dataUrl = await this.fetchAsDataUrl(new URL(href, location.href).href);
+                img.setAttribute('href', dataUrl);
+                img.removeAttribute('xlink:href');
+                img.removeAttribute('crossorigin');
+                inlined++;
+              } catch (e) {
+                img.remove();
+                removed++;
+                console.warn('无法内联的外部图片已移除:', href, e);
+              }
+            }
+
+            Array.from(svg.querySelectorAll('use')).forEach((use) => {
+              const href = use.getAttribute('href') || use.getAttribute('xlink:href') || '';
+              if (href && !href.startsWith('#') && !href.startsWith('data:')) {
+                use.remove();
+                removed++;
+                console.warn('外部 use 引用已移除:', href);
+              }
+            });
+
+            for (const styleEl of Array.from(svg.querySelectorAll('style'))) {
+              const r = await this.inlineCssUrls(styleEl.textContent || '');
+              styleEl.textContent = r.text;
+              inlined += r.inlined; removed += r.removed;
+            }
+            for (const el of Array.from(svg.querySelectorAll('[style]'))) {
+              const r = await this.inlineCssUrls(el.getAttribute('style') || '');
+              el.setAttribute('style', r.text);
+              inlined += r.inlined; removed += r.removed;
+            }
+
+            if (inlined || removed) {
+              console.info(`导出前资源处理：内联 ${inlined} 个，移除 ${removed} 个`);
+            }
+            return new XMLSerializer().serializeToString(svg);
+          } catch (e) {
+            console.warn('SVG 预处理失败，按原样导出:', e);
+            return svgText;
+          }
+        },
+        getSvgIntrinsicSize(svgText) {
+          try {
+            const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+            const el = doc.querySelector('svg');
+            if (!el) return null;
+            const len = (v) => {
+              if (!v || /%\s*$/.test(String(v).trim())) return 0;
+              const m = String(v).match(/-?[\d.]+/);
+              return m ? parseFloat(m[0]) : 0;
+            };
+            let w = len(el.getAttribute('width'));
+            let h = len(el.getAttribute('height'));
+            const vb = (el.getAttribute('viewBox') || '').trim().split(/[\s,]+/).filter(Boolean).map(Number);
+            if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
+              const ar = vb[2] / vb[3];
+              if (!(w > 0) && !(h > 0)) { w = vb[2]; h = vb[3]; }
+              else if (!(w > 0)) w = h * ar;
+              else if (!(h > 0)) h = w / ar;
+            }
+            return (w > 0 && h > 0) ? { w, h } : null;
+          } catch (e) {
+            return null;
+          }
+        },
+        computeExportSize(svgText, img, targetW) {
+          const w = Math.max(1, Math.round(targetW));
+          let ratio = 0;
+          const intrinsic = this.getSvgIntrinsicSize(svgText);
+          if (intrinsic) ratio = intrinsic.h / intrinsic.w;
+          if (!ratio) {
+            const nw = img.naturalWidth || img.width;
+            const nh = img.naturalHeight || img.height;
+            if (nw > 0 && nh > 0) ratio = nh / nw;
+          }
+          if (!ratio) ratio = 1;
+          return { w: w, h: Math.max(1, Math.round(w * ratio)) };
+        },
+        // force = true 时跳过预检，直接走「自包含 + data URL」路径（用于失败重试）
+        async convertSVGToImage(format, width, force) {
+          try {
+            if (!this.svgCode.trim()) return this.showToastMessage('没有可导出的SVG代码', 'error');
+
+            // toDataURL 只保证支持 png / jpeg / webp，ico 由 png 再封装
+            const mime = format === 'ico' ? 'png' : format;
+            const targetW = Math.max(1, parseInt(width, 10) || 400);
+
+            const sanitize = force || this.needsExportSanitizing(this.svgCode);
+            const svgText = sanitize ? await this.prepareSvgForExport(this.svgCode) : this.svgCode;
+
+            let url, isObjectUrl = false;
+            if (sanitize) {
+              url = this.svgToDataUrl(svgText);
+            } else {
+              url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }));
+              isObjectUrl = true;
+            }
+
             const img = new Image();
             img.onload = () => {
-              // 计算高度以保持宽高比
-              const height = (img.height / img.width) * width;
+              try {
+                const size = this.computeExportSize(svgText, img, targetW);
+                const canvas = document.createElement('canvas');
+                canvas.width = size.w;
+                canvas.height = size.h;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) throw new Error('无法获取 Canvas 2D 上下文');
 
-              // 创建Canvas
-              const canvas = document.createElement('canvas');
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
+                if (mime === 'jpeg') {
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(0, 0, size.w, size.h);
+                }
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, size.w, size.h);
 
-              // 设置背景色（JPEG需要白色背景）
-              if (format === 'jpeg') {
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, width, height);
+                let dataURL;
+                try {
+                  dataURL = canvas.toDataURL('image/' + mime, 0.92);
+                } catch (err) {
+                  // 污染（Tainted canvases）只会在这里抛出，重试一次自包含路径
+                  if (!force) {
+                    console.warn('Canvas 被判定为跨源污染，改用自包含 SVG 重试');
+                    this.convertSVGToImage(format, width, true);
+                    return;
+                  }
+                  throw err;
+                }
+                if (!dataURL || dataURL === 'data:,') {
+                  if (!force) {
+                    this.convertSVGToImage(format, width, true);
+                    return;
+                  }
+                  throw new Error('导出结果为空（SVG 尺寸无法确定）');
+                }
+
+                this.saveToHistory(this.svgCode);
+                this.showToastMessage(`${format.toUpperCase()}文件已导出`);
+                if (format === 'ico') {
+                  this.downloadIco(dataURL, size.w);
+                  return;
+                }
+                download(dataURL, `image.${format}`);
+              } catch (err) {
+                console.error('[导出失败]', err);
+                this.showToastMessage('导出失败：' + ((err && err.message) || '未知错误'), 'error');
+              } finally {
+                if (isObjectUrl) URL.revokeObjectURL(url);
               }
-
-              // 绘制图像
-              ctx.drawImage(img, 0, 0, width, height);
-
-              // 导出图像
-              const dataURL = canvas.toDataURL(`image/${format}`, 0.92);
-              this.saveToHistory(this.svgCode)
-              this.showToastMessage(`${format.toUpperCase()}文件已导出`);
-              if (format === 'ico') {
-                return this.downloadIco(dataURL, width);
-              }
-              download(dataURL, `image.${format}`)
             };
 
             img.onerror = () => {
-              URL.revokeObjectURL(url);
-              this.showToastMessage('导出失败：无法加载SVG', 'error');
+              if (isObjectUrl) URL.revokeObjectURL(url);
+              if (!force) {
+                this.convertSVGToImage(format, width, true);
+                return;
+              }
+              this.showToastMessage('导出失败：无法加载SVG（请检查 xmlns 或非法字符）', 'error');
             };
 
             img.src = url;
           } catch (e) {
-            this.showToastMessage('导出失败：' + e.message, 'error');
+            this.showToastMessage('导出失败：' + ((e && e.message) || '未知错误'), 'error');
           }
         },
         downloadIco(dataURL, size) {
