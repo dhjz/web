@@ -15,7 +15,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; padding: 20px 16px; color: #374151; }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         h1 { text-align: center; color: #1f2937; font-size: 1.8rem; margin-bottom: 6px; font-weight: 700; }
         .principle { text-align: center; color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5; background: white; padding: 10px 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
         .principle code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #2563eb; }
@@ -96,6 +96,7 @@
         .engine-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 6px; }
         .engine-badge.native { background: #d1fae5; color: #059669; }
         .engine-badge.lib { background: #dbeafe; color: #2563eb; }
+        .engine-badge.raw { background: #fef3c7; color: #b45309; }
 
         @media (max-width: 600px) { h1 { font-size: 1.4rem; }
         .stats-grid { grid-template-columns: 1fr; }
@@ -137,18 +138,31 @@
                             <div class="engine-desc">浏览器内置 API，性能更优</div>
                         </div>
                     </label>
+                    <label class="engine-option" :class="{ active: engine === 'none' }">
+                        <input type="radio" v-model="engine" value="none" @change="onEngineChange">
+                        <div class="engine-info">
+                            <div class="engine-name">
+                                不压缩
+                                <span class="engine-badge raw">直接编码</span>
+                            </div>
+                            <div class="engine-desc">跳过压缩，文件字节直接转 Base64</div>
+                        </div>
+                    </label>
                 </div>
             </div>
 
-            <div class="principle">
+            <div class="principle" v-if="engine !== 'none'">
                 原理：文件 → 二进制 → <code>{{ compressCode }}</code> 压缩 → 嵌入文件名 → Base64 编码 <br> 逆向：Base64 → <code>{{ decompressCode }}</code> 解压 → 提取文件名 → 还原文件
+            </div>
+            <div class="principle" v-else>
+                原理：文件 → 二进制 → 嵌入文件名 → Base64 编码（不压缩） <br> 逆向：Base64 → 提取文件名 → 还原文件（不解压）
             </div>
 
             <!-- 文件转 Base64 -->
             <div class="card">
                 <div class="card-title">
                     <div class="icon">📤</div>
-                    文件 → Base64（压缩，含文件名）
+                    文件 → Base64（{{ isRaw ? '不压缩' : '压缩' }}，含文件名）
                 </div>
 
                 <div class="control-group" v-show="engine === 'pako'">
@@ -161,6 +175,9 @@
                 </div>
                 <div class="control-group" v-show="engine === 'native'" style="color: #6b7280; font-size: 0.85rem;">
                     <span>💡 使用浏览器原生 CompressionStream，压缩级别由浏览器自动决定</span>
+                </div>
+                <div class="control-group" v-show="engine === 'none'" style="color: #6b7280; font-size: 0.85rem;">
+                    <span>💡 不压缩：仅嵌入文件名头，随后把原始字节直接编码为 Base64（结果会比原文件大约 33%）</span>
                 </div>
 
                 <div class="upload-area" 
@@ -185,11 +202,11 @@
                         <div class="stat-value">{{ originalSize }}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">压缩后大小</div>
+                        <div class="stat-label">{{ isRaw ? 'Base64 大小' : '压缩后大小' }}</div>
                         <div class="stat-value">{{ compressedSize }}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">压缩率</div>
+                        <div class="stat-label">{{ isRaw ? '编码变化' : '压缩率' }}</div>
                         <div class="stat-value" :class="ratioColor">{{ compressionRatio }}</div>
                     </div>
                 </div>
@@ -197,7 +214,7 @@
                 <div class="result-area" :class="{ show: showResult }">
                     <div class="divider"></div>
                     <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 8px; font-size: 0.9rem;">
-                        Base64 压缩结果（含文件名）
+                        Base64 {{ isRaw ? '编码' : '压缩' }}结果（含文件名）
                     </label>
                     <div style="position: relative;">
                         <div class="output-box">{{ base64Output }}</div>
@@ -221,7 +238,7 @@
             <div class="card">
                 <div class="card-title">
                     <div class="icon">📥</div>
-                    Base64 → 文件（解压，自动提取文件名）
+                    Base64 → 文件（{{ isRaw ? '不解压' : '解压' }}，自动提取文件名）
                 </div>
 
                 <div class="decode-upload-area"
@@ -247,7 +264,7 @@
                 </div>
 
                 <button class="btn btn-primary" @click="decodeBase64">
-                    <span>🔄</span> 解压并下载
+                    <span>🔄</span> {{ isRaw ? '还原' : '解压' }}并下载
                 </button>
                 <button class="btn btn-secondary" @click="clearDecode">
                     <span>🗑️</span> 清空
@@ -258,15 +275,15 @@
 
                 <div class="stats-grid" v-show="showDecodeStats">
                     <div class="stat-box">
-                        <div class="stat-label">压缩数据大小</div>
+                        <div class="stat-label">{{ isRaw ? 'Base64 数据大小' : '压缩数据大小' }}</div>
                         <div class="stat-value">{{ decodeCompressedSize }}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">解压后大小</div>
+                        <div class="stat-label">{{ isRaw ? '还原后大小' : '解压后大小' }}</div>
                         <div class="stat-value green">{{ decodeOriginalSize }}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">解压率</div>
+                        <div class="stat-label">{{ isRaw ? '还原率' : '解压率' }}</div>
                         <div class="stat-value">{{ decodeRatio }}</div>
                     </div>
                 </div>
@@ -279,7 +296,7 @@
                     最小还原代码（独立可用）
                 </div>
                 <div class="code-desc">
-                    以下代码不依赖本页面，{{ engine === 'pako' ? '仅需引入 pako 库' : '使用浏览器原生 API' }}即可将 Base64 字符串还原为原文件。
+                    以下代码不依赖本页面（{{ restoreDesc }}），即可将 Base64 字符串还原为原文件。
                     复制到浏览器控制台或单独 HTML 文件中即可运行。
                 </div>
                 <pre><code class="language-javascript">{{ restoreCode }}</code></pre>
@@ -346,11 +363,23 @@
                 levelDesc() {
                     return this.levelDescriptions[this.level];
                 },
+                isRaw() {
+                    return this.engine === 'none';
+                },
                 compressCode() {
-                    return this.engine === 'pako' ? 'pako.deflate()' : 'CompressionStream("gzip")';
+                    if (this.engine === 'pako') return 'pako.deflate()';
+                    if (this.engine === 'native') return 'CompressionStream("gzip")';
+                    return '不压缩';
                 },
                 decompressCode() {
-                    return this.engine === 'pako' ? 'pako.inflate()' : 'DecompressionStream("gzip")';
+                    if (this.engine === 'pako') return 'pako.inflate()';
+                    if (this.engine === 'native') return 'DecompressionStream("gzip")';
+                    return '不解压';
+                },
+                restoreDesc() {
+                    if (this.engine === 'pako') return '仅需引入 pako 库';
+                    if (this.engine === 'native') return '使用浏览器原生 API';
+                    return '不压缩模式无需任何库或 API';
                 },
                 restoreCode() {
                     if (this.engine === 'pako') {
@@ -381,7 +410,7 @@ function restoreFile(base64Str) {
 
 // 使用示例:
 // restoreFile("你的Base64字符串");`;
-                    } else {
+                    } else if (this.engine === 'native') {
                         return `// 使用浏览器原生 DecompressionStream API
 
 async function restoreFile(base64Str) {
@@ -428,12 +457,40 @@ async function restoreFile(base64Str) {
 
 // 使用示例:
 // restoreFile("你的Base64字符串").then(name => console.log(name));`;
+                    } else {
+                        return `// 不压缩模式：无需任何库或 API，直接 Base64 解码还原
+
+function restoreFile(base64Str) {
+    // Base64 解码
+    const data = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
+
+    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
+    const nameLen = data[0] | (data[1] << 8);
+    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
+    const fileData = data.slice(2 + nameLen);
+
+    // 自动下载
+    const blob = new Blob([fileData]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    return fileName;
+}
+
+// 使用示例:
+// restoreFile("你的Base64字符串");`;
                     }
                 }
             },
             methods: {
                 // ========== 压缩引擎相关 ==========
                 async compress(data) {
+                    if (this.engine === 'none') {
+                        return data;
+                    }
                     if (this.engine === 'pako') {
                         return pako.deflate(data, { level: this.level });
                     } else {
@@ -462,6 +519,9 @@ async function restoreFile(base64Str) {
                     }
                 },
                 async decompress(compressedData) {
+                    if (this.engine === 'none') {
+                        return compressedData;
+                    }
                     if (this.engine === 'pako') {
                         return pako.inflate(compressedData);
                     } else {
@@ -711,9 +771,9 @@ async function restoreFile(base64Str) {
                         this.decodeRatio = (fileData.length / this.decodeInput.length).toFixed(2) + 'x';
                         this.showDecodeStats = true;
 
-                        this.decodeSuccess = `✅ 文件 "${fileName}" 已成功解压并下载！`;
+                        this.decodeSuccess = `✅ 文件 "${fileName}" 已成功${this.isRaw ? '还原' : '解压'}并下载！`;
                     } catch (err) {
-                        this.decodeError = '解压失败: ' + err.message;
+                        this.decodeError = (this.isRaw ? '还原失败: ' : '解压失败: ') + err.message;
                         this.showDecodeStats = false;
                     }
                 },
