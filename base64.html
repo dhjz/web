@@ -80,6 +80,7 @@
         .decode-info .label { color: #6b7280; font-size: 0.78rem; }
         .decode-info .value { font-weight: 600; color: #1f2937; font-size: 0.95rem; }
         .code-desc { color: #6b7280; margin-bottom: 8px; font-size: 0.82rem; line-height: 1.5; }
+        .code-copy-btn { margin: 0 0 0 auto; padding: 6px 12px; font-size: 0.8rem; flex-shrink: 0; }
         pre[class*="language-"] { border-radius: 8px !important; margin: 0 !important; font-size: 0.78rem !important; }
         .decode-upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; margin-bottom: 8px; }
         .decode-upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
@@ -106,12 +107,10 @@
         .engine-badge.lib { background: #dbeafe; color: #2563eb; }
         .engine-badge.raw { background: #fef3c7; color: #b45309; }
 
-        /* 包含文件名开关 / 手工文件名输入 */
-        .option-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
-        .checkbox-option { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #374151; }
-        .checkbox-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer; }
+        /* 包含文件名开关（放在标题旁）/ 手工文件名输入 */
+        .checkbox-option { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; cursor: pointer; font-size: 0.78rem; font-weight: 600; color: #374151; white-space: nowrap; }
+        .checkbox-option input[type="checkbox"] { width: 14px; height: 14px; accent-color: #2563eb; cursor: pointer; }
         .checkbox-option.disabled { opacity: 0.55; cursor: not-allowed; }
-        .checkbox-hint { font-weight: 400; font-size: 0.75rem; color: #6b7280; }
         .filename-input { flex: 1; min-width: 180px; padding: 7px 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; background: #fafafa; }
         .filename-input:focus { outline: none; border-color: #2563eb; background: white; }
 
@@ -155,6 +154,10 @@
                 <div>
                 <div class="engine-selector-title">
                     ⚙️ 压缩引擎选择
+                    <label class="checkbox-option" :class="{ disabled: isText }" :title="isText ? '纯文本模式本身不含文件名' : (includeFileName ? '勾选：数据头写入文件名，还原时自动提取' : '不勾选：数据就是纯文件内容，还原时把文件名作为第二个参数传入')">
+                        <input type="checkbox" v-model="includeFileName" :disabled="isText" @change="onIncludeFileNameChange">
+                        <span>包含文件名</span>
+                    </label>
                 </div>
                 <div class="engine-options">
                     <label class="engine-option" :class="{ active: engine === 'pako' }">
@@ -198,7 +201,7 @@
                         <input type="radio" v-model="contentMode" value="file" @change="onContentModeChange">
                         <div class="engine-info">
                             <div class="engine-name">文件（上传文件）</div>
-                            <div class="engine-desc">上传文件，可用下方开关决定是否写入文件名</div>
+                            <div class="engine-desc">上传文件，可用「包含文件名」开关决定是否写入文件名</div>
                         </div>
                     </label>
                     <label class="engine-option" :class="{ active: contentMode === 'text' }">
@@ -213,16 +216,6 @@
                     </label>
                 </div>
                 </div>
-                </div>
-
-                <div class="option-footer">
-                    <label class="checkbox-option" :class="{ disabled: isText }">
-                        <input type="checkbox" v-model="includeFileName" :disabled="isText" @change="onIncludeFileNameChange">
-                        <span>包含文件名</span>
-                        <span class="checkbox-hint">
-                            {{ isText ? '纯文本模式本身不含文件名' : (includeFileName ? '勾选：数据头写入文件名，还原时自动提取' : '不勾选：数据就是纯文件内容，还原时把文件名作为第二个参数传入') }}
-                        </span>
-                    </label>
                 </div>
             </div>
 
@@ -388,6 +381,9 @@
                 <div class="card-title">
                     <div class="icon">📜</div>
                     最小还原代码（独立可用）
+                    <button class="btn btn-primary code-copy-btn" @click="copyCode">
+                        <span>📋</span> 复制代码
+                    </button>
                 </div>
                 <div class="code-desc">
                     以下代码不依赖本页面（{{ restoreDesc }}），即可将 Base64 字符串还原为{{ isText ? '原文本' : '原文件' }}。
@@ -396,11 +392,6 @@
                     <span v-else-if="!useFileNameHeader">未包含文件名：数据就是纯文件内容，restoreFile 不解析文件名，直接把文件名作为第二个参数传入。</span>
                 </div>
                 <pre><code class="language-javascript">{{ restoreCode }}</code></pre>
-                <div style="margin-top: 8px;">
-                    <button class="btn btn-primary" @click="copyCode">
-                        <span>📋</span> 复制代码
-                    </button>
-                </div>
             </div>
         </div>
     </div>

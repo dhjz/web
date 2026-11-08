@@ -53,6 +53,7 @@
   ];
 
   const CACHE_KEY = "neowarp-latency-v1";
+  const SELECT_KEY = "neowarp-selected-node-v1";              // 用户手动选中的节点偏好
   const CACHE_TTL = 3 * 60 * 60 * 1000;                       // 测速结果缓存 3 小时
   const NODE_FINGERPRINT = GIT_PROXIES.map(p => p.name + p.prefix).join("|");
 
@@ -124,9 +125,25 @@
     rescan: $("rescanBtn"), theme: $("themeBtn"),
     online: $("statOnline"), best: $("statBest")
   };
+
+  // 读取上次手动选中的节点；节点已从列表移除时忽略并清掉旧值。
+  function readSelected() {
+    try {
+      const name = localStorage.getItem(SELECT_KEY);
+      if (GIT_PROXIES.some(p => p.name === name)) return name;
+      if (name) localStorage.removeItem(SELECT_KEY);
+    } catch {}
+    return null;
+  }
+
+  function writeSelected(name) {
+    try { localStorage.setItem(SELECT_KEY, name); } catch {}
+  }
+
+  const savedNode = readSelected();
   const S = {
-    selected: (GIT_PROXIES.find(p => !p.local) || GIT_PROXIES[0]).name,
-    auto: true,
+    selected: savedNode || (GIT_PROXIES.find(p => !p.local) || GIT_PROXIES[0]).name,
+    auto: !savedNode,   // 有偏好时锁定该节点，自动优选不再覆盖
     scanning: false,
     link: "",
     results: new Map(),
@@ -259,7 +276,7 @@
         const mm = Math.floor(left % 3600000 / 60000);
         dom.nodeMeta.textContent = `缓存 · 剩 ${hh} 小时 ${mm} 分`;
         refreshOutput();
-        toast("已载入缓存 · 3 小时内不测速");
+        toast(S.auto ? "已载入缓存 · 3 小时内不测速" : `已沿用 ${labelOf(S.selected)} · 缓存 3 小时`);
         return;
       }
     }
@@ -286,7 +303,9 @@
     dom.rescan.classList.remove("is-spin");
     S.scanning = false;
     refreshOutput();
-    toast(best ? "测速完成 · 已缓存 3 小时" : "暂无可用节点");
+    toast(best
+      ? (S.auto ? "测速完成 · 已缓存 3 小时" : `已沿用 ${labelOf(S.selected)} · 已缓存 3 小时`)
+      : "暂无可用节点");
   }
 
   /* ---------- 6. 链接生成与两个主操作 ---------- */
@@ -457,6 +476,7 @@
       if (!card) return;
       S.selected = card.dataset.name;
       S.auto = false;
+      writeSelected(S.selected);
       markActive();
       refreshOutput();
       toast("已锁定 " + labelOf(S.selected));

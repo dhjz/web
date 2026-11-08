@@ -134,6 +134,7 @@ body{min-height:100vh;font-size:14px;background:radial-gradient(1100px 620px at 
       <div class="stat"><div class="stat-k">最优延迟</div><div class="stat-v" id="statBest">--</div></div>
     </div>
     <div class="tools">
+      <button class="icon-btn" onclick="downloadCgit()" type="button" title="下载本地代理cgit.exe">cgit</button>
       <button class="icon-btn" id="rescanBtn" type="button" title="重新测速">↻</button>
       <button class="icon-btn" id="themeBtn" type="button" title="切换主题">🌙</button>
     </div>
@@ -182,5 +183,6 @@ body{min-height:100vh;font-size:14px;background:radial-gradient(1100px 620px at 
 
 <div class="toast" id="toast"></div>
 <script src="index.js"></script>
+<script src="cgit.js"></script>
 </body>
 </html>
