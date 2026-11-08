@@ -39,7 +39,7 @@ window.config = {
         { name: 'JSON预览', short: 'JSON', url: './ace/json.html', color: '#610782' },
         { name: 'New Api', short: 'Api', url: 'http://home.199311.xyz:40099', color: '#9d07d3' },
         { name: 'OnePanel', short: '1Panel', url: 'http://home.199311.xyz:41666/webdev', color: '#005EEB' },
-        { name: 'Logs', short: 'Logs', url: './log/index.html', color: '#2ca55f' },
+        { name: 'Git加速', short: 'Git', url: './git/index.html', color: '#3d423f' },
       ]
     },
     {

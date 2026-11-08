@@ -120,7 +120,7 @@
   const dom = {
     nodes: $("nodes"), nodeMeta: $("nodeMeta"), fill: $("scanFill"),
     url: $("url"), chips: $("chips"), relay: $("relay"), out: $("out"),
-    copy: $("copyBtn"), go: $("goBtn"), toast: $("toast"),
+    copy: $("copyBtn"), go: $("goBtn"), clear: $("clearBtn"), toast: $("toast"),
     rescan: $("rescanBtn"), theme: $("themeBtn"),
     online: $("statOnline"), best: $("statBest")
   };
@@ -463,6 +463,11 @@
     });
 
     dom.url.addEventListener("input", refreshOutput);
+    dom.clear.addEventListener("click", () => {
+      dom.url.value = "";
+      refreshOutput();
+      dom.url.focus();
+    });
     dom.url.addEventListener("keydown", e => {
       if (e.key === "Enter" && S.link) openDownload();
     });
