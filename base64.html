@@ -14,95 +14,119 @@
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; padding: 20px 16px; color: #374151; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        h1 { text-align: center; color: #1f2937; font-size: 1.8rem; margin-bottom: 6px; font-weight: 700; }
-        .principle { text-align: center; color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5; background: white; padding: 10px 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
-        .principle code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #2563eb; }
-        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
-        .card-title { font-size: 1.15rem; color: #1f2937; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
-        .card-title .icon { width: 28px; height: 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; }
-        .upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 28px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; padding: 14px 18px; color: #374151; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* 顶部标题与原理说明并排，选项区与编解码区双列 */
+        .page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+        h1 { color: #1f2937; font-size: 1.45rem; font-weight: 700; white-space: nowrap; }
+        .principle { flex: 1; color: #6b7280; font-size: 0.78rem; margin-bottom: 0; line-height: 1.45; background: white; padding: 7px 12px; border-radius: 8px; border: 1px solid #e5e7eb; }
+        .principle code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.78rem; color: #2563eb; }
+        .selector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+        .selector-grid > div { min-width: 0; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-bottom: 14px; }
+        .main-grid > .card { margin-bottom: 0; min-width: 0; }
+
+        .card { background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .card-title { font-size: 1.05rem; color: #1f2937; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .card-title .icon { width: 24px; height: 24px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem; flex-shrink: 0; }
+        .upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; }
         .upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
         .upload-area.dragover { border-color: #3b82f6; background: #dbeafe; transform: scale(1.01); }
         .upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
-        .upload-icon { font-size: 2.2rem; margin-bottom: 8px; }
-        .upload-text { color: #4b5563; font-size: 0.95rem; font-weight: 500; }
-        .upload-hint { color: #9ca3af; font-size: 0.8rem; margin-top: 4px; }
-        .file-info { display: none; margin-top: 12px; padding: 10px 12px; background: #eff6ff; border-radius: 8px; border-left: 3px solid #3b82f6; font-size: 0.9rem; }
+        .upload-icon { font-size: 1.6rem; margin-bottom: 2px; line-height: 1.2; }
+        .upload-text { color: #4b5563; font-size: 0.9rem; font-weight: 500; }
+        .upload-hint { color: #9ca3af; font-size: 0.78rem; margin-top: 3px; line-height: 1.4; }
+        .file-info { display: none; margin-top: 8px; padding: 8px 10px; background: #eff6ff; border-radius: 8px; border-left: 3px solid #3b82f6; font-size: 0.85rem; }
         .file-info.show { display: block; }
         .file-name { font-weight: 600; color: #1f2937; }
-        .file-meta { color: #6b7280; font-size: 0.8rem; margin-top: 2px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
-        .stat-box { background: #f9fafb; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #f3f4f6; }
-        .stat-label { font-size: 0.7rem; color: #6b7280; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-value { font-size: 1rem; font-weight: 700; color: #2563eb; }
+        .file-meta { color: #6b7280; font-size: 0.78rem; margin-top: 2px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .stat-box { background: #f9fafb; padding: 8px 6px; border-radius: 8px; text-align: center; border: 1px solid #f3f4f6; }
+        .stat-label { font-size: 0.68rem; color: #6b7280; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 0.95rem; font-weight: 700; color: #2563eb; }
         .stat-value.green { color: #059669; }
         .stat-value.red { color: #dc2626; }
-        .control-group { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-        .control-group label { font-weight: 600; color: #374151; font-size: 0.9rem; }
+        .control-group { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .control-group label { font-weight: 600; color: #374151; font-size: 0.88rem; }
         .slider-container { display: flex; align-items: center; gap: 8px; }
-        input[type="range"] { width: 160px; accent-color: #2563eb; }
-        .slider-value { background: #2563eb; color: white; padding: 3px 10px; border-radius: 5px; font-weight: 600; font-size: 0.85rem; min-width: 26px; text-align: center; }
-        .level-desc { color: #6b7280; font-size: 0.8rem; }
-        textarea { width: 100%; min-height: 120px; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; resize: vertical; transition: border-color 0.2s; background: #fafafa; }
+        input[type="range"] { width: 150px; accent-color: #2563eb; }
+        .slider-value { background: #2563eb; color: white; padding: 2px 9px; border-radius: 5px; font-weight: 600; font-size: 0.82rem; min-width: 26px; text-align: center; }
+        .level-desc { color: #6b7280; font-size: 0.78rem; }
+        textarea { width: 100%; min-height: 96px; padding: 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.82rem; resize: vertical; transition: border-color 0.2s; background: #fafafa; }
         textarea:focus { outline: none; border-color: #2563eb; background: white; }
-        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 10px; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { transform: translateY(-1px); opacity: 0.9; }
         .btn-secondary { background: #f3f4f6; color: #4b5563; margin-left: 8px; }
         .btn-secondary:hover { background: #e5e7eb; }
         .btn-success { background: #059669; color: white; }
         .btn-success:hover { opacity: 0.9; }
-        .result-area { margin-top: 14px; display: none; }
+        .result-area { margin-top: 10px; display: none; }
         .result-area.show { display: block; }
-        .output-box { background: #1e1e2e; color: #a6accd; padding: 12px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.8rem; word-break: break-all; max-height: 160px; overflow-y: auto; position: relative; }
+        .output-box { background: #1e1e2e; color: #a6accd; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.78rem; word-break: break-all; max-height: 120px; overflow-y: auto; position: relative; }
         .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 0.75rem; }
         .copy-btn:hover { background: rgba(255,255,255,0.2); }
         .copy-btn.copied { background: #059669; border-color: #059669; }
-        .divider { height: 1px; background: #e5e7eb; margin: 16px 0; }
-        .error-msg { color: #dc2626; background: #fef2f2; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; font-size: 0.85rem; }
+        .divider { height: 1px; background: #e5e7eb; margin: 10px 0; }
+        .error-msg { color: #dc2626; background: #fef2f2; padding: 6px 10px; border-radius: 6px; margin-top: 6px; display: none; font-size: 0.82rem; }
         .error-msg.show { display: block; }
-        .success-msg { color: #059669; background: #ecfdf5; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; font-size: 0.85rem; }
+        .success-msg { color: #059669; background: #ecfdf5; padding: 6px 10px; border-radius: 6px; margin-top: 6px; display: none; font-size: 0.82rem; }
         .success-msg.show { display: block; }
-        .preview-area { margin-top: 12px; text-align: center; }
-        .preview-area img { max-width: 100%; max-height: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .decode-info { background: #eff6ff; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #2563eb; display: none; }
+        .preview-area { margin-top: 8px; text-align: center; }
+        .preview-area img { max-width: 100%; max-height: 160px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .decode-info { background: #eff6ff; padding: 8px 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #2563eb; display: none; }
         .decode-info.show { display: block; }
-        .decode-info .label { color: #6b7280; font-size: 0.8rem; }
-        .decode-info .value { font-weight: 600; color: #1f2937; font-size: 1rem; }
-        .code-desc { color: #6b7280; margin-bottom: 12px; font-size: 0.85rem; line-height: 1.5; }
-        pre[class*="language-"] { border-radius: 8px !important; margin: 0 !important; font-size: 0.8rem !important; }
-        .decode-upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 20px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; margin-bottom: 12px; }
+        .decode-info .label { color: #6b7280; font-size: 0.78rem; }
+        .decode-info .value { font-weight: 600; color: #1f2937; font-size: 0.95rem; }
+        .code-desc { color: #6b7280; margin-bottom: 8px; font-size: 0.82rem; line-height: 1.5; }
+        pre[class*="language-"] { border-radius: 8px !important; margin: 0 !important; font-size: 0.78rem !important; }
+        .decode-upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: #fafafa; position: relative; overflow: hidden; margin-bottom: 8px; }
         .decode-upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
         .decode-upload-area.dragover { border-color: #3b82f6; background: #dbeafe; }
         .decode-upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
-        .or-divider { text-align: center; color: #9ca3af; font-size: 0.8rem; margin: 8px 0; position: relative; }
+        .or-divider { text-align: center; color: #9ca3af; font-size: 0.78rem; margin: 6px 0; position: relative; }
         .or-divider::before, .or-divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #e5e7eb; }
         .or-divider::before { left: 0; }
         .or-divider::after { right: 0; }
 
         /* 压缩引擎选择器样式 */
-        .engine-selector { background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
-        .engine-selector-title { font-size: 1rem; color: #1f2937; margin-bottom: 10px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-        .engine-options { display: flex; gap: 20px; flex-wrap: wrap; }
-        .engine-option { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 2px solid #e5e7eb; transition: all 0.2s; background: #fafafa; }
+        .engine-selector { background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .engine-selector-title { font-size: 0.95rem; color: #1f2937; margin-bottom: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .engine-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 8px; }
+        .engine-option { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 2px solid #e5e7eb; transition: all 0.2s; background: #fafafa; min-width: 0; }
         .engine-option:hover { border-color: #3b82f6; background: #eff6ff; }
         .engine-option.active { border-color: #2563eb; background: #eff6ff; }
-        .engine-option input[type="radio"] { width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer; }
-        .engine-option .engine-name { font-weight: 600; color: #1f2937; font-size: 0.9rem; }
-        .engine-option .engine-desc { color: #6b7280; font-size: 0.75rem; margin-top: 2px; }
-        .engine-option .engine-info { display: flex; flex-direction: column; }
-        .engine-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 6px; }
+        .engine-option input[type="radio"] { width: 15px; height: 15px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0; }
+        .engine-option .engine-name { font-weight: 600; color: #1f2937; font-size: 0.85rem; }
+        .engine-option .engine-desc { color: #6b7280; font-size: 0.72rem; margin-top: 2px; }
+        .engine-option .engine-info { display: flex; flex-direction: column; min-width: 0; }
+        .engine-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; margin-left: 4px; }
         .engine-badge.native { background: #d1fae5; color: #059669; }
         .engine-badge.lib { background: #dbeafe; color: #2563eb; }
         .engine-badge.raw { background: #fef3c7; color: #b45309; }
 
-        @media (max-width: 600px) { h1 { font-size: 1.4rem; }
-        .stats-grid { grid-template-columns: 1fr; }
-        .control-group { flex-direction: column; align-items: flex-start; }
-        input[type="range"] { width: 100%; }
-        .engine-options { flex-direction: column; }
+        /* 包含文件名开关 / 手工文件名输入 */
+        .option-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
+        .checkbox-option { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #374151; }
+        .checkbox-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer; }
+        .checkbox-option.disabled { opacity: 0.55; cursor: not-allowed; }
+        .checkbox-hint { font-weight: 400; font-size: 0.75rem; color: #6b7280; }
+        .filename-input { flex: 1; min-width: 180px; padding: 7px 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 0.85rem; background: #fafafa; }
+        .filename-input:focus { outline: none; border-color: #2563eb; background: white; }
+
+        /* 窄屏回退为单列 */
+        @media (max-width: 960px) {
+            .selector-grid, .main-grid { grid-template-columns: 1fr; }
+            .page-header { flex-direction: column; align-items: stretch; gap: 8px; }
+            h1 { text-align: center; }
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 1.3rem; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .control-group { flex-direction: column; align-items: flex-start; }
+            input[type="range"] { width: 100%; }
+            .engine-options { grid-template-columns: 1fr; }
         }
 
     </style>
@@ -110,10 +134,25 @@
 <body>
     <div id="app">
         <div class="container">
-            <h1>🔐 压缩 Base64 转换器</h1>
+            <div class="page-header">
+                <h1>🔐 压缩 Base64 转换器</h1>
+                <div class="principle">
+                    <template v-if="isText">
+                        原理：文本 → UTF-8 字节 → <code>{{ compressCode }}</code> → Base64 编码（仅文本内容，不含文件名/文件类型）<br>逆向：Base64 → <code>{{ decompressCode }}</code> → 直接得到原文本
+                    </template>
+                    <template v-else-if="useFileNameHeader">
+                        原理：文件 → 二进制 → <code>{{ compressCode }}</code> → 嵌入文件名 → Base64 编码<br>逆向：Base64 → <code>{{ decompressCode }}</code> → 提取文件名 → 还原文件
+                    </template>
+                    <template v-else>
+                        原理：文件 → 二进制 → <code>{{ compressCode }}</code> → Base64 编码（纯文件内容，不含文件名）<br>逆向：Base64 → <code>{{ decompressCode }}</code> → 传入文件名 → 还原文件
+                    </template>
+                </div>
+            </div>
 
-            <!-- 压缩引擎选择器 -->
+            <!-- 压缩引擎 / 数据格式 -->
             <div class="engine-selector">
+                <div class="selector-grid">
+                <div>
                 <div class="engine-selector-title">
                     ⚙️ 压缩引擎选择
                 </div>
@@ -149,20 +188,51 @@
                         </div>
                     </label>
                 </div>
+                </div>
+                <div>
+                <div class="engine-selector-title">
+                    📝 输入内容 / 数据格式
+                </div>
+                <div class="engine-options">
+                    <label class="engine-option" :class="{ active: contentMode === 'file' }">
+                        <input type="radio" v-model="contentMode" value="file" @change="onContentModeChange">
+                        <div class="engine-info">
+                            <div class="engine-name">文件（上传文件）</div>
+                            <div class="engine-desc">上传文件，可用下方开关决定是否写入文件名</div>
+                        </div>
+                    </label>
+                    <label class="engine-option" :class="{ active: contentMode === 'text' }">
+                        <input type="radio" v-model="contentMode" value="text" @change="onContentModeChange">
+                        <div class="engine-info">
+                            <div class="engine-name">
+                                纯文本（直接输入）
+                                <span class="engine-badge raw">无文件名</span>
+                            </div>
+                            <div class="engine-desc">只存文本内容，不存文件名和文件类型</div>
+                        </div>
+                    </label>
+                </div>
+                </div>
+                </div>
+
+                <div class="option-footer">
+                    <label class="checkbox-option" :class="{ disabled: isText }">
+                        <input type="checkbox" v-model="includeFileName" :disabled="isText" @change="onIncludeFileNameChange">
+                        <span>包含文件名</span>
+                        <span class="checkbox-hint">
+                            {{ isText ? '纯文本模式本身不含文件名' : (includeFileName ? '勾选：数据头写入文件名，还原时自动提取' : '不勾选：数据就是纯文件内容，还原时把文件名作为第二个参数传入') }}
+                        </span>
+                    </label>
+                </div>
             </div>
 
-            <div class="principle" v-if="engine !== 'none'">
-                原理：文件 → 二进制 → <code>{{ compressCode }}</code> 压缩 → 嵌入文件名 → Base64 编码 <br> 逆向：Base64 → <code>{{ decompressCode }}</code> 解压 → 提取文件名 → 还原文件
-            </div>
-            <div class="principle" v-else>
-                原理：文件 → 二进制 → 嵌入文件名 → Base64 编码（不压缩） <br> 逆向：Base64 → 提取文件名 → 还原文件（不解压）
-            </div>
-
+            <!-- 编码 / 解码 并排 -->
+            <div class="main-grid">
             <!-- 文件转 Base64 -->
             <div class="card">
                 <div class="card-title">
                     <div class="icon">📤</div>
-                    文件 → Base64（{{ isRaw ? '不压缩' : '压缩' }}，含文件名）
+                    {{ isText ? '文本' : '文件' }} → Base64（{{ isRaw ? '不压缩' : '压缩' }}，{{ isText ? '仅文本内容' : (useFileNameHeader ? '含文件名' : '纯文件内容') }}）
                 </div>
 
                 <div class="control-group" v-show="engine === 'pako'">
@@ -177,10 +247,10 @@
                     <span>💡 使用浏览器原生 CompressionStream，压缩级别由浏览器自动决定</span>
                 </div>
                 <div class="control-group" v-show="engine === 'none'" style="color: #6b7280; font-size: 0.85rem;">
-                    <span>💡 不压缩：仅嵌入文件名头，随后把原始字节直接编码为 Base64（结果会比原文件大约 33%）</span>
+                    <span>💡 不压缩：{{ isText ? 'UTF-8 文本字节直接编码为 Base64，Base64 解码后就是原文本' : '仅嵌入文件名头，随后把原始字节直接编码为 Base64（结果会比原文件大约 33%）' }}</span>
                 </div>
 
-                <div class="upload-area" 
+                <div class="upload-area" v-show="!isText"
                      @dragover.prevent="dragover = true" 
                      @dragleave.prevent="dragover = false"
                      @drop.prevent="onFileDrop"
@@ -191,14 +261,21 @@
                     <div class="upload-hint">支持图片、文档、二进制等任意文件</div>
                 </div>
 
-                <div class="file-info" :class="{ show: fileName }">
+                <div v-show="isText">
+                    <textarea v-model="textInput" @input="encodeText" placeholder="在此直接输入要压缩的文本..." style="min-height: 120px;"></textarea>
+                    <div class="upload-hint" style="margin-top: 6px;">
+                        💡 只存文本内容：输出 = Base64({{ isRaw ? '原文本的 UTF-8 字节' : '压缩后的原文本字节' }})，不含文件名和文件类型
+                    </div>
+                </div>
+
+                <div class="file-info" v-show="!isText" :class="{ show: fileName }">
                     <div class="file-name">{{ fileName }}</div>
                     <div class="file-meta">{{ fileMeta }}</div>
                 </div>
 
                 <div class="stats-grid" v-show="showStats">
                     <div class="stat-box">
-                        <div class="stat-label">原始大小</div>
+                        <div class="stat-label">{{ isText ? '文本大小' : '原始大小' }}</div>
                         <div class="stat-value">{{ originalSize }}</div>
                     </div>
                     <div class="stat-box">
@@ -214,13 +291,13 @@
                 <div class="result-area" :class="{ show: showResult }">
                     <div class="divider"></div>
                     <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 8px; font-size: 0.9rem;">
-                        Base64 {{ isRaw ? '编码' : '压缩' }}结果（含文件名）
+                        Base64 {{ isRaw ? '编码' : '压缩' }}结果（{{ isText ? '仅文本内容' : (useFileNameHeader ? '含文件名' : '纯文件内容') }}）
                     </label>
                     <div style="position: relative;">
                         <div class="output-box">{{ base64Output }}</div>
                         <button class="copy-btn" @click="copyToClipboard" :class="{ copied: copied }">{{ copyText }}</button>
                     </div>
-                    <div style="margin-top: 10px;">
+                    <div style="margin-top: 8px;">
                         <button class="btn btn-success" @click="downloadAsTxt">
                             <span>💾</span> 下载为 .txt
                         </button>
@@ -238,7 +315,7 @@
             <div class="card">
                 <div class="card-title">
                     <div class="icon">📥</div>
-                    Base64 → 文件（{{ isRaw ? '不解压' : '解压' }}，自动提取文件名）
+                    Base64 → {{ isText ? '文本' : '文件' }}（{{ isRaw ? '不解压' : '解压' }}，{{ isText ? '直接得到原文本' : (useFileNameHeader ? '自动提取文件名' : '手动指定文件名') }}）
                 </div>
 
                 <div class="decode-upload-area"
@@ -254,9 +331,14 @@
 
                 <div class="or-divider">或手动粘贴</div>
 
-                <div class="decode-info" :class="{ show: detectedFileName }">
+                <div class="decode-info" v-show="useFileNameHeader" :class="{ show: detectedFileName }">
                     <div class="label">检测到文件名</div>
                     <div class="value">{{ detectedFileName }}</div>
+                </div>
+
+                <div class="control-group" v-show="!isText && !useFileNameHeader">
+                    <label>还原文件名：</label>
+                    <input type="text" class="filename-input" v-model="restoreFileName" placeholder="例如 photo.png（留空则用 download.bin）">
                 </div>
 
                 <div class="input-group">
@@ -264,7 +346,7 @@
                 </div>
 
                 <button class="btn btn-primary" @click="decodeBase64">
-                    <span>🔄</span> {{ isRaw ? '还原' : '解压' }}并下载
+                    <span>🔄</span> {{ isText ? '还原为文本' : (isRaw ? '还原' : '解压') + '并下载' }}
                 </button>
                 <button class="btn btn-secondary" @click="clearDecode">
                     <span>🗑️</span> 清空
@@ -273,20 +355,32 @@
                 <div class="error-msg" :class="{ show: decodeError }">{{ decodeError }}</div>
                 <div class="success-msg" :class="{ show: decodeSuccess }">{{ decodeSuccess }}</div>
 
+                <div class="result-area" v-show="isText" :class="{ show: restoredText !== '' }">
+                    <div class="divider"></div>
+                    <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 8px; font-size: 0.9rem;">
+                        还原后的原文本
+                    </label>
+                    <textarea :value="restoredText" readonly style="min-height: 120px;"></textarea>
+                    <button class="btn btn-secondary" style="margin-left: 0;" @click="copyRestoredText">
+                        <span>📋</span> {{ restoredCopyText }}
+                    </button>
+                </div>
+
                 <div class="stats-grid" v-show="showDecodeStats">
                     <div class="stat-box">
-                        <div class="stat-label">{{ isRaw ? 'Base64 数据大小' : '压缩数据大小' }}</div>
+                        <div class="stat-label">{{ isText ? 'Base64 长度' : (isRaw ? 'Base64 数据大小' : '压缩数据大小') }}</div>
                         <div class="stat-value">{{ decodeCompressedSize }}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">{{ isRaw ? '还原后大小' : '解压后大小' }}</div>
+                        <div class="stat-label">{{ isText ? '文本大小' : (isRaw ? '还原后大小' : '解压后大小') }}</div>
                         <div class="stat-value green">{{ decodeOriginalSize }}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">{{ isRaw ? '还原率' : '解压率' }}</div>
+                        <div class="stat-label">{{ isText || isRaw ? '还原率' : '解压率' }}</div>
                         <div class="stat-value">{{ decodeRatio }}</div>
                     </div>
                 </div>
+            </div>
             </div>
 
             <!-- 最小还原代码示例 -->
@@ -296,11 +390,13 @@
                     最小还原代码（独立可用）
                 </div>
                 <div class="code-desc">
-                    以下代码不依赖本页面（{{ restoreDesc }}），即可将 Base64 字符串还原为原文件。
+                    以下代码不依赖本页面（{{ restoreDesc }}），即可将 Base64 字符串还原为{{ isText ? '原文本' : '原文件' }}。
                     复制到浏览器控制台或单独 HTML 文件中即可运行。
+                    <span v-if="isText">纯文本模式不读取文件名，Base64 解码并解压后直接就是原文本。</span>
+                    <span v-else-if="!useFileNameHeader">未包含文件名：数据就是纯文件内容，restoreFile 不解析文件名，直接把文件名作为第二个参数传入。</span>
                 </div>
                 <pre><code class="language-javascript">{{ restoreCode }}</code></pre>
-                <div style="margin-top: 10px;">
+                <div style="margin-top: 8px;">
                     <button class="btn btn-primary" @click="copyCode">
                         <span>📋</span> 复制代码
                     </button>
@@ -317,6 +413,10 @@
                 return {
                     // 压缩引擎选择
                     engine: 'pako',
+                    // 内容格式：file = 文件，text = 纯文本
+                    contentMode: 'file',
+                    // 文件模式下是否在数据头写入文件名
+                    includeFileName: true,
                     // 压缩级别
                     level: 6,
                     levelDescriptions: {
@@ -347,6 +447,8 @@
                     previewUrl: '',
                     currentFileData: null,
                     currentFileName: '',
+                    textInput: '',
+                    encodeToken: 0,
                     // 解码区状态
                     decodeDragover: false,
                     decodeInput: '',
@@ -356,7 +458,10 @@
                     showDecodeStats: false,
                     decodeCompressedSize: '-',
                     decodeOriginalSize: '-',
-                    decodeRatio: '-'
+                    decodeRatio: '-',
+                    restoredText: '',
+                    restoredCopyText: '复制文本',
+                    restoreFileName: ''
                 };
             },
             computed: {
@@ -365,6 +470,9 @@
                 },
                 isRaw() {
                     return this.engine === 'none';
+                },
+                isText() {
+                    return this.contentMode === 'text';
                 },
                 compressCode() {
                     if (this.engine === 'pako') return 'pako.deflate()';
@@ -377,47 +485,46 @@
                     return '不解压';
                 },
                 restoreDesc() {
-                    if (this.engine === 'pako') return '仅需引入 pako 库';
-                    if (this.engine === 'native') return '使用浏览器原生 API';
-                    return '不压缩模式无需任何库或 API';
+                    let dep;
+                    if (this.engine === 'pako') dep = '仅需引入 pako 库';
+                    else if (this.engine === 'native') dep = '使用浏览器原生 API';
+                    else dep = '不压缩模式无需任何库或 API';
+                    if (this.isText) return dep + '，纯文本模式直接还原为字符串';
+                    if (!this.useFileNameHeader) return dep + '，未包含文件名，文件名由第二个参数传入';
+                    return dep;
                 },
+                useFileNameHeader() {
+                    // 纯文本模式本身不含文件名；文件模式由开关决定
+                    return !this.isText && this.includeFileName;
+                },
+                // 按 引擎 × 数据格式 生成完整还原代码
                 restoreCode() {
+                    const isAsync = this.engine === 'native';
+                    const isText = this.isText;
+                    const withHeader = this.useFileNameHeader;
+                    const fnName = isText ? 'restoreText' : 'restoreFile';
+                    const args = withHeader || isText ? 'base64Str' : 'base64Str, fileName';
+                    const callArgs = withHeader || isText ? '"你的Base64字符串"' : '"你的Base64字符串", "原文件名.txt"';
+                    const resultVar = isText ? 'text' : 'name';
+
+                    const header = this.engine === 'pako'
+                        ? '// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js'
+                        : isAsync
+                            ? '// 使用浏览器原生 DecompressionStream API'
+                            : '// 不压缩模式：无需任何库或 API，直接 Base64 解码';
+
+                    let decodeBlock;
                     if (this.engine === 'pako') {
-                        return `// 需要: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/pako/2.1.0/pako.min.js
-
-function restoreFile(base64Str) {
-    // Base64 解码
+                        decodeBlock = `    // Base64 解码
     const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
 
-    // Pako 解压
-    const data = pako.inflate(compressed);
-
-    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
-    const nameLen = data[0] | (data[1] << 8);
-    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
-    const fileData = data.slice(2 + nameLen);
-
-    // 自动下载
-    const blob = new Blob([fileData]);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
-
-    return fileName;
-}
-
-// 使用示例:
-// restoreFile("你的Base64字符串");`;
-                    } else if (this.engine === 'native') {
-                        return `// 使用浏览器原生 DecompressionStream API
-
-async function restoreFile(base64Str) {
-    // Base64 解码
+    // Pako 解压，得到原始字节
+    const data = pako.inflate(compressed);`;
+                    } else if (isAsync) {
+                        decodeBlock = `    // Base64 解码
     const compressed = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
 
-    // 原生解压
+    // 原生解压，得到原始字节
     const stream = new ReadableStream({
         start(controller) {
             controller.enqueue(compressed);
@@ -437,52 +544,54 @@ async function restoreFile(base64Str) {
     for (const chunk of chunks) {
         data.set(chunk, offset);
         offset += chunk.length;
-    }
-
-    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
-    const nameLen = data[0] | (data[1] << 8);
-    const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
-    const fileData = data.slice(2 + nameLen);
-
-    // 自动下载
-    const blob = new Blob([fileData]);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
-
-    return fileName;
-}
-
-// 使用示例:
-// restoreFile("你的Base64字符串").then(name => console.log(name));`;
+    }`;
                     } else {
-                        return `// 不压缩模式：无需任何库或 API，直接 Base64 解码还原
+                        decodeBlock = `    // Base64 解码（不压缩，直接就是原始字节）
+    const data = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));`;
+                    }
 
-function restoreFile(base64Str) {
-    // Base64 解码
-    const data = Uint8Array.from(atob(base64Str), c => c.charCodeAt(0));
-
-    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
+                    let note, tail;
+                    if (isText) {
+                        note = '// 纯文本模式：数据里只有文本内容，没有文件名和文件类型';
+                        tail = `    // 不需要读取文件名，解压后的字节直接还原为原文本
+    return new TextDecoder().decode(data);`;
+                    } else if (withHeader) {
+                        note = '// 数据头包含文件名，还原时自动提取';
+                        tail = `    // 解析文件名（前2字节为长度，随后是UTF-8文件名）
     const nameLen = data[0] | (data[1] << 8);
     const fileName = new TextDecoder().decode(data.slice(2, 2 + nameLen));
     const fileData = data.slice(2 + nameLen);
 
     // 自动下载
-    const blob = new Blob([fileData]);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([fileData])), download: fileName });
+    a.click();URL.revokeObjectURL(a.href);
 
-    return fileName;
+    return fileName;`;
+                    } else {
+                        note = '// 未包含文件名：数据就是纯文件内容，文件名由第二个参数传入';
+                        tail = `    // 无需解析文件名，data 就是纯文件内容
+    // 自动下载
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([data])), download: fileName });
+    a.click();URL.revokeObjectURL(a.href);
+
+    return fileName;`;
+                    }
+
+                    const example = isAsync
+                        ? `// ${fnName}(${callArgs}).then(${resultVar} => console.log(${resultVar}));`
+                        : `// ${fnName}(${callArgs});`;
+
+                    return `${header}
+${note}
+
+${isAsync ? 'async ' : ''}function ${fnName}(${args}) {
+${decodeBlock}
+
+${tail}
 }
 
 // 使用示例:
-// restoreFile("你的Base64字符串");`;
-                    }
+${example}`;
                 }
             },
             methods: {
@@ -550,15 +659,26 @@ function restoreFile(base64Str) {
                     }
                 },
                 onEngineChange() {
-                    // 切换引擎时，如果有已加载的文件，重新压缩
-                    if (this.currentFileData && this.currentFileName) {
+                    // 切换引擎时，如果有已加载的数据（文件或文本），重新编码
+                    if (this.currentFileData) {
                         this.recompressFile();
                     }
                     // 清空解码区的检测结果
                     this.detectedFileName = '';
+                    this.restoredText = '';
                     this.decodeError = '';
                     this.decodeSuccess = '';
                     this.showDecodeStats = false;
+                },
+                onContentModeChange() {
+                    // 两种数据格式不兼容，切换时清空两侧结果
+                    this.clearEncode();
+                    this.clearDecode();
+                    this.textInput = '';
+                },
+                onIncludeFileNameChange() {
+                    // 数据头格式变了：重新编码并清空解码区检测结果
+                    this.onEngineChange();
                 },
 
                 // 工具方法
@@ -603,6 +723,24 @@ function restoreFile(base64Str) {
                     const fileData = data.slice(2 + nameLength);
                     return { fileName, fileData };
                 },
+                downloadBytes(fileData, fileName) {
+                    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([fileData])), download: fileName });
+                    a.click();URL.revokeObjectURL(a.href);
+                },
+                buildPayload(rawData) {
+                    // 不含文件名头时，压缩后的字节就是纯文件（或纯文本）内容本身
+                    return this.useFileNameHeader ? this.encodeWithFileName(this.currentFileName, rawData) : rawData;
+                },
+                updateStats(rawLength, base64) {
+                    this.showStats = true;
+                    this.originalSize = this.formatBytes(rawLength);
+                    this.compressedSize = this.formatBytes(base64.length);
+                    const ratio = rawLength > 0 ? ((1 - base64.length / rawLength) * 100).toFixed(1) : '0.0';
+                    this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
+                    this.ratioColor = ratio >= 0 ? 'green' : 'red';
+                    this.base64Output = base64;
+                    this.showResult = true;
+                },
 
                 // 编码区事件
                 onFileChange(e) {
@@ -627,23 +765,19 @@ function restoreFile(base64Str) {
                     };
                     reader.readAsArrayBuffer(file);
                 },
+                async encodeCurrent(rawLength) {
+                    const raw = this.currentFileData;
+                    if (!raw) return;
+                    // 防止连续输入时异步压缩结果乱序覆盖
+                    const token = ++this.encodeToken;
+                    const compressed = await this.compress(this.buildPayload(raw));
+                    if (token !== this.encodeToken) return;
+                    this.updateStats(rawLength, this.arrayBufferToBase64(compressed));
+                },
                 async processFile(file, arrayBuffer) {
-                    const packaged = this.encodeWithFileName(file.name, this.currentFileData);
-                    const compressed = await this.compress(packaged);
-                    const base64 = this.arrayBufferToBase64(compressed);
-
                     this.fileName = file.name;
                     this.fileMeta = `类型: ${file.type || '未知'} | 大小: ${this.formatBytes(file.size)}`;
-                    this.showStats = true;
-                    this.originalSize = this.formatBytes(arrayBuffer.byteLength);
-                    this.compressedSize = this.formatBytes(base64.length);
-
-                    const ratio = ((1 - base64.length / arrayBuffer.byteLength) * 100).toFixed(1);
-                    this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
-                    this.ratioColor = ratio >= 0 ? 'green' : 'red';
-
-                    this.base64Output = base64;
-                    this.showResult = true;
+                    await this.encodeCurrent(arrayBuffer.byteLength);
 
                     if (file.type.startsWith('image/')) {
                         this.previewUrl = URL.createObjectURL(file);
@@ -651,21 +785,26 @@ function restoreFile(base64Str) {
                         this.previewUrl = '';
                     }
                 },
+                async encodeText() {
+                    if (!this.textInput) {
+                        this.clearEncode();
+                        return;
+                    }
+                    const textBytes = new TextEncoder().encode(this.textInput);
+                    this.currentFileData = textBytes;
+                    this.currentFileName = '';
+                    this.previewUrl = '';
+                    await this.encodeCurrent(textBytes.length);
+                },
                 async onLevelChange() {
-                    if (this.currentFileData && this.currentFileName) {
+                    if (this.currentFileData) {
                         await this.recompressFile();
                     }
                 },
                 async recompressFile() {
-                    const packaged = this.encodeWithFileName(this.currentFileName, this.currentFileData);
-                    const compressed = await this.compress(packaged);
-                    const base64 = this.arrayBufferToBase64(compressed);
-
-                    this.compressedSize = this.formatBytes(base64.length);
-                    const ratio = ((1 - base64.length / this.currentFileData.length) * 100).toFixed(1);
-                    this.compressionRatio = ratio > 0 ? `↓${ratio}%` : `↑${Math.abs(ratio)}%`;
-                    this.ratioColor = ratio >= 0 ? 'green' : 'red';
-                    this.base64Output = base64;
+                    if (this.currentFileData) {
+                        await this.encodeCurrent(this.currentFileData.length);
+                    }
                 },
                 copyToClipboard() {
                     if (!this.base64Output) return;
@@ -680,17 +819,11 @@ function restoreFile(base64Str) {
                 },
                 downloadAsTxt() {
                     if (!this.base64Output) return;
-                    const blob = new Blob([this.base64Output], { type: 'text/plain' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = this.currentFileName + '.base64.txt';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([this.base64Output], { type: 'text/plain' })), download: (this.isText ? 'text' : this.currentFileName) + '.base64.txt' });
+                    a.click();URL.revokeObjectURL(a.href);
                 },
                 clearEncode() {
+                    this.encodeToken++;
                     this.fileName = '';
                     this.fileMeta = '';
                     this.showStats = false;
@@ -699,6 +832,7 @@ function restoreFile(base64Str) {
                     this.previewUrl = '';
                     this.currentFileData = null;
                     this.currentFileName = '';
+                    this.textInput = '';
                     this.$refs.fileInput.value = '';
                 },
 
@@ -724,7 +858,9 @@ function restoreFile(base64Str) {
                 },
                 async onDecodeInput() {
                     const base64 = this.decodeInput.trim();
-                    if (!base64) {
+                    this.restoredText = '';
+                    // 数据里没有文件名头时，不做文件名探测
+                    if (!base64 || !this.useFileNameHeader) {
                         this.detectedFileName = '';
                         return;
                     }
@@ -750,21 +886,34 @@ function restoreFile(base64Str) {
                     try {
                         const compressedData = this.base64ToUint8Array(this.decodeInput.trim());
                         const decompressed = await this.decompress(compressedData);
-                        const { fileName, fileData } = this.decodeWithFileName(decompressed);
 
-                        if (!fileName) {
-                            throw new Error('无法提取文件名，可能不是本工具生成的数据');
+                        if (this.isText) {
+                            // 数据里只有文本内容：不读文件名、不下载文件，直接还原字符串
+                            const text = new TextDecoder().decode(decompressed);
+                            this.restoredText = text;
+                            this.decodeCompressedSize = this.formatBytes(this.decodeInput.length);
+                            this.decodeOriginalSize = this.formatBytes(decompressed.length);
+                            this.decodeRatio = (decompressed.length / this.decodeInput.length).toFixed(2) + 'x';
+                            this.showDecodeStats = true;
+                            this.decodeSuccess = '✅ 文本已成功还原，可直接复制上方文本框内容';
+                            return;
                         }
 
-                        const blob = new Blob([fileData]);
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = fileName;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
+                        let fileName, fileData;
+                        if (this.useFileNameHeader) {
+                            const parsed = this.decodeWithFileName(decompressed);
+                            fileName = parsed.fileName;
+                            fileData = parsed.fileData;
+                            if (!fileName) {
+                                throw new Error('无法提取文件名，可能不是本工具生成的数据');
+                            }
+                        } else {
+                            // 数据就是纯文件内容，文件名由用户手工指定
+                            fileName = this.restoreFileName.trim() || 'download.bin';
+                            fileData = decompressed;
+                        }
+
+                        this.downloadBytes(fileData, fileName);
 
                         this.decodeCompressedSize = this.formatBytes(this.decodeInput.length);
                         this.decodeOriginalSize = this.formatBytes(fileData.length);
@@ -773,7 +922,7 @@ function restoreFile(base64Str) {
 
                         this.decodeSuccess = `✅ 文件 "${fileName}" 已成功${this.isRaw ? '还原' : '解压'}并下载！`;
                     } catch (err) {
-                        this.decodeError = (this.isRaw ? '还原失败: ' : '解压失败: ') + err.message;
+                        this.decodeError = (this.isText || this.isRaw ? '还原失败: ' : '解压失败: ') + err.message;
                         this.showDecodeStats = false;
                     }
                 },
@@ -783,7 +932,18 @@ function restoreFile(base64Str) {
                     this.decodeError = '';
                     this.decodeSuccess = '';
                     this.showDecodeStats = false;
+                    this.restoredText = '';
+                    this.restoredCopyText = '复制文本';
                     this.$refs.decodeFileInput.value = '';
+                },
+                copyRestoredText() {
+                    if (!this.restoredText) return;
+                    navigator.clipboard.writeText(this.restoredText).then(() => {
+                        this.restoredCopyText = '已复制!';
+                        setTimeout(() => {
+                            this.restoredCopyText = '复制文本';
+                        }, 2000);
+                    });
                 },
 
                 // 复制代码
