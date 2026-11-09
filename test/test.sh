@@ -25,7 +25,7 @@ set -euo pipefail
 export FTP_HOST="${FTP_HOST:-ftpupload.net}"
 export FTP_PORT="${FTP_PORT:-21}"
 export FTP_USER="${FTP_USER:-yzzme_43386931}"
-export FTP_PASS="${FTP_PASS:-dhj123456}"
+export FTP_PASS="${FTP_PASS:-123456}"
 export REMOTE_ROOT="${REMOTE_ROOT:-htdocs}"
 export UPLOAD_GIT="${UPLOAD_GIT:-0}"
 export DRY_RUN="${DRY_RUN:-0}"
