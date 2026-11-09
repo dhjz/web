@@ -26,6 +26,9 @@
   
   <!-- Mermaid 图表渲染 -->
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/mermaid/11.12.0/mermaid.min.js"></script>
+
+  <!-- 通用文本 PDF 导出（浏览器打印，零依赖） -->
+  <script src="./topdf.js"></script>
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; word-break: break-all; }
@@ -115,7 +118,7 @@
     .markdown-body code { background-color: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 3px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.9em; }
     .markdown-body pre { background-color: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; }
     .markdown-body pre code { background: none; padding: 0; }
-    .markdown-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 1rem 0; padding: 4px; border: 2px solid var(--text-secondary); background-color: var(--bg-secondary); box-shadow: var(--shadow); vertical-align: middle; transition: border-color 0.2s ease; }
+    .markdown-body img { max-width: calc(min(1000px, 100%)); height: auto; border-radius: 6px; margin: 1rem 0; padding: 4px; border: 2px solid var(--text-secondary); background-color: var(--bg-secondary); box-shadow: var(--shadow); vertical-align: middle; transition: border-color 0.2s ease; }
     .markdown-body p > img:only-child { display: block; }
     .markdown-body img:hover { border-color: var(--accent-color); }
     .markdown-body img.local-image-missing { min-width: 180px; min-height: 52px; padding: 12px; border: 2px dashed var(--accent-color); background-image: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(128,128,128,0.12) 8px, rgba(128,128,128,0.12) 16px); cursor: pointer; }
@@ -198,6 +201,8 @@
               <button class="menu-item" @click="openTool('../ueditor/index.html')">📝 Html2md<small>HTML 转 Markdown</small></button>
               <button class="menu-item" @click="openTool('./excel.html')">📊 excel2md<small>Excel 转 Markdown</small></button>
               <button class="menu-item" @click="openTool('./mermaid.html')">🔀 mermd<small>Mermaid 工具</small></button>
+              <div class="menu-sep"></div>
+              <button class="menu-item" @click="exportPdf()">📄 转 PDF<small>浏览器打印，文字可复制</small></button>
               <div class="menu-sep" v-if="showClearCacheBtn"></div>
               <button class="menu-item" v-if="showClearCacheBtn" @click="clearCache">🗑️ 清除缓存<small>清空本地历史记录</small></button>
             </div>
@@ -473,6 +478,18 @@
         },
         openTool(path) {
           window.open(path);
+        },
+        exportPdf() {
+          const content = this.$refs.markdownContent;
+          const tip = (msg, duration) => this.showTooltip(msg, Math.max(10, window.innerWidth / 2 - 140), window.innerHeight / 2, duration || 2500);
+          if (!window.ToPdf) return tip('topdf.js 未加载');
+          if (!this.showContent || !content || !content.innerHTML.trim()) return tip('没有可导出的文档');
+          const name = this.currentFile && this.currentFile.name
+            ? this.currentFile.name.replace(/\.[^.]+$/, '')
+            : 'document';
+          const opts = { filename: name + '.pdf', onStatus: msg => tip(msg) };
+          Promise.resolve(window.ToPdf.toTextPdf(content, opts))
+            .catch(err => tip('PDF 生成失败：' + ((err && err.message) || err), 4500));
         },
         triggerFileInput() {
           this.$refs.fileInput.click();
