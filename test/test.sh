@@ -184,8 +184,9 @@ pending = [x for x in stats if x["status"] != "hit"]
 skipped = [x for x in stats if x["status"] == "hit"]
 known_dirs = set(cached.get("dirs", []))
 
-def finish_cache(successful_rels):
-    entries = {}
+def finish_cache(successful_rels, merge=False):
+    # merge=True 用于 CHECK_ONLY：只读检查只补充结论，不删除已有条目
+    entries = dict(cached.get("files", {})) if merge else {}
     for item in stats:
         if item["status"] == "hit" or item["rel"] in successful_rels:
             # 只记内容特征：工作区重建后 mtime 必变，写进缓存会产生无谓的仓库 diff
@@ -369,11 +370,16 @@ if check_only:
     for item in pending:
         print("  U " + remote_path(item["rel"]))
     print("CHECK_ONLY=1：只比对，未上传")
+    known_dirs |= existing_dirs
+    print(f"      将 {len(skipped)} 个已同步文件、{len(existing_dirs)} 个远端目录写入缓存"
+          f"（依据远端 size/mtime，非内容校验；不清除已有条目）", flush=True)
+    finish_cache(set(), merge=True)
     close_ftp()
     sys.exit(0)
 
 if not pending:
     print("[4/4] 全部为最新，无需上传")
+    known_dirs |= existing_dirs
     finish_cache(set())
     close_ftp()
     sys.exit(0)
