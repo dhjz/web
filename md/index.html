@@ -108,9 +108,12 @@
     .markdown-body code { background-color: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 3px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.9em; }
     .markdown-body pre { background-color: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; }
     .markdown-body pre code { background: none; padding: 0; }
-    .markdown-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 1rem 0; }
+    .markdown-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 1rem 0; padding: 4px; border: 2px solid var(--text-secondary); background-color: var(--bg-secondary); box-shadow: var(--shadow); vertical-align: middle; transition: border-color 0.2s ease; }
+    .markdown-body p > img:only-child { display: block; }
+    .markdown-body img:hover { border-color: var(--accent-color); }
+    .markdown-body img.local-image-missing { min-width: 180px; min-height: 52px; padding: 12px; border: 2px dashed var(--accent-color); background-image: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(128,128,128,0.12) 8px, rgba(128,128,128,0.12) 16px); cursor: pointer; }
     .markdown-body hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }
-    .tooltip { position: fixed; background-color: var(--bg-header); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 1000; }
+    .tooltip { position: fixed; background-color: var(--bg-header); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 1000; max-width: min(90vw, 520px); line-height: 1.5; }
     .tooltip.show { opacity: 1; }
     @media (max-width: 1200px) { .sidebar { width: 220px; } }
     @media (max-width: 768px) { .content-wrapper.active { flex-direction: column; } .sidebar { width: 100%; } .toc-container { max-height: 300px; position: static; } header { padding: 1rem; } .header-content { flex-direction: column; align-items: stretch; } .controls { justify-content: center; } main { padding: 1rem; } .markdown-body { padding: 1rem; } }
@@ -161,11 +164,17 @@
     <header>
       <div class="header-content">
         <div class="logo">
-          <span>📝 Markdown 预览器</span>
+          <span>📝 MD 预览</span>
         </div>
         <div class="controls">
           <input type="file" ref="fileInput" accept=".md,.markdown,.txt" style="display: none;" @change="handleFileSelect">
+          <input type="file" ref="imageInput" accept="image/*" multiple style="display: none;" @change="handleImageSelect">
+          <input type="file" ref="imageDirInput" webkitdirectory multiple style="display: none;" @change="handleImageSelect">
+          <input type="file" ref="manualImageInput" accept="image/*" style="display: none;" @change="handleManualImage">
           <button class="btn" @click="triggerFileInput">📂 打开文件</button>
+          <button class="btn btn-secondary" @click="triggerImageInput" title="选择本地图片（可多选），自动对应文档里的图片引用；没匹配上的图片可直接点击手动指定">📷 关联图片</button>
+          <button class="btn btn-secondary" @click="triggerImageDirInput" title="选择图片所在文件夹（含子目录），自动对应文档里的图片引用">📁 图片目录</button>
+          <button class="btn btn-secondary" v-if="imageUrlCount" @click="clearLocalImages" title="清除已关联的本地图片">♻️ 清除关联({{ imageUrlCount }})</button>
           <button class="btn btn-secondary" @click="openTempModal">📝 临时预览</button>
           <button class="btn btn-secondary" onclick="window.open('../ueditor/index.html')">📝Html2md</button>
           <button class="btn btn-secondary" onclick="window.open('./excel.html')">excel2md</button>
@@ -289,6 +298,50 @@
 
     const { createApp } = Vue;
 
+    const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico|tiff?)$/i;
+    let pendingImageEl = null;
+    let tooltipTimer = null;
+
+    // 容错解码：路径里有裸 % 时整体 decodeURIComponent 会抛错，改为逐段解码
+    function safeDecodePath(str) {
+      try { return decodeURIComponent(str); } catch (e) {
+        return str.replace(/(?:%[0-9a-f]{2})+/gi, seq => {
+          try { return decodeURIComponent(seq); } catch (e2) { return seq; }
+        });
+      }
+    }
+
+    // 统一路径写法：去 file:/// 与盘符、统一斜杠、小写、全角转半角、Unicode 组合形式
+    function canonicalPath(src) {
+      let p = String(src || '').trim();
+      p = p.replace(/^file:\/\/\/?/i, '').replace(/\\/g, '/');
+      p = p.replace(/^[a-z]:/i, '').replace(/^\/+/, '');
+      while (p.startsWith('./')) p = p.slice(2);
+      try { p = p.normalize('NFC'); } catch (e) {}
+      p = p.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+      p = p.replace(/\u3000/g, ' ');
+      return p.toLowerCase();
+    }
+
+    // 一条引用生成多个候选：原始/解码写法、去 # ? 前后，以及只留文字数字的模糊名
+    function imageKeyVariants(src) {
+      const raw = String(src || '').trim();
+      const decoded = safeDecodePath(raw);
+      const exact = new Set();
+      [raw, decoded].forEach(s => {
+        exact.add(canonicalPath(s));
+        exact.add(canonicalPath(s.split('#')[0].split('?')[0]));
+      });
+      const exactList = Array.from(exact).filter(Boolean);
+      const fuzzy = new Set();
+      exactList.forEach(k => {
+        const name = k.split('/').pop();
+        const f = name.replace(/[^0-9a-z\u0080-\uffff]+/gi, '');
+        if (f) fuzzy.add(f);
+      });
+      return { exact: exactList, fuzzy: Array.from(fuzzy) };
+    }
+
     // ===== Mermaid 配置 =====
     const MERMAID_DARK_THEMES = ['dark', 'vscode'];
     // 必须使用具体字体栈（不能用 inherit）：mermaid 按此字体测量文本宽度，
@@ -331,7 +384,8 @@
           zenMode: false,
           showSource: false,
           rawContent: '',
-          mermaidSeq: 0
+          mermaidSeq: 0,
+          imageUrls: {}
         };
       },
       computed: {
@@ -358,6 +412,9 @@
         hasHistory() {
           return this.historyList.length > 0;
         },
+        imageUrlCount() {
+          return Object.keys(this.imageUrls).length;
+        },
         totalChars() {
           const item = this.displayHistoryList.find(h => h.id === this.currentHistoryId);
           return item ? item.content.length : 0;
@@ -376,11 +433,10 @@
         this.applyFontSize();
         document.addEventListener('dragover', (e) => { e.preventDefault(); this.isDragOver = true; });
         document.addEventListener('dragleave', (e) => { e.preventDefault(); this.isDragOver = false; });
-        document.addEventListener('drop', (e) => { 
-          e.preventDefault(); 
-          this.isDragOver = false; 
-          const file = e.dataTransfer.files[0]; 
-          if (file) this.processFile(file); 
+        document.addEventListener('drop', (e) => {
+          e.preventDefault();
+          this.isDragOver = false;
+          this.handleDrop(e.dataTransfer);
         });
         if (this.currentHistoryId) {
           this.loadHistory(this.currentHistoryId);
@@ -389,6 +445,215 @@
       methods: {
         triggerFileInput() {
           this.$refs.fileInput.click();
+        },
+        triggerImageInput() {
+          this.$refs.imageInput.click();
+        },
+        triggerImageDirInput() {
+          this.$refs.imageDirInput.click();
+        },
+        handleImageSelect(e) {
+          const files = Array.from(e.target.files || []);
+          e.target.value = '';
+          if (!files.length) return;
+          const count = this.registerLocalImages(files);
+          const result = this.applyLocalImages();
+          this.showImageResult(count, result);
+        },
+        // 拖拽：md 文档照常打开，图片或图片文件夹额外关联进来
+        async handleDrop(dt) {
+          if (!dt) return;
+          const files = Array.from(dt.files || []);
+          const items = Array.from(dt.items || []);
+          // webkitGetAsEntry 只能在 drop 事件的同步阶段调用，异步后 item 会失效
+          const entries = items.map(item => item.webkitGetAsEntry ? item.webkitGetAsEntry() : null).filter(Boolean);
+          const docFile = files.find(f => /\.(md|markdown|txt)$/i.test(f.name));
+          if (docFile) this.processFile(docFile);
+          let imageFiles = files.filter(f => this.isImageFile(f));
+          for (const entry of entries) {
+            imageFiles = imageFiles.concat(await this.readImageEntries(entry));
+          }
+          if (imageFiles.length) {
+            const count = this.registerLocalImages(imageFiles);
+            const result = this.applyLocalImages();
+            this.showImageResult(count, result);
+          } else if (!docFile && files[0] && !entries.some(en => en.isDirectory)) {
+            this.processFile(files[0]);
+          }
+        },
+        async readImageEntries(entry) {
+          if (entry.isFile) {
+            if (!IMAGE_EXT.test(entry.name)) return [];
+            const file = await new Promise(resolve => entry.file(resolve, () => resolve(null)));
+            return file ? [file] : [];
+          }
+          if (!entry.isDirectory) return [];
+          const reader = entry.createReader();
+          const found = [];
+          while (true) {
+            const batch = await new Promise(resolve => reader.readEntries(resolve, () => resolve([])));
+            if (!batch.length) break;
+            for (const child of batch) {
+              found.push(...await this.readImageEntries(child));
+            }
+          }
+          return found;
+        },
+        isImageFile(file) {
+          return /^image\//.test(file.type) || IMAGE_EXT.test(file.name);
+        },
+        // 图片不上传、不写入缓存，只在内存里生成 blob URL
+        registerLocalImages(files) {
+          let added = 0;
+          files.forEach(file => {
+            if (!file || !this.isImageFile(file)) return;
+            const variants = imageKeyVariants(file.webkitRelativePath || file.name);
+            const key = variants.exact[0];
+            if (!key) return;
+            const old = this.imageUrls[key];
+            if (old) URL.revokeObjectURL(old.url);
+            else added++;
+            this.imageUrls[key] = { url: URL.createObjectURL(file), file, variants };
+          });
+          return added;
+        },
+        showImageResult(count, result) {
+          const detail = result.missing
+            ? `（如 ${result.missingNames[0] || ''}，可点击图片手动选图）`
+            : '';
+          const unused = result.unused ? `，另有 ${result.unused} 张关联图片未在正文出现` : '';
+          this.showTooltip(
+            `正文共 ${result.total} 处图片引用：已显示 ${result.matched} 处、未找到 ${result.missing} 处${detail}；本次选入 ${count} 张${unused}`,
+            Math.max(10, window.innerWidth / 2 - 220),
+            window.innerHeight / 2,
+            4500
+          );
+        },
+        // 自动匹配不上时，直接点那张图指定本地文件
+        pickImageFor(img) {
+          pendingImageEl = img;
+          this.$refs.manualImageInput.click();
+        },
+        handleManualImage(e) {
+          const file = e.target.files && e.target.files[0];
+          e.target.value = '';
+          const img = pendingImageEl;
+          pendingImageEl = null;
+          if (!file || !img || !document.body.contains(img)) return;
+          const original = img.getAttribute('data-original-src') || file.name;
+          const variants = imageKeyVariants(original);
+          const key = variants.exact[0];
+          const old = this.imageUrls[key];
+          if (old) URL.revokeObjectURL(old.url);
+          const record = { url: URL.createObjectURL(file), file, variants, manual: true };
+          this.imageUrls[key] = record;
+          this.bindImage(img, record);
+          this.showTooltip('已手动关联图片', window.innerWidth / 2, window.innerHeight / 2);
+        },
+        bindImage(img, record) {
+          if (img.getAttribute('src') !== record.url) img.setAttribute('src', record.url);
+          img.classList.remove('local-image-missing');
+          img.removeAttribute('title');
+          img.onclick = null;
+          // 极少数浏览器在 file:// 下不允许加载 blob:null，退回 data URL
+          img.onerror = () => {
+            if (!/^blob:/i.test(img.getAttribute('src') || '')) return;
+            img.onerror = null;
+            this.readFileAsDataUrl(record.file).then(dataUrl => {
+              if (dataUrl) img.setAttribute('src', dataUrl);
+            });
+          };
+        },
+        // 按「精确路径 → 路径后缀 → 文件名 → 模糊文件名」依次匹配
+        applyLocalImages() {
+          const result = { matched: 0, missing: 0, missingNames: [], total: 0, unused: 0 };
+          const container = this.$refs.markdownContent;
+          if (!container) return result;
+          const records = Object.values(this.imageUrls);
+          const used = new Set();
+          const exactIndex = {}, nameIndex = {}, fuzzyIndex = {};
+          records.forEach(rec => {
+            rec.variants.exact.forEach(k => {
+              if (!exactIndex[k]) exactIndex[k] = rec;
+              const name = k.split('/').pop();
+              if (name && !nameIndex[name]) nameIndex[name] = rec;
+            });
+            rec.variants.fuzzy.forEach(f => {
+              if (!(f in fuzzyIndex)) fuzzyIndex[f] = rec;
+              else if (fuzzyIndex[f] !== rec) fuzzyIndex[f] = null;  // 候选不唯一，不做自动模糊匹配
+            });
+          });
+          const exactKeys = Object.keys(exactIndex);
+          container.querySelectorAll('img').forEach(img => {
+            if (!img.hasAttribute('data-original-src')) {
+              img.setAttribute('data-original-src', img.getAttribute('src') || '');
+            }
+            const original = img.getAttribute('data-original-src');
+            if (!original || /^(https?:\/\/|data:)/i.test(original)) return;
+            const variants = imageKeyVariants(original);
+            let record = null;
+            for (const k of variants.exact) {
+              if (exactIndex[k]) { record = exactIndex[k]; break; }
+              const hit = exactKeys.find(x => x.endsWith('/' + k) || k.endsWith('/' + x));
+              if (hit) { record = exactIndex[hit]; break; }
+            }
+            if (!record) {
+              for (const k of variants.exact) {
+                const name = k.split('/').pop();
+                if (name && nameIndex[name]) { record = nameIndex[name]; break; }
+              }
+            }
+            if (!record) {
+              for (const f of variants.fuzzy) {
+                if (fuzzyIndex[f]) { record = fuzzyIndex[f]; break; }
+              }
+            }
+            if (record) {
+              this.bindImage(img, record);
+              used.add(record);
+              result.matched++;
+            } else {
+              const readable = safeDecodePath(original).split(/[\\/]/).pop();
+              img.classList.add('local-image-missing');
+              img.title = '本地图片未关联：' + readable + '\n点击这张图可手动选择本地图片文件';
+              img.onerror = null;
+              img.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.pickImageFor(img);
+              };
+              result.missing++;
+              if (readable) result.missingNames.push(readable);
+            }
+          });
+          result.total = result.matched + result.missing;
+          result.unused = Math.max(0, records.length - used.size);
+          return result;
+        },
+        readFileAsDataUrl(file) {
+          return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+        },
+        clearLocalImages() {
+          Object.values(this.imageUrls).forEach(item => URL.revokeObjectURL(item.url));
+          this.imageUrls = {};
+          const container = this.$refs.markdownContent;
+          if (container) {
+            container.querySelectorAll('img[data-original-src]').forEach(img => {
+              img.onerror = null;
+              img.onclick = null;
+              img.setAttribute('src', img.getAttribute('data-original-src'));
+              img.removeAttribute('data-original-src');
+              img.classList.remove('local-image-missing');
+              img.removeAttribute('title');
+            });
+          }
+          this.applyLocalImages();
+          this.showTooltip('已清除图片关联', window.innerWidth / 2, window.innerHeight / 2);
         },
         toggleZen() {
           this.zenMode = !this.zenMode;
@@ -429,6 +694,7 @@
             this.mountMermaid();
             Prism.highlightAllUnder(this.$refs.markdownContent);
             this.addCopyButtons();
+            this.applyLocalImages();
             this.updateActiveHeading();
           });
         },
@@ -718,11 +984,12 @@
         applyFontSize() {
           document.documentElement.style.fontSize = this.fontSize + 'px';
         },
-        showTooltip(message, x, y) {
+        showTooltip(message, x, y, duration = 2000) {
           this.tooltip = { show: true, message, x, y };
-          setTimeout(() => {
+          clearTimeout(tooltipTimer);
+          tooltipTimer = setTimeout(() => {
             this.tooltip.show = false;
-          }, 2000);
+          }, duration);
         },
         saveToCache(content, file) {
           try {
