@@ -147,7 +147,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
     <div class="row tight">
       <span>A4</span>
       <button class="orient-btn" :title="state.orientation==='landscape' ? '当前横向，点击切换为纵向' : '当前纵向，点击切换为横向'" @click="toggleOrientation">{{ state.orientation==='landscape' ? '横向' : '纵向' }} 🔄</button>
-      <span class="pc-only">· 96dpi</span>
+      <span class="pc-only" title="A4 逻辑坐标仍按 96dpi（794×1123）计算；此处为编辑画面的渲染分辨率">· {{ previewDpi }}dpi 预览</span>
     </div>
     <div class="row">
       <button class="icon-btn" style="width:24px;height:24px" title="缩小视图" @click="zoomOut">－</button>
@@ -298,6 +298,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       /* A4 在 96dpi 下的逻辑像素；仅编辑用，导出时按 multiplier 放大到 150/200/300dpi */
       const A4 = { portrait: { w: 794, h: 1123 }, landscape: { w: 1123, h: 794 } };
       const DPI_BASE = 96;
+      const PREVIEW_DPI = 200;   // 编辑画布的渲染 DPI，逻辑尺寸不变，只提高 backing store
+      const previewDpi = PREVIEW_DPI;
       const PAPER_GAP = 6;   // 适应窗口时白纸四周与工作区边缘的留白
       const THEME_KEY = 'scan_cleaner_theme';
       const MAX_HISTORY = 40;
@@ -1083,12 +1085,16 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         applyTheme();
         PrintUtils.installPrintStyle();
 
+        /* 编辑画面按 PREVIEW_DPI 渲染：逻辑尺寸仍是 794×1123，仅把 backing store
+           放大到 PREVIEW_DPI/96 倍，CSS 尺寸、对象坐标、控制点和命中检测都不变。
+           导出时 toCanvasElement 会临时关闭 retina 倍率，所以输出 DPI 不受影响。 */
+        if (fabric.config) fabric.config.devicePixelRatio = PREVIEW_DPI / DPI_BASE;
         canvas = new fabric.Canvas('paper-canvas', {
           width: logical.value.w,
           height: logical.value.h,
           backgroundColor: '#ffffff',
           preserveObjectStacking: true,
-          enableRetinaScaling: false,
+          enableRetinaScaling: true,
           selection: true
         });
         canvas.on('selection:created', syncSel);
@@ -1139,7 +1145,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       });
 
       return {
-        state, theme, dpiOptions, hasSelection, canUndo, canRedo,
+        state, theme, dpiOptions, previewDpi, hasSelection, canUndo, canRedo,
         sheetW, sheetH, displayW, displayH, paperStyle, wrapStyle,
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
