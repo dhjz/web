@@ -20,7 +20,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .icon-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:rgba(30,41,59,.8);color:#e2e8f0;font-size:16px;cursor:pointer;transition:.15s}
 .icon-btn:hover{color:#fff}
 .icon-btn:active{background:#2563eb}
-.brand{color:#fff;font-family:ui-monospace,monospace;font-size:14px;font-weight:700;letter-spacing:0}
+.brand{color:#fff;font-family:ui-monospace,monospace;font-size:14px;font-weight:700;letter-spacing:0;white-space:nowrap}
 .badge{padding:2px 6px;border-radius:999px;border:1px solid rgba(59,130,246,.3);background:rgba(37,99,235,.3);color:#60a5fa;font-family:ui-monospace,monospace;font-size:10px;font-weight:700}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 6px;border:0;border-radius:12px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;transition:.15s}
 .btn:active{transform:scale(.95)}
@@ -29,6 +29,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .btn-primary{background:#2563eb;padding:6px 6px;color:#fff;font-weight:600;box-shadow:0 10px 15px -3px rgba(59,130,246,.2)}
 .btn-primary:hover{background:#3b82f6}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost:disabled{opacity:.4;cursor:not-allowed}
 .file-input{display:none}
 .tabs-bar{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px;overflow-x:auto;border-bottom:1px solid rgba(30,41,59,.8);background:rgba(15,23,42,.6);scrollbar-width:none}
 .tabs-bar::-webkit-scrollbar{display:none}
@@ -98,12 +99,22 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .reset-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;border:0;border-radius:8px;background:rgba(244,63,94,.1);color:#fb7185;font-size:12px;cursor:pointer}
 .reset-btn:hover{color:#fda4af}
 .reset-btn:active{transform:scale(.95)}
+.sample-btn{width:100%;justify-content:center;gap:6px}
+.toast{position:fixed;left:50%;bottom:76px;z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid #334155;border-radius:999px;background:rgba(15,23,42,.95);color:#e2e8f0;font-size:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.hd{padding:0 16px}}
 @media(min-width:640px){.brand{font-size:16px}}
 @media(min-width:640px){.pc-only{display:inline}}
 @media(min-width:640px){.preview{padding:16px}}
 @media(min-width:640px){.compare-btn{bottom:32px}}
 @media(min-width:640px){.pager{bottom:32px}}
+@media print{html,body{background:#fff!important;color:#000}}
+@media print{.app{display:block;height:auto;min-height:0;overflow:visible;background:#fff}}
+@media print{.workspace{display:block;background:#fff!important;background-image:none!important;overflow:visible}}
+@media print{.preview{position:static;display:block;width:100%;padding:0;background:#fff}}
+@media print{.canvas{display:block;transform:none!important;width:100%;max-width:100%;max-height:none;height:auto;background:#fff;border-radius:0;box-shadow:none;break-inside:avoid}}
+@media print{.canvas-original{display:none!important}}
+@media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
+@page{margin:10mm}
   </style>
 </head>
 <body>
@@ -119,8 +130,9 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       </div>
     </div>
     <div class="row tight">
-      <button class="btn btn-ghost" @click="loadSample">示例</button>
       <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
+      <button class="btn btn-ghost" :disabled="state.images.length===0" title="打印" @click="printImage">打印</button>
+      <button class="btn btn-ghost" :disabled="state.images.length===0" title="分享" @click="shareImage">分享</button>
       <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span>导出</span></button><!-- <span class="ic">⬇️</span> -->
     </div>
   </header>
@@ -181,6 +193,8 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     </div>
     <div class="drawer-body">
 
+      <button class="btn btn-ghost sample-btn" @click="loadSampleAndClose"><span class="ic">🧾</span>加载示例图</button>
+
       <div>
         <label class="field-label">预设效果</label>
         <div class="preset-grid">
@@ -236,6 +250,8 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     </div>
   </aside>
 
+  <div class="toast" :class="{hidden:!toastText}">{{ toastText }}</div>
+
 </div>
 
 <script>
@@ -289,6 +305,13 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       const drawerOpen = ref(false);
       const loading = ref(false);
       const dimText = ref('0×0');
+      const toastText = ref('');
+      let toastTimer = null;
+      function notify(msg) {
+        toastText.value = msg;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toastText.value = ''; }, 2200);
+      }
 
       // 视图缩放与平移 (两张画布共用同一变换)
       const MIN_ZOOM = 0.5;
@@ -746,6 +769,52 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         link.click();
       }
 
+      /* ================= 8.1 打印与分享 (按浏览器能力降级) ================= */
+
+      function printImage() {
+        if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+        if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
+        if (window.matchMedia && window.matchMedia('(max-width:640px)').matches) {
+          notify('若未弹出打印，请用系统或厂商浏览器的打印功能');
+        }
+        window.print();
+      }
+
+      async function shareImage() {
+        if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+        const current = state.images[state.activeIndex];
+        const name = `clean_${current.name.replace(/\.[^/.]+$/, '')}.png`;
+        const blob = await new Promise(resolve => current.resultCanvas.toBlob(resolve, 'image/png'));
+        if (!blob) { notify('图片生成失败'); return; }
+        const nav = window.navigator;
+        if (nav && nav.share) {
+          try {
+            const file = new File([blob], name, { type: 'image/png' });
+            const canFiles = !nav.canShare || nav.canShare({ files: [file] });
+            await nav.share(canFiles
+              ? { files: [file], title: '扫描件去灰底' }
+              : { title: '扫描件去灰底', text: '已处理的扫描件' });
+            return;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+          }
+        }
+        if (nav && nav.clipboard && window.ClipboardItem) {
+          try {
+            await nav.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
+            notify('当前浏览器不支持分享，图片已复制到剪贴板');
+            return;
+          } catch (e) { /* 继续降级为下载 */ }
+        }
+        notify('当前浏览器不支持分享，已改为下载');
+        download();
+      }
+
+      function loadSampleAndClose() {
+        loadSample();
+        closeDrawer();
+      }
+
       /* ================= 9. 生成逼真示例图 ================= */
 
       function loadSample() {
@@ -855,9 +924,10 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       });
 
       return {
-        state, presets, drawerOpen, loading, dimText, previewStyle,
+        state, presets, drawerOpen, loading, dimText, previewStyle, toastText,
         previewEl, fileInputEl, canvasResult, canvasOriginal,
-        openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample,
+        openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample, loadSampleAndClose,
+        printImage, shareImage,
         setParam, onModeChange, onColorChange, applyPreset, resetParams,
         setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
         onWheel, onPointerDown, onPointerMove, onPointerUp,
