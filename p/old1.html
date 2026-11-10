@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>移动扫描宝 - 纯JS去灰底白底黑字工具</title>
+  <!-- Vue 3（唯一依赖） -->
+  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+  <script>try{if(localStorage.getItem('scan_cleaner_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
+  <style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f8fafc;--panel:#fff;--surface:#f1f5f9;--surface2:#e2e8f0;--line:#e2e8f0;--line2:#cbd5e1;--text:#0f172a;--text2:#334155;--muted:#64748b;--heading:#0f172a;--grid:#e2e8f0;--dot:#cbd5e1;--hd-bg:rgba(255,255,255,.9);--tabs-bg:rgba(255,255,255,.75);--bar-bg:rgba(241,245,249,.9);--float-bg:rgba(255,255,255,.92);--float-line:rgba(203,213,225,.9);--overlay:rgba(148,163,184,.25);--shadow:rgba(15,23,42,.18);--accent3:#2563eb;--accent4:#1d4ed8;--accent-soft:rgba(37,99,235,.12);--accent-line:rgba(37,99,235,.35);--accent-line2:rgba(37,99,235,.4);--accent-glow:rgba(37,99,235,.2);--danger:#e11d48;--danger2:#be123c;--danger-soft:rgba(225,29,72,.1)}
+html.dark{--bg:#020617;--panel:#0f172a;--surface:#1e293b;--surface2:#334155;--line:#1e293b;--line2:#334155;--text:#f1f5f9;--text2:#e2e8f0;--muted:#94a3b8;--heading:#fff;--grid:#1e293b;--dot:#475569;--hd-bg:rgba(15,23,42,.9);--tabs-bg:rgba(15,23,42,.6);--bar-bg:rgba(30,41,59,.8);--float-bg:rgba(15,23,42,.9);--float-line:rgba(51,65,85,.8);--overlay:rgba(2,6,23,.4);--shadow:rgba(0,0,0,.5);--accent3:#60a5fa;--accent4:#93c5fd;--accent-soft:rgba(37,99,235,.3);--accent-line:rgba(59,130,246,.3);--accent-line2:rgba(59,130,246,.4);--accent-glow:rgba(59,130,246,.2);--danger:#fb7185;--danger2:#fda4af;--danger-soft:rgba(244,63,94,.1)}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;user-select:none;background:var(--bg);color:var(--text)}
+.app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.row{display:flex;align-items:center;gap:8px}
+.tight{gap:6px}
+.hidden{display:none!important}
+.disabled{opacity:.4;pointer-events:none}
+.ic{display:inline-block;font-size:16px;line-height:1}
+.pc-only{display:none}
+.hd{height:56px;flex:none;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);background:var(--hd-bg);backdrop-filter:blur(12px)}
+.icon-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:var(--bar-bg);color:var(--text2);font-size:16px;cursor:pointer;transition:.15s}
+.icon-btn:hover{color:var(--heading)}
+.icon-btn:active{background:#2563eb;color:#fff}
+.brand{color:var(--heading);font-family:ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:0;white-space:nowrap}
+.badge{padding:2px 6px;border-radius:999px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent3);font-family:ui-monospace,monospace;font-size:10px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 6px;border:0;border-radius:12px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;transition:.15s}
+.btn:active{transform:scale(.95)}
+.btn-ghost{background:var(--surface);border:1px solid var(--line2);color:var(--text2)}
+.btn-ghost:hover{background:var(--surface2)}
+.btn-primary{background:#2563eb;padding:6px 6px;color:#fff;font-weight:600;box-shadow:0 10px 15px -3px var(--accent-glow)}
+.btn-primary:hover{background:#3b82f6}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+.file-input{display:none}
+.tabs-bar{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--tabs-bg);scrollbar-width:none}
+.tabs-bar::-webkit-scrollbar{display:none}
+.tabs{display:flex;align-items:center;gap:8px;padding:4px 0}
+.tab{flex:none;display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:.15s}
+.tab:hover{background:var(--surface2);color:var(--text2)}
+.tab.active{background:#2563eb;color:#fff;box-shadow:0 4px 6px -1px var(--accent-glow)}
+.tab.active:hover{background:#2563eb;color:#fff}
+.tab-name{max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab-del{padding:2px;border:0;border-radius:4px;background:none;color:inherit;font-size:10px;cursor:pointer}
+.tab-del:hover{color:var(--danger2)}
+.workspace{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background-color:var(--panel);background-image:linear-gradient(45deg,var(--grid) 25%,transparent 25%),linear-gradient(-45deg,var(--grid) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--grid) 75%),linear-gradient(-45deg,transparent 75%,var(--grid) 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:384px;padding:24px;text-align:center}
+.upload-area{width:80px;height:80px;margin-bottom:16px;display:flex;align-items:center;justify-content:center;border:2px dashed var(--line2);border-radius:24px;background:var(--panel);color:var(--muted);cursor:pointer;transition:.15s}
+.upload-area:hover{border-color:#3b82f6;color:var(--accent3)}
+.upload-area:active{transform:scale(.95)}
+.upload-area .ic{font-size:32px}
+.empty-title{margin-bottom:4px;color:var(--text2);font-size:14px;font-weight:600}
+.empty-desc{color:var(--muted);font-size:12px;line-height:1.6}
+.preview{position:absolute;inset:0;display:grid;grid-template:1fr/1fr;place-items:center;padding:8px;touch-action:none;cursor:grab}
+.preview:active{cursor:grabbing}
+.canvas{grid-area:1/1;min-width:0;min-height:0;max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 25px 50px -12px var(--shadow);transform:translate(var(--pan-x,0px),var(--pan-y,0px)) scale(var(--zoom,1));transition:opacity .15s}
+.canvas-original{z-index:1;opacity:0;pointer-events:none}
+.canvas-original.show{opacity:1}
+.compare-btn{position:absolute;left:24px;bottom:24px;z-index:20;display:flex;align-items:center;gap:2px;padding:8px 8px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;font-weight:600;box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);cursor:pointer;transition:.15s}
+.compare-btn:active{transform:scale(.95)}
+.compare-btn .ic{color:var(--accent3)}
+.compare-btn.active{background:#2563eb;border-color:#3b82f6;color:#fff}
+.compare-btn.active .ic{color:#fff}
+.pager{position:absolute;right:24px;bottom:24px;z-index:20;display:flex;align-items:center;gap:8px;padding:6px 6px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);cursor:default}
+.pager-btn{padding:4px;border:0;background:none;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s}
+.pager-btn:hover{color:var(--heading)}
+.pager-btn:active{transform:scale(.9)}
+.zoom-btn{font-size:15px;font-weight:700;line-height:1}
+.dots{display:flex;align-items:center;gap:4px;padding:0 4px}
+.dot{width:6px;height:6px;border-radius:999px;background:var(--dot);transition:.15s}
+.dot.active{width:12px;background:var(--accent3)}
+.loader{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:var(--overlay);backdrop-filter:blur(2px)}
+.loader-box{display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--line);border-radius:16px;background:var(--float-bg);box-shadow:0 25px 50px -12px var(--shadow);color:var(--text2);font-size:12px}
+.spin{width:16px;height:16px;color:#3b82f6;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.backdrop{position:fixed;inset:0;z-index:40;opacity:0;pointer-events:none;transition:opacity .3s}
+.backdrop.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;left:0;z-index:50;width:320px;max-width:85vw;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--panel);box-shadow:none;transform:translateX(-100%);transition:transform .3s ease-out}
+.drawer.show{transform:translateX(0);box-shadow:0 25px 50px -12px var(--shadow)}
+.drawer-hd{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line)}
+.drawer-title{color:var(--heading);font-size:14px;font-weight:700}
+.drawer-body{flex:1;display:flex;flex-direction:column;gap:14px;overflow-y:auto;padding:16px;font-size:12px}
+.field-label{display:block;margin-bottom:8px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.preset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.preset{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;transition:.15s}
+.preset:hover{background:var(--surface2)}
+.preset:active{transform:scale(.95)}
+.preset.active{background:var(--accent-soft);border-color:var(--accent-line2);color:var(--accent4)}
+.select{width:100%;padding:8px 12px;border:1px solid var(--line2);border-radius:12px;outline:none;background:var(--surface);color:var(--text2);font-size:12px}
+.select:focus{border-color:#3b82f6}
+.param-head{display:flex;justify-content:space-between;margin-bottom:4px}
+.param-name{color:var(--text2)}
+.param-value{color:var(--accent3);font-family:ui-monospace,monospace}
+.range{display:block;width:100%;height:6px;border-radius:8px;background:var(--surface);accent-color:#3b82f6;cursor:pointer}
+.param-tip{margin-top:5px;color:var(--muted);font-size:11px}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding-top:4px;border-top:1px solid var(--line)}
+.switch-desc{display:block;color:var(--muted);font-size:1px}
+.check{width:16px;height:16px;border-radius:4px;accent-color:#2563eb;cursor:pointer}
+.drawer-ft{flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px;border-top:1px solid var(--line);background:var(--tabs-bg)}
+.drawer-tip{color:var(--muted);font-size:11px}
+.reset-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;border:0;border-radius:8px;background:var(--danger-soft);color:var(--danger);font-size:12px;cursor:pointer}
+.reset-btn:hover{color:var(--danger2)}
+.reset-btn:active{transform:scale(.95)}
+.drawer-tools{display:flex;flex-direction:row;gap:8px}
+.drawer-tools .btn{flex:1;min-width:0;padding:6px 4px;gap:4px;font-size:11px}
+.toast{position:fixed;left:50%;bottom:76px;z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
+@media(min-width:640px){.hd{padding:0 16px}}
+@media(min-width:640px){.brand{font-size:16px}}
+@media(min-width:640px){.pc-only{display:inline}}
+@media(min-width:640px){.preview{padding:16px}}
+@media(min-width:640px){.compare-btn{bottom:32px}}
+@media(min-width:640px){.pager{bottom:32px}}
+@media print{html,body{background:#fff!important;color:#000}}
+@media print{.app{display:block;height:auto;min-height:0;overflow:visible;background:#fff}}
+@media print{.workspace{display:block;background:#fff!important;background-image:none!important;overflow:visible}}
+@media print{.preview{position:static;display:block;width:100%;padding:0;background:#fff}}
+@media print{.canvas{display:block;transform:none!important;width:100%;max-width:100%;max-height:none;height:auto;background:#fff;border-radius:0;box-shadow:none;break-inside:avoid}}
+@media print{.canvas-original{display:none!important}}
+@media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
+@page{margin:10mm}
+  </style>
+</head>
+<body>
+<div id="app" class="app">
+
+  <!-- 顶部导航栏 (移动端适配) -->
+  <header class="hd">
+    <div class="row">
+      <button class="icon-btn" title="参数设置" @click="openDrawer"><span class="ic">⚙️</span></button>
+      <div class="row tight">
+        <span class="brand">{{ dimText }}</span>
+        <span class="badge" :class="{hidden:state.images.length===0}">{{ state.images.length }}</span>
+      </div>
+    </div>
+    <div class="row tight">
+      <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
+      <button class="btn btn-ghost" :disabled="state.images.length===0" title="打印" @click="printImage">打印</button>
+      <button class="btn btn-ghost" :disabled="state.images.length===0" title="分享" @click="shareImage">分享</button>
+      <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span>导出</span></button><!-- <span class="ic">⬇️</span> -->
+    </div>
+  </header>
+
+  <!-- 多图标签栏 (PC & 平板显示，移动端精简) -->
+  <div class="tabs-bar" :class="{hidden:state.images.length<=1}">
+    <div class="tabs">
+      <div class="tab" :class="{active:idx===state.activeIndex}" v-for="(img,idx) in state.images" :key="img.id" @click="setActiveIndex(idx)">
+        <span class="ic">🖼️</span><span class="tab-name">{{ img.name }}</span>
+        <button class="tab-del" title="移除此图" @click.stop="removeImage(idx)">✖</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主视图工作区 -->
+  <main class="workspace">
+
+    <!-- 空状态：引导上传 -->
+    <div class="empty" :class="{hidden:state.images.length>0}">
+      <div class="upload-area" @click="openFileDialog"><span class="ic">📤</span></div>
+      <h2 class="empty-title">点此选择多张或单张图片</h2>
+      <p class="empty-desc">支持拍摄照片、发票、合同、错题本。<br><span class="pc-only">PC 端可直接拖拽文件或按 Ctrl+V 粘贴截图。</span></p>
+    </div>
+
+    <!-- 图片展示区 (带左右滑动触控手势) -->
+    <div class="preview" ref="previewEl" :class="{hidden:state.images.length===0}" :style="previewStyle" @wheel.prevent="onWheel" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp">
+      <canvas class="canvas" ref="canvasResult"></canvas>
+      <canvas class="canvas canvas-original" :class="{show:state.isShowingOriginal}" ref="canvasOriginal"></canvas>
+      <button class="compare-btn" :class="{active:state.isShowingOriginal}" @click.prevent="toggleCompare" @touchstart.passive="showOriginal(true)" @touchend.passive="releaseCompare">
+        <span class="ic">{{ state.isShowingOriginal ? '🙈' : '👁️' }}</span>
+        <span>{{ state.isShowingOriginal ? '松开看白底' : '对比原图' }}</span>
+      </button>
+      <div class="pager">
+        <button class="pager-btn zoom-btn" title="缩小" @click="zoomOut">－</button>
+        <button class="pager-btn zoom-btn" title="放大" @click="zoomIn">＋</button>
+        <button class="pager-btn" :class="{hidden:state.images.length<=1}" @click="prevImg">◀</button>
+        <div class="dots"><span class="dot" :class="{active:idx===state.activeIndex}" v-for="(img,idx) in state.images" :key="img.id"></span></div>
+        <button class="pager-btn" :class="{hidden:state.images.length<=1}" @click="nextImg">▶</button>
+      </div>
+    </div>
+
+    <!-- 计算处理中的轻量加载指示 -->
+    <div class="loader" :class="{hidden:!loading}">
+      <div class="loader-box">
+        <svg class="spin" viewBox="0 0 24 24"><circle opacity=".2" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path opacity=".8" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+        <span>像素优化计算中...</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 左侧抽屉式参数配置面板 (Drawer) -->
+  <div class="backdrop" :class="{show:drawerOpen}" @click="closeDrawer"></div>
+  <aside class="drawer" :class="{show:drawerOpen}">
+    <div class="drawer-hd">
+      <div class="row tight"><span class="ic">⚙️</span><h3 class="drawer-title">处理参数与微调</h3></div>
+      <button class="icon-btn" @click="closeDrawer">✖</button>
+    </div>
+    <div class="drawer-body">
+
+      <div class="drawer-tools">
+        <button class="btn btn-ghost sample-btn" @click="loadSampleAndClose"><span class="ic">🧾</span>加载示例图</button>
+        <button class="btn btn-ghost sample-btn" @click="toggleTheme" :title="theme === 'light' ? '切换到黑夜模式' : '切换到白天模式'"><span class="ic">{{ theme === 'light' ? '🌙' : '☀️' }}</span>{{ theme === 'light' ? '黑夜模式' : '白天模式' }}</button>
+      </div>
+
+      <div>
+        <label class="field-label">预设效果</label>
+        <div class="preset-grid">
+          <button class="preset" :class="{active:p.key==='clean-doc'}" v-for="p in presets" :key="p.key" @click="applyPreset(p.key)"><span class="ic">{{ p.icon }}</span><span>{{ p.label }}</span></button>
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label">算法管线</label>
+        <select class="select" v-model="state.config.mode" @change="onModeChange">
+          <option value="adaptive-clean">背景除法平场 (推荐：保留平滑字迹抗锯齿)</option>
+          <option value="adaptive-binary">局部自适应二值化 (彻底黑白)</option>
+          <option value="global-binary">全局二值化 (最快)</option>
+        </select>
+      </div>
+
+      <div :class="{disabled:state.config.mode==='global-binary'}">
+        <div class="param-head"><span class="param-name">阴影/背景感知半径</span><span class="param-value">{{ state.config.radius }}px</span></div>
+        <input class="range" type="range" min="10" max="90" step="2" :value="state.config.radius" @input="setParam('radius',$event,'int')">
+        <p class="param-tip">大图或有较大手机阴影渐变时调大该值。</p>
+      </div>
+
+      <div>
+        <div class="param-head"><span class="param-name">文字墨迹加深 (Black Level)</span><span class="param-value">{{ state.config.blackLevel }}</span></div>
+        <input class="range" type="range" min="0" max="100" step="2" :value="state.config.blackLevel" @input="setParam('blackLevel',$event,'int')">
+      </div>
+
+      <div>
+        <div class="param-head"><span class="param-name">白底漂白强度 (Offset)</span><span class="param-value">{{ state.config.whiten }}</span></div>
+        <input class="range" type="range" min="0" max="60" step="1" :value="state.config.whiten" @input="setParam('whiten',$event,'int')">
+        <p class="param-tip">消除残留的极浅灰斑，过大会轻微削弱极淡笔迹。</p>
+      </div>
+
+      <div>
+        <div class="param-head"><span class="param-name">整体对比度提升</span><span class="param-value">{{ state.config.contrast }}x</span></div>
+        <input class="range" type="range" min="0.8" max="2.5" step="0.05" :value="state.config.contrast" @input="setParam('contrast',$event,'float')">
+      </div>
+
+      <div :class="{disabled:state.config.mode!=='global-binary'}">
+        <div class="param-head"><span class="param-name">固定二值切分阈值</span><span class="param-value">{{ state.config.threshold }}</span></div>
+        <input class="range" type="range" min="40" max="220" step="1" :value="state.config.threshold" @input="setParam('threshold',$event,'int')">
+      </div>
+
+      <div class="switch-row">
+        <div><span class="param-name">保留彩色笔迹/印章</span><span class="switch-desc">红印章、蓝字不被转灰</span></div>
+        <input class="check" type="checkbox" v-model="state.config.keepColor" @change="onColorChange">
+      </div>
+
+    </div>
+    <div class="drawer-ft">
+      <span class="drawer-tip">参数已自动存至本地</span>
+      <button class="reset-btn" @click="resetParams"><span class="ic">↺</span> 恢复默认</button>
+    </div>
+  </aside>
+
+  <div class="toast" :class="{hidden:!toastText}">{{ toastText }}</div>
+
+</div>
+
+<script>
+  const { createApp, reactive, ref, computed, onMounted, markRaw } = Vue;
+
+  /**
+   * ScanDoc Mobile Engine (Vue 3)
+   * 移动端优先架构，支持多图、触屏滑动手势、localStorage实时同步与极速Canvas算法
+   */
+  createApp({
+    setup() {
+      // 默认配置
+      const DEFAULT_CONFIG = {
+        mode: 'adaptive-clean',
+        radius: 35,
+        blackLevel: 40,
+        whiten: 18,
+        contrast: 1.3,
+        threshold: 140,
+        keepColor: false
+      };
+
+      /* ================= 1. localStorage 持久化机制 ================= */
+
+      function loadConfigFromStorage() {
+        try {
+          const raw = localStorage.getItem('scan_cleaner_cfg');
+          if (raw) return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+        } catch (e) {
+          console.warn('读取 localStorage 失败', e);
+        }
+        return { ...DEFAULT_CONFIG };
+      }
+
+      function saveConfigToStorage() {
+        try {
+          localStorage.setItem('scan_cleaner_cfg', JSON.stringify(state.config));
+        } catch (e) {
+          console.warn('存储 localStorage 失败', e);
+        }
+      }
+
+      // 状态管理
+      const state = reactive({
+        images: [], // 列表项: { id, name, originalCanvas, resultCanvas, width, height }
+        activeIndex: -1,
+        isShowingOriginal: false,
+        config: loadConfigFromStorage()
+      });
+
+      const drawerOpen = ref(false);
+      const loading = ref(false);
+      const dimText = ref('0×0');
+      const THEME_KEY = 'scan_cleaner_theme';
+      const theme = ref('light');
+      try { theme.value = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { /* 默认白天 */ }
+      function applyTheme() { document.documentElement.classList.toggle('dark', theme.value === 'dark'); }
+      function toggleTheme() {
+        theme.value = theme.value === 'light' ? 'dark' : 'light';
+        try { localStorage.setItem(THEME_KEY, theme.value); } catch (e) { /* 忽略存储失败 */ }
+        applyTheme();
+      }
+      const toastText = ref('');
+      let toastTimer = null;
+      function notify(msg) {
+        toastText.value = msg;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toastText.value = ''; }, 2200);
+      }
+
+      // 视图缩放与平移 (两张画布共用同一变换)
+      const MIN_ZOOM = 0.5;
+      const MAX_ZOOM = 4;
+      const zoom = ref(1);
+      const panX = ref(0);
+      const panY = ref(0);
+      const previewStyle = computed(() => ({
+        '--zoom': zoom.value,
+        '--pan-x': `${panX.value}px`,
+        '--pan-y': `${panY.value}px`
+      }));
+      function clampZoom(z) { return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)); }
+      function zoomIn() { zoom.value = clampZoom(zoom.value * 1.25); }
+      function zoomOut() { zoom.value = clampZoom(zoom.value / 1.25); }
+      const presets = [
+        { key: 'clean-doc', label: '文档白底', icon: '📄' },
+        { key: 'pure-binary', label: '纯正黑白', icon: '◼️' },
+        { key: 'color-seal', label: '保留印章', icon: '🔴' }
+      ];
+
+      // DOM 元素 (Vue 模板引用)
+      const previewEl = ref(null);
+      const fileInputEl = ref(null);
+      const canvasResult = ref(null);
+      const canvasOriginal = ref(null);
+      let ctxResult = null;
+      let ctxOriginal = null;
+
+      let debounceTimer = null;
+
+      /* ================= 2. 抽屉式侧边栏交互 (移动端顺滑体验) ================= */
+
+      function openDrawer() { drawerOpen.value = true; }
+      function closeDrawer() { drawerOpen.value = false; }
+
+      function resetParams() {
+        state.config = { ...DEFAULT_CONFIG };
+        saveConfigToStorage();
+        reprocessCurrent();
+      }
+
+      // 参数调整监听：解析数值、更新显示、本地保存、防抖重算
+      function setParam(key, e, type) {
+        const val = type === 'float' ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+        state.config[key] = val;
+        saveConfigToStorage();
+        debouncedProcess();
+      }
+
+      function onModeChange() {
+        saveConfigToStorage();
+        debouncedProcess();
+      }
+
+      function onColorChange() {
+        saveConfigToStorage();
+        debouncedProcess();
+      }
+
+      // 预设模式
+      function applyPreset(p) {
+        if (p === 'clean-doc') {
+          state.config = { ...state.config, mode: 'adaptive-clean', radius: 35, blackLevel: 40, whiten: 18, contrast: 1.3, keepColor: false };
+        } else if (p === 'pure-binary') {
+          state.config = { ...state.config, mode: 'adaptive-binary', radius: 30, blackLevel: 30, whiten: 16, keepColor: false };
+        } else if (p === 'color-seal') {
+          state.config = { ...state.config, mode: 'adaptive-clean', radius: 40, blackLevel: 35, whiten: 20, contrast: 1.25, keepColor: true };
+        }
+        saveConfigToStorage();
+        debouncedProcess();
+      }
+
+      function debouncedProcess() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          reprocessCurrent();
+        }, 40);
+      }
+
+      /* ================= 3. 核心图像算法 (背景除法与自适应二值化) ================= */
+
+      /**
+       * 极速可分离一维盒式滤波 (Box Blur)
+       * 利用积分均值滑动窗口，计算时间复杂度严格为 O(W*H)，与滤波半径 R 无关！
+       */
+      function fastBoxBlur(src, w, h, r) {
+        const total = w * h;
+        const target = new Uint8Array(total);
+        const temp = new Float32Array(total);
+
+        // 水平滑动窗口累加
+        for (let y = 0; y < h; y++) {
+          const offset = y * w;
+          let sum = 0;
+          let count = 0;
+
+          for (let x = 0; x <= r && x < w; x++) {
+            sum += src[offset + x];
+            count++;
+          }
+
+          for (let x = 0; x < w; x++) {
+            const right = x + r;
+            if (right < w && x > 0) {
+              sum += src[offset + right];
+              count++;
+            }
+            const left = x - r - 1;
+            if (left >= 0) {
+              sum -= src[offset + left];
+              count--;
+            }
+            temp[offset + x] = sum / count;
+          }
+        }
+
+        // 垂直滑动窗口累加
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          let count = 0;
+
+          for (let y = 0; y <= r && y < h; y++) {
+            sum += temp[y * w + x];
+            count++;
+          }
+
+          for (let y = 0; y < h; y++) {
+            const bottom = y + r;
+            if (bottom < h && y > 0) {
+              sum += temp[bottom * w + x];
+              count++;
+            }
+            const top = y - r - 1;
+            if (top >= 0) {
+              sum -= temp[top * w + x];
+              count--;
+            }
+            target[y * w + x] = Math.round(sum / count);
+          }
+        }
+
+        return target;
+      }
+
+      /**
+       * 执行算法核心
+       */
+      function processImageItem(item) {
+        const { originalCanvas, resultCanvas, width: w, height: h } = item;
+        const originalCtx = originalCanvas.getContext('2d');
+        const resultCtx = resultCanvas.getContext('2d');
+
+        const srcData = originalCtx.getImageData(0, 0, w, h);
+        const srcPix = srcData.data;
+        const outData = resultCtx.createImageData(w, h);
+        const outPix = outData.data;
+
+        const { mode, radius, blackLevel, whiten, contrast, threshold, keepColor } = state.config;
+
+        // 1. 提取感知灰度
+        const gray = new Uint8Array(w * h);
+        for (let i = 0, p = 0; i < srcPix.length; i += 4, p++) {
+          gray[p] = (srcPix[i] * 299 + srcPix[i + 1] * 587 + srcPix[i + 2] * 114 + 500) / 1000;
+        }
+
+        if (mode === 'global-binary') {
+          // 全局固定切分
+          for (let i = 0, p = 0; i < srcPix.length; i += 4, p++) {
+            const v = gray[p] >= threshold ? 255 : 0;
+            outPix[i] = v;
+            outPix[i + 1] = v;
+            outPix[i + 2] = v;
+            outPix[i + 3] = 255;
+          }
+        } else {
+          // 2. 局部背景光场估计
+          const bg = fastBoxBlur(gray, w, h, radius);
+          const blackThreshold = blackLevel * 1.5;
+
+          for (let y = 0; y < h; y++) {
+            const rowOffset = y * w;
+            for (let x = 0; x < w; x++) {
+              const p = rowOffset + x;
+              const idx = p * 4;
+              const bgVal = Math.max(bg[p], 1);
+
+              if (mode === 'adaptive-binary') {
+                // 局部自适应切分
+                const dynThresh = bgVal - (whiten * 0.7);
+                const val = gray[p] > dynThresh ? 255 : 0;
+                outPix[idx] = val;
+                outPix[idx + 1] = val;
+                outPix[idx + 2] = val;
+                outPix[idx + 3] = 255;
+              } else {
+                // 背景除法平场 (Background Division)
+                if (!keepColor) {
+                  // 黑白/灰度文档优化
+                  let normalized = (gray[p] / bgVal) * 255 + whiten;
+                  
+                  // 黑阶截断强化 (字迹加深)
+                  if (normalized < blackThreshold) {
+                    normalized = (normalized / blackThreshold) * (blackThreshold * 0.6);
+                  }
+
+                  // 对比度 S 曲线调整
+                  if (contrast !== 1.0) {
+                    normalized = (normalized - 128) * contrast + 128;
+                  }
+
+                  const finalVal = Math.min(255, Math.max(0, normalized));
+                  outPix[idx] = finalVal;
+                  outPix[idx + 1] = finalVal;
+                  outPix[idx + 2] = finalVal;
+                  outPix[idx + 3] = 255;
+                } else {
+                  // 彩色印章保留模式 (RGB 各自除以背景灰度)
+                  for (let c = 0; c < 3; c++) {
+                    let norm = (srcPix[idx + c] / bgVal) * 255 + whiten;
+                    if (contrast !== 1.0) {
+                      norm = (norm - 128) * contrast + 128;
+                    }
+                    outPix[idx + c] = Math.min(255, Math.max(0, norm));
+                  }
+                  outPix[idx + 3] = 255;
+                }
+              }
+            }
+          }
+        }
+
+        resultCtx.putImageData(outData, 0, 0);
+      }
+
+      function reprocessCurrent() {
+        if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+        loading.value = true;
+
+        // 使用 microtask 避免 UI 掉帧卡顿
+        setTimeout(() => {
+          const item = state.images[state.activeIndex];
+          processImageItem(item);
+          renderCurrentView();
+          loading.value = false;
+        }, 10);
+      }
+
+      /* ================= 4. 图片文件加载 (单图/多图/粘贴/拖拽) ================= */
+
+      function addFiles(files) {
+        if (!files || files.length === 0) return;
+        loading.value = true;
+
+        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length === 0) {
+          loading.value = false;
+          return;
+        }
+
+        let loadedCount = 0;
+        imageFiles.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              // 控制最大分辨率以防移动设备 Canvas 内存崩溃
+              let w = img.naturalWidth || img.width;
+              let h = img.naturalHeight || img.height;
+              const maxDim = 2500;
+              if (w > maxDim || h > maxDim) {
+                const r = Math.min(maxDim / w, maxDim / h);
+                w = Math.round(w * r);
+                h = Math.round(h * r);
+              }
+
+              const origC = document.createElement('canvas');
+              origC.width = w;
+              origC.height = h;
+              const oCtx = origC.getContext('2d');
+              oCtx.drawImage(img, 0, 0, w, h);
+
+              const resC = document.createElement('canvas');
+              resC.width = w;
+              resC.height = h;
+
+              const newItem = {
+                id: 'doc_' + Math.random().toString(36).substr(2, 9),
+                name: file.name || `扫描件_${state.images.length + 1}.png`,
+                originalCanvas: origC,
+                resultCanvas: resC,
+                width: w,
+                height: h
+              };
+
+              // 立即处理
+              processImageItem(newItem);
+              state.images.push(markRaw(newItem));
+
+              loadedCount++;
+              if (loadedCount === imageFiles.length) {
+                loading.value = false;
+                // 激活最新添加的那张
+                setActiveIndex(state.images.length - 1);
+              }
+            };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function onFileChange(e) {
+        addFiles(e.target.files);
+        e.target.value = ''; // 清空以允许重复上传同一张
+      }
+
+      function openFileDialog() {
+        if (fileInputEl.value) fileInputEl.value.click();
+      }
+
+      /* ================= 5. 多图展示、Tabs与轮播圆点 ================= */
+
+      function setActiveIndex(index) {
+        if (index < 0 || index >= state.images.length) return;
+        state.activeIndex = index;
+        renderCurrentView();
+      }
+
+      function renderCurrentView() {
+        if (state.activeIndex < 0 || state.images.length === 0) {
+          dimText.value = '0×0';
+          return;
+        }
+
+        const item = state.images[state.activeIndex];
+        canvasResult.value.width = item.width;
+        canvasResult.value.height = item.height;
+        canvasOriginal.value.width = item.width;
+        canvasOriginal.value.height = item.height;
+
+        // 绘制至视口 Canvas
+        ctxResult.drawImage(item.resultCanvas, 0, 0);
+        ctxOriginal.drawImage(item.originalCanvas, 0, 0);
+
+        dimText.value = `${item.width}×${item.height}`;
+      }
+
+      function removeImage(index) {
+        state.images.splice(index, 1);
+        if (state.activeIndex >= state.images.length) {
+          state.activeIndex = state.images.length - 1;
+        }
+        renderCurrentView();
+      }
+
+      function prevImg() {
+        if (state.activeIndex > 0) setActiveIndex(state.activeIndex - 1);
+      }
+
+      function nextImg() {
+        if (state.activeIndex < state.images.length - 1) setActiveIndex(state.activeIndex + 1);
+      }
+
+      /* ================= 6. 滚轮缩放 / 拖拽平移 / 双指捏合 ================= */
+
+      // 以指定屏幕坐标为锚点缩放，保持锚点下的画面不动
+      function zoomAt(next, clientX, clientY) {
+        const z = clampZoom(next);
+        const rect = previewEl.value.getBoundingClientRect();
+        const ax = clientX - rect.left - rect.width / 2;
+        const ay = clientY - rect.top - rect.height / 2;
+        const k = z / zoom.value;
+        panX.value += (ax - panX.value) * (1 - k);
+        panY.value += (ay - panY.value) * (1 - k);
+        zoom.value = z;
+      }
+
+      function onWheel(e) {
+        zoomAt(zoom.value * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+      }
+
+      const pointers = new Map();
+      let pinchDist = 0;
+      let pinchCx = 0;
+      let pinchCy = 0;
+
+      function onPointerDown(e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target.closest && e.target.closest('button')) return;
+        if (previewEl.value.setPointerCapture) previewEl.value.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 2) {
+          const [a, b] = [...pointers.values()];
+          pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+          pinchCx = (a.x + b.x) / 2;
+          pinchCy = (a.y + b.y) / 2;
+        }
+      }
+
+      function onPointerMove(e) {
+        const prev = pointers.get(e.pointerId);
+        if (!prev) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 1) {
+          // 鼠标左键 / 单指按住拖动
+          panX.value += e.clientX - prev.x;
+          panY.value += e.clientY - prev.y;
+        } else if (pointers.size === 2) {
+          // 双指捏合：距离比缩放、中心位移平移
+          const [a, b] = [...pointers.values()];
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          const cx = (a.x + b.x) / 2;
+          const cy = (a.y + b.y) / 2;
+          if (pinchDist > 0 && dist > 0) zoomAt(zoom.value * dist / pinchDist, cx, cy);
+          panX.value += cx - pinchCx;
+          panY.value += cy - pinchCy;
+          pinchDist = dist;
+          pinchCx = cx;
+          pinchCy = cy;
+        }
+      }
+
+      function onPointerUp(e) {
+        pointers.delete(e.pointerId);
+        if (previewEl.value.releasePointerCapture && previewEl.value.hasPointerCapture && previewEl.value.hasPointerCapture(e.pointerId)) {
+          previewEl.value.releasePointerCapture(e.pointerId);
+        }
+        if (pointers.size < 2) pinchDist = 0;
+      }
+
+      /* ================= 7. 原图 / 优化效果 对比切换 (Toggle & Hold) ================= */
+
+      function showOriginal(show) {
+        state.isShowingOriginal = show;
+      }
+
+      function toggleCompare() {
+        showOriginal(!state.isShowingOriginal);
+      }
+
+      function releaseCompare() {
+        // 延时恢复
+        setTimeout(() => showOriginal(false), 200);
+      }
+
+      /* ================= 8. 下载与导出 ================= */
+
+      function download() {
+        if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+        const current = state.images[state.activeIndex];
+        const link = document.createElement('a');
+        link.download = `clean_${current.name.replace(/\.[^/.]+$/, '')}.png`;
+        link.href = current.resultCanvas.toDataURL('image/png');
+        link.click();
+      }
+
+      /* ================= 8.1 打印与分享 (按浏览器能力降级) ================= */
+
+      function printImage() {
+        if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+        if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
+        if (window.matchMedia && window.matchMedia('(max-width:640px)').matches) {
+          notify('若未弹出打印，请用系统或厂商浏览器的打印功能');
+        }
+        window.print();
+      }
+
+      async function shareImage() {
+        if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+        const current = state.images[state.activeIndex];
+        const name = `clean_${current.name.replace(/\.[^/.]+$/, '')}.png`;
+        const blob = await new Promise(resolve => current.resultCanvas.toBlob(resolve, 'image/png'));
+        if (!blob) { notify('图片生成失败'); return; }
+        const nav = window.navigator;
+        if (nav && nav.share) {
+          try {
+            const file = new File([blob], name, { type: 'image/png' });
+            const canFiles = !nav.canShare || nav.canShare({ files: [file] });
+            await nav.share(canFiles
+              ? { files: [file], title: '扫描件去灰底' }
+              : { title: '扫描件去灰底', text: '已处理的扫描件' });
+            return;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+          }
+        }
+        if (nav && nav.clipboard && window.ClipboardItem) {
+          try {
+            await nav.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
+            notify('当前浏览器不支持分享，图片已复制到剪贴板');
+            return;
+          } catch (e) { /* 继续降级为下载 */ }
+        }
+        notify('当前浏览器不支持分享，已改为下载');
+        download();
+      }
+
+      function loadSampleAndClose() {
+        loadSample();
+        closeDrawer();
+      }
+
+      /* ================= 9. 生成逼真示例图 ================= */
+
+      function loadSample() {
+        const w = 900;
+        const h = 1200;
+        const tempC = document.createElement('canvas');
+        tempC.width = w;
+        tempC.height = h;
+        const ctx = tempC.getContext('2d');
+
+        // 逼真阴影背景 (手机阴影从左上覆盖到右下)
+        const grad = ctx.createRadialGradient(250, 250, 40, 450, 600, 800);
+        grad.addColorStop(0, '#f2eee3');
+        grad.addColorStop(0.4, '#d8d2c4');
+        grad.addColorStop(1, '#9b9487');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // 杂色折痕
+        for (let i = 0; i < 3000; i++) {
+          ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)';
+          ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+        }
+
+        // 发票公文排版
+        ctx.fillStyle = '#222222';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillText('技术服务结算清单', 280, 130);
+
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(60, 180, 780, 260);
+
+        ctx.font = '20px sans-serif';
+        ctx.fillText('开票日期: 2026年11月09日', 90, 235);
+        ctx.fillText('项目: 移动端原生图像去灰底算法部署', 90, 290);
+        ctx.fillText('状态: 验收通过 (已核验)', 90, 345);
+        ctx.fillText('经办部门: 前端工程与图形算法团队', 90, 400);
+
+        // 模拟手写签名笔迹
+        ctx.strokeStyle = '#1e3a8a';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(560, 390);
+        ctx.bezierCurveTo(590, 360, 640, 420, 680, 385);
+        ctx.bezierCurveTo(700, 370, 720, 410, 750, 390);
+        ctx.stroke();
+
+        // 条目清单
+        ctx.fillStyle = '#333';
+        ctx.font = '16px serif';
+        const lines = [
+          "1. 本图片包含手机随手拍常见的不均匀暗区与灰黄底色；",
+          "2. 算法通过 O(N) 盒式滤波估计光照场并归一化除法；",
+          "3. 在手机上可点击右下角按钮直接覆盖对比原图效果；",
+          "4. 支持多图左右滑动轮播，随时导出高清透明无灰底文稿。"
+        ];
+        lines.forEach((l, idx) => ctx.fillText(l, 70, 500 + idx * 42));
+
+        // 鲜红防伪公章
+        ctx.save();
+        ctx.translate(650, 520);
+        ctx.rotate(-0.15);
+        ctx.strokeStyle = 'rgba(225, 29, 72, 0.85)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(-90, -45, 180, 90);
+        ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('业务审核章', 0, 0);
+        ctx.font = '13px sans-serif';
+        ctx.fillText('2026-11-09 有效', 0, 24);
+        ctx.restore();
+
+        tempC.toBlob((blob) => {
+          const file = new File([blob], `样例单据_${state.images.length + 1}.png`, { type: 'image/png' });
+          addFiles([file]);
+        });
+      }
+
+      // 页面初始化：PC 拖拽 / 粘贴上传、启动时自动载入一个样本图
+      onMounted(() => {
+        applyTheme();
+        ctxResult = canvasResult.value.getContext('2d', { willReadFrequently: true });
+        ctxOriginal = canvasOriginal.value.getContext('2d', { willReadFrequently: true });
+
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (e.dataTransfer.files) {
+            addFiles(e.dataTransfer.files);
+          }
+        });
+        window.addEventListener('paste', (e) => {
+          const items = e.clipboardData && e.clipboardData.items;
+          if (!items) return;
+          const files = [];
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+              const blob = items[i].getAsFile();
+              if (blob) files.push(blob);
+            }
+          }
+          if (files.length > 0) addFiles(files);
+        });
+
+        loadSample();
+      });
+
+      return {
+        state, presets, drawerOpen, loading, dimText, previewStyle, toastText, theme,
+        previewEl, fileInputEl, canvasResult, canvasOriginal,
+        openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample, loadSampleAndClose,
+        printImage, shareImage, toggleTheme,
+        setParam, onModeChange, onColorChange, applyPreset, resetParams,
+        setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
+        onWheel, onPointerDown, onPointerMove, onPointerUp,
+        toggleCompare, showOriginal, releaseCompare
+      };
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>

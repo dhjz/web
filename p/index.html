@@ -6,6 +6,8 @@
   <title>移动扫描宝 - 纯JS去灰底白底黑字工具</title>
   <!-- Vue 3（唯一依赖） -->
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+  <!-- 四点裁剪 / 透视矫正（本地零依赖模块，全局 PerspectiveCrop） -->
+  <script src="./perspective-crop.js"></script>
   <script>try{if(localStorage.getItem('scan_cleaner_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
   <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -104,6 +106,9 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .reset-btn:active{transform:scale(.95)}
 .drawer-tools{display:flex;flex-direction:row;gap:8px}
 .drawer-tools .btn{flex:1;min-width:0;padding:6px 4px;gap:4px;font-size:11px}
+.pager-btn.crop-btn{display:flex;align-items:center;gap:3px;padding:4px 5px;font-size:14px;line-height:1}
+.pager-sep{width:1px;height:16px;flex:none;background:var(--line2)}
+@media(max-width:639px){.pager{gap:5px}}
 .toast{position:fixed;left:50%;bottom:76px;z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.hd{padding:0 16px}}
 @media(min-width:640px){.brand{font-size:16px}}
@@ -167,9 +172,12 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       <canvas class="canvas canvas-original" :class="{show:state.isShowingOriginal}" ref="canvasOriginal"></canvas>
       <button class="compare-btn" :class="{active:state.isShowingOriginal}" @click.prevent="toggleCompare" @touchstart.passive="showOriginal(true)" @touchend.passive="releaseCompare">
         <span class="ic">{{ state.isShowingOriginal ? '🙈' : '👁️' }}</span>
-        <span>{{ state.isShowingOriginal ? '松开看白底' : '对比原图' }}</span>
+        <span class="pc-only">{{ compareLabel }}</span>
       </button>
       <div class="pager">
+        <button class="pager-btn crop-btn" title="四点裁剪 / 透视矫正" @click="openCropEditor">✂️<span class="pc-only">裁剪</span></button>
+        <button class="pager-btn crop-btn" :class="{hidden:!currentCropped}" title="撤销裁剪，恢复原图" @click="restoreCrop">↺<span class="pc-only">还原</span></button>
+        <span class="pager-sep"></span>
         <button class="pager-btn zoom-btn" title="缩小" @click="zoomOut">－</button>
         <button class="pager-btn zoom-btn" title="放大" @click="zoomIn">＋</button>
         <button class="pager-btn" :class="{hidden:state.images.length<=1}" @click="prevImg">◀</button>
@@ -303,7 +311,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 
       // 状态管理
       const state = reactive({
-        images: [], // 列表项: { id, name, originalCanvas, resultCanvas, width, height }
+        images: [], // 列表项: { id, name, originalCanvas, warpedCanvas, cropQuad, cropMode, cropAspect, resultCanvas, width, height }
         activeIndex: -1,
         isShowingOriginal: false,
         config: loadConfigFromStorage()
@@ -477,11 +485,22 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
        * 执行算法核心
        */
       function processImageItem(item) {
-        const { originalCanvas, resultCanvas, width: w, height: h } = item;
-        const originalCtx = originalCanvas.getContext('2d');
+        // 裁剪矫正后的画布作为算法输入；未裁剪时直接用原始画布
+        const inputCanvas = item.warpedCanvas || item.originalCanvas;
+        const w = inputCanvas.width;
+        const h = inputCanvas.height;
+        const { resultCanvas } = item;
+        if (resultCanvas.width !== w || resultCanvas.height !== h) {
+          resultCanvas.width = w;
+          resultCanvas.height = h;
+        }
+        item.width = w;
+        item.height = h;
+
+        const inputCtx = inputCanvas.getContext('2d', { willReadFrequently: true });
         const resultCtx = resultCanvas.getContext('2d');
 
-        const srcData = originalCtx.getImageData(0, 0, w, h);
+        const srcData = inputCtx.getImageData(0, 0, w, h);
         const srcPix = srcData.data;
         const outData = resultCtx.createImageData(w, h);
         const outPix = outData.data;
@@ -617,7 +636,13 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
               const newItem = {
                 id: 'doc_' + Math.random().toString(36).substr(2, 9),
                 name: file.name || `扫描件_${state.images.length + 1}.png`,
-                originalCanvas: origC,
+                originalCanvas: origC,   // 原始像素，永不覆写（还原的依据）
+                warpedCanvas: null,      // 四点裁剪 / 透视矫正结果
+                cropQuad: null,          // 原图坐标系下的 TL,TR,BR,BL
+                cropMode: 'perspective',
+                cropAspect: 'auto',
+                cropRect: false,         // 编辑器是否处于直角（拖边）模式
+                cropMag: false,          // 拖动角点时是否显示圆形放大详情
                 resultCanvas: resC,
                 width: w,
                 height: h
@@ -664,14 +689,15 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         }
 
         const item = state.images[state.activeIndex];
+        const inputCanvas = item.warpedCanvas || item.originalCanvas;
         canvasResult.value.width = item.width;
         canvasResult.value.height = item.height;
         canvasOriginal.value.width = item.width;
         canvasOriginal.value.height = item.height;
 
-        // 绘制至视口 Canvas
+        // 绘制至视口 Canvas（对比层显示「增强处理前」的画面）
         ctxResult.drawImage(item.resultCanvas, 0, 0);
-        ctxOriginal.drawImage(item.originalCanvas, 0, 0);
+        ctxOriginal.drawImage(inputCanvas, 0, 0, item.width, item.height);
 
         dimText.value = `${item.width}×${item.height}`;
       }
@@ -911,6 +937,83 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         });
       }
 
+      /* ================= 10. 四点裁剪 / 透视矫正与还原 ================= */
+
+      // 图片项被 markRaw 包裹（避免大画布被响应式代理），裁剪状态变化需显式触发重算
+      const cropVersion = ref(0);
+      const currentCropped = computed(() => {
+        const item = state.images[state.activeIndex];
+        return cropVersion.value >= 0 && !!(item && item.cropQuad);
+      });
+
+      const compareLabel = computed(() => {
+        if (state.isShowingOriginal) return '白底';
+        return currentCropped.value ? '处理前' : '原图';
+      });
+
+      let cropBusy = false;
+
+      async function openCropEditor() {
+        const item = state.images[state.activeIndex];
+        if (!item || !window.PerspectiveCrop || cropBusy) return;
+        cropBusy = true;
+        try {
+          const result = await window.PerspectiveCrop.edit({
+            source: item.originalCanvas,
+            quad: item.cropQuad,
+            mode: item.cropMode,
+            aspect: item.cropAspect,
+            rect: item.cropRect,
+            mag: item.cropMag
+          });
+          if (!result) return;                        // 取消
+          if (result.restore) { restoreCrop(); return; }
+          await applyCrop(item, result);
+        } finally {
+          cropBusy = false;
+        }
+      }
+
+      async function applyCrop(item, result) {
+        const quad = result.quad.map(p => ({ x: p.x, y: p.y }));
+        loading.value = true;
+        await new Promise(resolve => setTimeout(resolve, 10));
+        try {
+          const warped = await window.PerspectiveCrop.warpAsync(item.originalCanvas, quad, {
+            mode: result.mode,
+            aspect: result.aspect,
+            maxDim: 2500,
+            background: '#ffffff'
+          });
+          item.cropQuad = quad;
+          item.cropMode = result.mode;
+          item.cropAspect = result.aspect;
+          item.cropRect = !!result.rect;
+          item.cropMag = !!result.mag;
+          item.warpedCanvas = warped;
+          cropVersion.value++;
+          processImageItem(item);
+          renderCurrentView();
+          notify('裁剪已应用，点「还原」可恢复原图');
+        } catch (err) {
+          console.warn('透视矫正失败', err);
+          notify('裁剪失败，已保留原图');
+        } finally {
+          loading.value = false;
+        }
+      }
+
+      function restoreCrop() {
+        const item = state.images[state.activeIndex];
+        if (!item || !item.cropQuad) return;
+        item.cropQuad = null;
+        item.warpedCanvas = null;
+        cropVersion.value++;
+        processImageItem(item);
+        renderCurrentView();
+        notify('已恢复原图');
+      }
+
       // 页面初始化：PC 拖拽 / 粘贴上传、启动时自动载入一个样本图
       onMounted(() => {
         applyTheme();
@@ -920,7 +1023,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
           e.preventDefault();
-          if (e.dataTransfer.files) {
+          if (!cropBusy && e.dataTransfer.files) {
             addFiles(e.dataTransfer.files);
           }
         });
@@ -934,7 +1037,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
               if (blob) files.push(blob);
             }
           }
-          if (files.length > 0) addFiles(files);
+          if (!cropBusy && files.length > 0) addFiles(files);
         });
 
         loadSample();
@@ -948,7 +1051,8 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         setParam, onModeChange, onColorChange, applyPreset, resetParams,
         setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
         onWheel, onPointerDown, onPointerMove, onPointerUp,
-        toggleCompare, showOriginal, releaseCompare
+        toggleCompare, showOriginal, releaseCompare,
+        compareLabel, currentCropped, openCropEditor, restoreCrop
       };
     }
   }).mount('#app');
