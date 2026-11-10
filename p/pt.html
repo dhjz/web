@@ -102,6 +102,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .danger-btn{background:var(--danger-soft);color:var(--danger)}
 .select{padding:5px 8px;border:1px solid var(--line2);border-radius:8px;outline:none;background:var(--surface);color:var(--text2);font-size:12px}
 .check{width:16px;height:16px;border-radius:4px;accent-color:#2563eb;cursor:pointer}
+.border-row{display:flex;align-items:center;gap:8px;margin-top:2px}
+.border-row .param-name{flex:1}
+.color{width:34px;height:26px;padding:2px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);cursor:pointer}
+.color::-webkit-color-swatch-wrapper{padding:0}
+.color::-webkit-color-swatch{border:0;border-radius:4px}
 .save-sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay);backdrop-filter:blur(4px)}
 .save-panel{width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);box-shadow:0 25px 50px -12px var(--shadow)}
 .save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
@@ -118,7 +123,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .spin{width:16px;height:16px;color:#3b82f6;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
-@media(min-width:640px){.pc-only{display:inline}.hd{padding:0 16px}.brand{font-size:15px}.inspector{width:288px}.toolbar{bottom:20px}}
+@media(min-width:640px){.pc-only{display:inline}.hd{padding:0 16px}.brand{font-size:15px}.inspector{width:288px}.toolbar{left:12px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;align-items:stretch;width:46px;max-width:none;max-height:calc(100% - 24px);overflow-x:hidden;overflow-y:auto}.toolbar .tool{width:100%;min-width:0;padding:0}.toolbar .pc-only{display:none}.toolbar .tool-sep{width:auto;height:1px;margin:2px 6px}}
 @media(max-width:639px){.inspector{top:auto;bottom:0;right:0;left:0;width:100%;height:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}.inspector.show{transform:translateY(0)}.toolbar{bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}}
   </style>
 </head>
@@ -215,6 +220,18 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         </div>
 
         <div>
+          <label class="field-label">边框</label>
+          <div class="param-head"><span class="param-name">线宽</span><span class="param-value">{{ state.sel.frameWidth }}px</span></div>
+          <input class="range" type="range" min="0" max="20" step="1" :value="state.sel.frameWidth" @input="onParamInput('frameWidth',$event)" @change="commit">
+          <div class="border-row">
+            <span class="param-name">颜色</span>
+            <input class="color" type="color" :value="state.sel.frameColor" @input="onParamInput('frameColor',$event)" @change="commit">
+            <button class="btn btn-ghost" @click="clearBorder">去除边框</button>
+          </div>
+          <p class="param-tip">线宽按纸面像素计，缩放图片时保持不变；导出会随 DPI 等比放大。边框跟随裁剪后的图片边界。</p>
+        </div>
+
+        <div>
           <label class="field-label">剪裁（四边百分比）</label>
           <div class="crop-grid">
             <div><div class="param-head"><span class="param-name">左</span><span class="param-value">{{ state.sel.cropL }}%</span></div><input class="range" type="range" min="0" max="45" step="1" :value="state.sel.cropL" @input="onParamInput('cropL',$event)" @change="commit"></div>
@@ -302,7 +319,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         sel: {
           id: null, name: '', angle: 0, scale: 100,
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
-          cropL: 0, cropT: 0, cropR: 0, cropB: 0
+          cropL: 0, cropT: 0, cropR: 0, cropB: 0,
+          frameWidth: 0, frameColor: '#000000'
         }
       });
       const dpiOptions = [75, 96, 150, 200, 250, 300, 350, 400];
@@ -520,6 +538,19 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           c.mtr.offsetY = s.rotateOffset;
         }
       }
+      /* 边框用 Fabric 原生 stroke：strokeUniform 让线宽不随图片缩放变化，
+         导出时由 viewportTransform 按 DPI 倍率等比放大 */
+      function applyFrame(o) {
+        const w = Math.max(0, o.frameWidth || 0);
+        o.set({
+          stroke: w > 0 ? (o.frameColor || '#000000') : null,
+          strokeWidth: w,
+          strokeUniform: true,
+          dirty: true
+        });
+        o.setCoords();
+        if (canvas) canvas.requestRenderAll();
+      }
 
       function defaultRecord(id, src) {
         const s = Math.min(logical.value.w * 0.72 / src.width, logical.value.h * 0.72 / src.height, 1);
@@ -531,7 +562,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           scaleX: s, scaleY: s, angle: 0, flipX: false, flipY: false, opacity: 1,
           width: src.width, height: src.height, cropX: 0, cropY: 0,
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
-          cropL: 0, cropT: 0, cropR: 0, cropB: 0
+          cropL: 0, cropT: 0, cropR: 0, cropB: 0,
+          frameWidth: 0, frameColor: '#000000'
         };
       }
 
@@ -554,9 +586,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           imgId: rec.id, tone: rec.tone,
           brightness: rec.brightness, contrast: rec.contrast, threshold: rec.threshold,
           cropL: rec.cropL || 0, cropT: rec.cropT || 0,
-          cropR: rec.cropR || 0, cropB: rec.cropB || 0
+          cropR: rec.cropR || 0, cropB: rec.cropB || 0,
+          frameWidth: rec.frameWidth || 0, frameColor: rec.frameColor || '#000000'
         });
         styleObject(img);
+        applyFrame(img);
         return img;
       }
 
@@ -568,7 +602,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           flipX: o.flipX, flipY: o.flipY, opacity: o.opacity,
           width: o.width, height: o.height, cropX: o.cropX, cropY: o.cropY,
           tone: o.tone, brightness: o.brightness, contrast: o.contrast, threshold: o.threshold,
-          cropL: o.cropL, cropT: o.cropT, cropR: o.cropR, cropB: o.cropB
+          cropL: o.cropL, cropT: o.cropT, cropR: o.cropR, cropB: o.cropB,
+          frameWidth: o.frameWidth || 0, frameColor: o.frameColor || '#000000'
         };
       }
 
@@ -681,6 +716,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state.sel.cropT = o.cropT;
         state.sel.cropR = o.cropR;
         state.sel.cropB = o.cropB;
+        state.sel.frameWidth = o.frameWidth || 0;
+        state.sel.frameColor = o.frameColor || '#000000';
       }
 
       /* ================= 属性面板操作 ================= */
@@ -696,9 +733,18 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function onParamInput(key, e) {
         const o = activeObj();
         if (!o) return;
-        const v = key === 'contrast' ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+        const v = key === 'contrast' ? parseFloat(e.target.value)
+                : key === 'frameColor' ? e.target.value
+                : parseInt(e.target.value, 10);
         state.sel[key] = v;
-        if (key === 'brightness' || key === 'contrast' || key === 'threshold') {
+        if (key === 'frameWidth' || key === 'frameColor') {
+          o[key] = v;
+          if (key === 'frameColor' && !o.frameWidth) {
+            o.frameWidth = 2;
+            state.sel.frameWidth = 2;
+          }
+          applyFrame(o);
+        } else if (key === 'brightness' || key === 'contrast' || key === 'threshold') {
           o[key] = v;
           scheduleRefresh(o);
         } else if (key === 'angle') {
@@ -712,6 +758,14 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           o[key] = v;
           applyCrop(o);
         }
+      }
+      function clearBorder() {
+        const o = activeObj();
+        if (!o) return;
+        o.frameWidth = 0;
+        state.sel.frameWidth = 0;
+        applyFrame(o);
+        commit();
       }
       /* 裁剪：改变源图取样区域；默认不动 scale，仅在勾选保持区域时反算 scale */
       function applyCrop(o) {
@@ -790,7 +844,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         );
         Object.assign(o, {
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
-          cropL: 0, cropT: 0, cropR: 0, cropB: 0
+          cropL: 0, cropT: 0, cropR: 0, cropB: 0,
+          frameWidth: 0, frameColor: '#000000'
         });
         o.set({
           width: src.original.width, height: src.original.height,
@@ -800,6 +855,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         });
         o.setPositionByOrigin(center, 'center', 'center');
         refreshPixels(o);
+        applyFrame(o);
         o.setCoords();
         canvas.renderAll();
         syncSel();
@@ -1089,7 +1145,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
         zoomIn, zoomOut, fitView, toggleLock, toggleOrientation, onOrientationCheck,
         openFileDialog, onFileChange, undo, redo,
-        setTone, onParamInput, commit, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
+        setTone, onParamInput, commit, clearBorder, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
         fitToPage, duplicate, remove,
         openOutput, refreshPreview, downloadImage, tryPrint
       };
