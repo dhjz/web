@@ -44,7 +44,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .hd{height:46px;flex:none;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);background:var(--hd-bg);backdrop-filter:blur(12px)}
 .icon-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:var(--bar-bg);color:var(--text2);font-size:16px;cursor:pointer;transition:.15s;text-decoration:none}
 .icon-btn:hover{color:var(--heading)}
+.icon-btn.locked{background:var(--accent-soft);color:var(--accent4);box-shadow:inset 0 0 0 1px var(--accent-line2)}
 .icon-btn:active{background:#2563eb;color:#fff}
+.icon-btn.lock-btn{width:28px;height:28px;font-size:14px}
 .brand{color:var(--heading);font-size:13px;font-weight:700;white-space:nowrap}
 .badge{padding:2px 6px;border-radius:999px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent3);font-family:ui-monospace,monospace;font-size:10px;font-weight:700}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 6px;border:0;border-radius:12px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;transition:.15s;text-decoration:none}
@@ -146,6 +148,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="icon-btn" style="width:24px;height:24px" title="缩小视图" @click="zoomOut">－</button>
       <span class="zoom-val">{{ Math.round(state.zoom*100) }}%</span>
       <button class="icon-btn" style="width:24px;height:24px" title="放大视图" @click="zoomIn">＋</button>
+      <button class="icon-btn lock-btn" :class="{locked:state.locked}" :aria-pressed="state.locked" :title="state.locked ? '画布已锁定：拖动 / 滚轮 / 双指缩放已禁用，工具栏缩放按钮仍可用，点击解锁' : '锁定画布：禁止拖动、滚轮和双指缩放，只操作图片'" @click="toggleLock">{{ state.locked ? '🔒' : '🔓' }}</button>
       <button class="icon-btn" style="width:24px;height:24px" title="适应窗口" @click="fitView">⤢</button>
       <button class="icon-btn" style="width:24px;height:24px" :title="state.orientation==='landscape'?'切换为纵向':'切换为横向'" @click="toggleOrientation">🔄</button>
       <button class="icon-btn" style="width:24px;height:24px" :title="theme==='light'?'切换到黑夜模式':'切换到白天模式'" @click="toggleTheme">{{ theme==='light' ? '🌙' : '☀️' }}</button>
@@ -271,13 +274,14 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 </div>
 
 <script>
-  const { createApp, reactive, ref, computed, onMounted } = Vue;
+  const { createApp, reactive, ref, computed, watch, onMounted } = Vue;
 
   createApp({
     setup() {
       /* A4 在 96dpi 下的逻辑像素；仅编辑用，导出时按 multiplier 放大到 150/200/300dpi */
       const A4 = { portrait: { w: 794, h: 1123 }, landscape: { w: 1123, h: 794 } };
       const DPI_BASE = 96;
+      const PAPER_GAP = 6;   // 适应窗口时白纸四周与工作区边缘的留白
       const THEME_KEY = 'scan_cleaner_theme';
       const MAX_HISTORY = 40;
 
@@ -287,6 +291,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         zoom: 0.65,
         panX: 0,
         panY: 0,
+        locked: false,
         dpi: 200,
         format: 'png',
         transparent: false,
@@ -362,6 +367,26 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         return o && o.imgId ? o : null;
       }
       const clampZoom = z => Math.min(3, Math.max(0.2, z));
+      /* 纸面用 CSS transform 缩放，而 Fabric 的控制点是画布坐标：视图越缩小，
+         控制点在屏幕上就越小。按 zoom 反向补偿，让锚点始终是固定屏幕尺寸。 */
+      function controlSizes() {
+        const z = state.zoom || 1;
+        return {
+          dot: 16 / z,                // 可见圆点约 16 屏幕像素
+          cornerTouch: 44 / z,        // 四角缩放点触控区约 44 屏幕像素
+          sideTouch: 30 / z,          // 边中点触控区略小，避免相互抢占
+          rotateTouch: 28 / z,
+          rotateOffset: -36 / z,      // 旋转点上移到四角触控区之外，避免抢走点击
+          borderScaleFactor: 2 / z,
+          padding: 5 / z
+        };
+      }
+      function updateControlSizes() {
+        if (!canvas) return;
+        canvas.getObjects().forEach(o => { styleObject(o); o.setCoords(); });
+        canvas.requestRenderAll();
+      }
+      watch(() => state.zoom, updateControlSizes);
 
       /* ================= 视图缩放与平移 ================= */
 
@@ -369,7 +394,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const el = workspaceEl.value;
         if (!el) return;
         const rect = el.getBoundingClientRect();
-        const z = Math.min(rect.width / logical.value.w, rect.height / logical.value.h);
+        const w = Math.max(1, rect.width - PAPER_GAP * 2);
+        const h = Math.max(1, rect.height - PAPER_GAP * 2);
+        const z = Math.min(w / logical.value.w, h / logical.value.h);
         state.zoom = clampZoom(z);
         state.panX = 0;
         state.panY = 0;
@@ -386,9 +413,17 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state.panY += (ay - state.panY) * (1 - k);
         state.zoom = z;
       }
-      function onWheel(e) { zoomAt(state.zoom * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }
+      function onWheel(e) { if (!state.locked) zoomAt(state.zoom * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }
       function zoomIn() { zoomAt(state.zoom * 1.25, window.innerWidth / 2, window.innerHeight / 2); }
       function zoomOut() { zoomAt(state.zoom / 1.25, window.innerWidth / 2, window.innerHeight / 2); }
+      /* 锁定后视图不再被手势改变；工具栏上的显式缩放按钮仍可用 */
+      function toggleLock() {
+        state.locked = !state.locked;
+        panning = null;
+        pinchDist = 0;
+        if (canvas) canvas.selection = !state.locked;
+        notify(state.locked ? '画布已锁定，手势不会再移动视图' : '画布已解锁，可拖动 / 缩放视图');
+      }
 
       const pointers = new Map();
       let pinchDist = 0;
@@ -398,6 +433,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function onPointerDown(e) {
         if (e.pointerType === 'touch') pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (pointers.size === 2) {
+          if (state.locked) { pinchDist = 0; return; }
           const [a, b] = [...pointers.values()];
           pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
           if (canvas) { canvas.discardActiveObject(); canvas.renderAll(); }
@@ -406,7 +442,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function onPointerMove(e) {
         if (!pointers.has(e.pointerId)) return;
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (pointers.size === 2 && pinchDist > 0) {
+        if (pointers.size === 2 && pinchDist > 0 && !state.locked) {
           const [a, b] = [...pointers.values()];
           const d = Math.hypot(a.x - b.x, a.y - b.y);
           if (d > 0) { state.zoom = clampZoom(state.zoom * d / pinchDist); pinchDist = d; }
@@ -438,12 +474,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           showInspector.value = false;   // 单击收起面板，避免遮挡画布操作
         }
         if (target) return;   // 点到对象时交给 Fabric 拖动
+        if (state.locked) return;   // 锁定时空白区域不拖动画布
         const p = evtPoint(opt.e);
         if (!p) return;
         panning = { x: p.x, y: p.y, px: state.panX, py: state.panY };
       }
       function onCanvasMouseMove(opt) {
-        if (!panning) return;
+        if (!panning || state.locked) return;
         const p = evtPoint(opt.e);
         if (!p) return;
         state.panX = panning.px + (p.x - panning.x);
@@ -454,19 +491,34 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       /* ================= 对象构建与像素处理 ================= */
 
       function styleObject(o) {
+        const s = controlSizes();
         o.set({
           borderColor: '#2563eb',
           cornerColor: '#ffffff',
           cornerStrokeColor: '#2563eb',
           cornerStyle: 'circle',
-          cornerSize: 13,
-          touchCornerSize: 28,
+          cornerSize: s.dot,
+          touchCornerSize: s.sideTouch,
           transparentCorners: false,
-          borderScaleFactor: 1.5,
-          padding: 2,
+          borderScaleFactor: s.borderScaleFactor,
+          padding: s.padding,
           lockScalingFlip: true,
           centeredRotation: true
         });
+        /* 单独放大四角缩放点的触控区；旋转点移到图片外侧，避免抢走点击 */
+        const c = o.controls || {};
+        ['tl', 'tr', 'bl', 'br'].forEach(k => {
+          if (!c[k]) return;
+          c[k].sizeX = s.dot;
+          c[k].sizeY = s.dot;
+          c[k].touchSizeX = s.cornerTouch;
+          c[k].touchSizeY = s.cornerTouch;
+        });
+        if (c.mtr) {
+          c.mtr.touchSizeX = s.rotateTouch;
+          c.mtr.touchSizeY = s.rotateTouch;
+          c.mtr.offsetY = s.rotateOffset;
+        }
       }
 
       function defaultRecord(id, src) {
@@ -944,6 +996,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         e.preventDefault();
 
         const o = activeObj();
+        if (!o && state.locked) return;   // 锁定时不允许键盘平移 / 缩放视图
         if (dx || dy) {
           if (o) {
             o.set({ left: o.left + dx, top: o.top + dy });
@@ -1034,7 +1087,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         sheetW, sheetH, displayW, displayH, paperStyle, wrapStyle,
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
-        zoomIn, zoomOut, fitView, toggleOrientation, onOrientationCheck,
+        zoomIn, zoomOut, fitView, toggleLock, toggleOrientation, onOrientationCheck,
         openFileDialog, onFileChange, undo, redo,
         setTone, onParamInput, commit, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
         fitToPage, duplicate, remove,
