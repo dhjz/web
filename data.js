@@ -82,6 +82,7 @@ window.config = {
         { name: '水印工具', short: '水印', url: './mark/index.html', color: '#111827' },
         { name: 'FunAsr', short: 'ASR', url: './funasr/index.html', color: '#4565ac' },
         { name: '字幕提取', short: 'ASR', url: './srt/index.html', color: '#039f9c' },
+        { name: '扫描处理', short: '扫描', url: './p/', color: '#034948' },
       ]
     },
     {
