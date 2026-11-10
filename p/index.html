@@ -3,10 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>移动扫描宝</title>
+  <title>打印助手</title>
+  <meta name="description" content="拍照文档去灰底、增强、裁剪矫正、导出与打印，支持离线使用。">
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-  <!-- Vue 3（唯一依赖） -->
-  <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+  <!-- PWA：可安装、独立窗口、离线运行 -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="theme-color" content="#d4237a" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="打印助手">
+  <!-- Vue 3.5.17（本地副本，保证离线可用；原来源：mirrors.sustech.edu.cn/cdnjs） -->
+  <script src="./vue.global.prod.js"></script>
   <!-- 四点裁剪 / 透视矫正（本地零依赖模块，全局 PerspectiveCrop） -->
   <script src="./perspective-crop.js"></script>
   <script>try{if(localStorage.getItem('scan_cleaner_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
@@ -110,7 +120,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .drawer-tools .btn{flex:1;min-width:0;padding:6px 4px;gap:4px;font-size:11px}
 .pager-btn.crop-btn{display:flex;align-items:center;gap:3px;padding:4px 5px;font-size:14px;line-height:1}
 .pager-sep{width:1px;height:16px;flex:none;background:var(--line2)}
-@media(max-width:639px){.pager{gap:5px}.share-btn{display:none}}
+@media(max-width:639px){.pager{gap:5px}.share-btn{display:none}.pwa-btn .pwa-label{display:none}}
 .save-sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay);backdrop-filter:blur(4px)}
 .save-panel{width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);box-shadow:0 25px 50px -12px var(--shadow)}
 .save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
@@ -135,6 +145,45 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 @media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.save-sheet,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
 @page{margin:10mm}
   </style>
+  <!-- PWA：注册 Service Worker，收集安装 / 更新状态（放在 window.__pwa 供 Vue 读取，避免事件时序问题） -->
+  <script>
+    (function () {
+      window.__pwa = { installEvent: null, installed: false, updateAvailable: false };
+      function emit() { window.dispatchEvent(new CustomEvent('pwa-state-change')); }
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__pwa.installEvent = e;
+        emit();
+      });
+      window.addEventListener('appinstalled', function () {
+        window.__pwa.installEvent = null;
+        window.__pwa.installed = true;
+        emit();
+      });
+
+      if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__pwa.updateAvailable) location.reload();
+      });
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').then(function (reg) {
+          reg.addEventListener('updatefound', function () {
+            var worker = reg.installing;
+            if (!worker) return;
+            worker.addEventListener('statechange', function () {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                window.__pwa.updateAvailable = true;
+                emit();
+              }
+            });
+          });
+        }).catch(function (err) {
+          console.warn('Service Worker 注册失败（需 HTTPS 或 localhost）', err);
+        });
+      });
+    })();
+  </script>
 </head>
 <body>
 <div id="app" class="app">
@@ -143,6 +192,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
   <header class="hd">
     <div class="row">
       <button class="icon-btn" title="参数设置" @click="openDrawer"><span class="ic">⚙️</span></button>
+      <button class="btn btn-ghost pwa-btn" :class="{hidden:!pwaBtnVisible}" :title="pwaBtnTitle" @click="onPwaBtnClick"><span class="ic">{{ pwaBtnIcon }}</span><span class="pwa-label">{{ pwaBtnLabel }}</span></button>
       <div class="row tight">
         <span class="brand">{{ dimText }}</span>
         <span class="badge" :class="{hidden:state.images.length===0}">{{ state.images.length }}</span>
@@ -1095,6 +1145,62 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         notify('已恢复原图');
       }
 
+      /* ================= 11. PWA：安装到桌面 / 新版本更新 ================= */
+
+      const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const installKind = ref('');   // 'native'（可弹出安装框） | 'ios'（引导手动添加） | ''
+      const updateReady = ref(false);
+      let deferredInstallPrompt = null;
+
+      function syncPwaState() {
+        const s = window.__pwa || {};
+        deferredInstallPrompt = s.installEvent || null;
+        installKind.value = (isStandalone || s.installed)
+          ? ''
+          : (deferredInstallPrompt ? 'native' : (isIos ? 'ios' : ''));
+        updateReady.value = !!s.updateAvailable;
+      }
+      window.addEventListener('pwa-state-change', syncPwaState);
+      syncPwaState();
+
+      const pwaBtnVisible = computed(() => !!installKind.value || updateReady.value);
+      const pwaBtnIcon = computed(() => updateReady.value ? '⬆️' : '⬇️');
+      const pwaBtnLabel = computed(() => updateReady.value ? '更新' : (installKind.value === 'native' ? '安装' : '添加'));
+      const pwaBtnTitle = computed(() => updateReady.value
+        ? '新版本已就绪，点击更新'
+        : (installKind.value === 'native' ? '安装到桌面 / 主屏幕' : '在 Safari 中「分享」→「添加到主屏幕」'));
+
+      async function onPwaBtnClick() {
+        if (updateReady.value) {
+          if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            else location.reload();
+          } else {
+            location.reload();
+          }
+          return;
+        }
+        if (!deferredInstallPrompt) {
+          notify('点击 Safari 的「分享」→「添加到主屏幕」即可安装');
+          return;
+        }
+        const e = deferredInstallPrompt;
+        deferredInstallPrompt = null;
+        installKind.value = '';
+        if (window.__pwa) window.__pwa.installEvent = null;
+        try {
+          e.prompt();
+          const choice = await e.userChoice;
+          notify(choice && choice.outcome === 'accepted' ? '正在安装…' : '已取消安装');
+        } catch (err) {
+          notify('安装未完成，请稍后重试');
+        }
+      }
+
       // 页面初始化：PC 拖拽 / 粘贴上传、启动时自动载入一个样本图
       onMounted(() => {
         applyTheme();
@@ -1140,7 +1246,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
         onWheel, onPointerDown, onPointerMove, onPointerUp,
         toggleCompare, showOriginal, releaseCompare, onCompareTouchStart,
-        compareLabel, currentCropped, openCropEditor, restoreCrop
+        compareLabel, currentCropped, openCropEditor, restoreCrop,
+        pwaBtnVisible, pwaBtnIcon, pwaBtnLabel, pwaBtnTitle, onPwaBtnClick
       };
     }
   }).mount('#app');
