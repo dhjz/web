@@ -2,7 +2,7 @@
  * 所有运行依赖（Vue、透视裁剪、图标）均已本地化，可整体离线缓存。
  * 版本升级：修改 CACHE_NAME 即会触发新 SW 安装，页面顶部出现「更新」按钮。
  */
-const CACHE_NAME = 'print-helper-v2';
+const CACHE_NAME = 'print-helper-v3';
 const CORE_ASSETS = [
   './',
   './index.html',

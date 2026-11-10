@@ -199,6 +199,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       </div>
     </div>
     <div class="row tight">
+      <button class="btn btn-ghost" title="刷新页面" @click="reloadPage"><span class="ic">🔄</span></button>
       <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
       <button class="btn btn-ghost" :disabled="state.images.length===0" title="打印" @click="printImage">打印</button>
       <button class="btn btn-ghost share-btn" :disabled="state.images.length===0" title="分享" @click="shareImage">分享</button>
@@ -413,6 +414,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (toastTimer) clearTimeout(toastTimer);
         toastTimer = setTimeout(() => { toastText.value = ''; }, 2200);
       }
+      function reloadPage() { location.reload(); }
 
       // 视图缩放与平移 (两张画布共用同一变换)
       const MIN_ZOOM = 0.5;
@@ -1242,7 +1244,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         saveOpen, saveUrl, saveTip, saveImgBox, closeSaveSheet, tryPrint,
         previewEl, fileInputEl, canvasResult, canvasOriginal,
         openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample, loadSampleAndClose,
-        printImage, shareImage, toggleTheme,
+        printImage, shareImage, toggleTheme, reloadPage,
         setParam, onModeChange, onColorChange, applyPreset, resetParams,
         setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
         onWheel, onPointerDown, onPointerMove, onPointerUp,
