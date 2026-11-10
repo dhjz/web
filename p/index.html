@@ -87,7 +87,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .drawer-body{flex:1;display:flex;flex-direction:column;gap:14px;overflow-y:auto;padding:16px;font-size:12px}
 .field-label{display:block;margin-bottom:8px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
 .preset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.preset{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;transition:.15s}
+.preset{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;transition:.15s}
 .preset:hover{background:var(--surface2)}
 .preset:active{transform:scale(.95)}
 .preset.active{background:var(--accent-soft);border-color:var(--accent-line2);color:var(--accent4)}
@@ -380,7 +380,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const presets = [
         { key: 'clean-doc', label: '文档白底', icon: '📄' },
         { key: 'pure-binary', label: '纯正黑白', icon: '◼️' },
-        { key: 'color-seal', label: '保留印章', icon: '🔴' }
+        { key: 'color-seal', label: '保留印章', icon: '🔴' },
+        { key: 'faint-pencil', label: '淡迹增强', icon: '✏️' },
+        { key: 'heavy-shadow', label: '强阴影', icon: '🌑' },
+        { key: 'soft-clean', label: '柔和白底', icon: '🌤️' }
       ];
 
       // DOM 元素 (Vue 模板引用)
@@ -430,6 +433,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           state.config = { ...state.config, mode: 'adaptive-binary', radius: 30, blackLevel: 30, whiten: 16, keepColor: false };
         } else if (p === 'color-seal') {
           state.config = { ...state.config, mode: 'adaptive-clean', radius: 40, blackLevel: 35, whiten: 20, contrast: 1.25, keepColor: true };
+        } else if (p === 'faint-pencil') {
+          state.config = { ...state.config, mode: 'adaptive-clean', radius: 46, blackLevel: 62, whiten: 8, contrast: 1.55, keepColor: false };
+        } else if (p === 'heavy-shadow') {
+          state.config = { ...state.config, mode: 'adaptive-clean', radius: 72, blackLevel: 36, whiten: 24, contrast: 1.15, keepColor: false };
+        } else if (p === 'soft-clean') {
+          state.config = { ...state.config, mode: 'adaptive-clean', radius: 30, blackLevel: 18, whiten: 6, contrast: 1, keepColor: false };
         }
         saveConfigToStorage();
         debouncedProcess();
