@@ -2,8 +2,8 @@
  * A4 输出与打印（零依赖）
  * 浏览器：window.PrintUtils；CommonJS：module.exports
  *
- * index.html 与 collage.html 共用 A4 尺寸换算、白底合成、@page 规则；
- * collage.html 额外使用 showSheets/printSheets（支持多页输出）。
+ * index.html 与 pt.html 共用 A4 尺寸换算、白底合成、@page 规则；
+ * pt.html 额外使用 showSheets/printSheets（支持多页输出）。
  */
 (function (root, factory) {
   const api = factory();

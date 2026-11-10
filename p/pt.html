@@ -8,7 +8,7 @@
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <meta name="theme-color" content="#d4237a" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#2563EB" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -57,6 +57,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .file-input{display:none}
 .subbar{height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;border-bottom:1px solid var(--line);background:var(--bar-bg);color:var(--muted);font-size:11px}
 .subbar .row{gap:4px}
+.orient-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent3);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.orient-btn:hover{background:var(--surface2)}
+.orient-btn:active{transform:scale(.95)}
 .zoom-val{display:inline-block;min-width:40px;text-align:center;color:var(--accent3);font-family:ui-monospace,monospace;font-weight:700}
 .workspace{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;background-color:var(--bg);background-image:linear-gradient(45deg,var(--grid) 25%,transparent 25%),linear-gradient(-45deg,var(--grid) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--grid) 75%),linear-gradient(-45deg,transparent 75%,var(--grid) 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
 .paper-wrap{flex:none;transform-origin:center center;will-change:transform}
@@ -102,6 +105,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
 .save-tip{flex:none;color:var(--muted);font-size:12px;line-height:1.5}
 .save-img-box{flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
+.save-img-box.transparent-bg{background-color:#fff;background-image:linear-gradient(45deg,#e2e8f0 25%,transparent 25%),linear-gradient(-45deg,#e2e8f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e2e8f0 75%),linear-gradient(-45deg,transparent 75%,#e2e8f0 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
 .save-img-box img{display:block;flex:none;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain}
 .print-opts{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:8px 2px 0;border-top:1px solid var(--line)}
 .print-opt{display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;white-space:nowrap;cursor:pointer}
@@ -133,7 +137,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
   </header>
 
   <div class="subbar">
-    <span>A4 {{ state.orientation==='landscape' ? '横向' : '纵向' }} · 96dpi</span>
+    <div class="row tight">
+      <span>A4</span>
+      <button class="orient-btn" :title="state.orientation==='landscape' ? '当前横向，点击切换为纵向' : '当前纵向，点击切换为横向'" @click="toggleOrientation">{{ state.orientation==='landscape' ? '横向' : '纵向' }} 🔄</button>
+      <span class="pc-only">· 96dpi</span>
+    </div>
     <div class="row">
       <button class="icon-btn" style="width:24px;height:24px" title="缩小视图" @click="zoomOut">－</button>
       <span class="zoom-val">{{ Math.round(state.zoom*100) }}%</span>
@@ -153,7 +161,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <div class="empty-card" @click="openFileDialog">
         <span class="ic">🧩</span>
         <h2 class="empty-title">点此添加图片开始拼图</h2>
-        <p class="empty-desc">固定 A4 纸面，可不断加图<br>拖动 / 缩放 / 旋转 / 裁剪 / 黑白<br><span class="pc-only">扫描件可先在「扫描处理」做好白底再添加；支持拖拽文件、Ctrl+V 粘贴</span></p>
+        <p class="empty-desc">固定 A4 纸面，可不断加图<br>拖动 / 缩放 / 旋转 / 裁剪 / 黑白<br><span class="pc-only">扫描件可先在「扫描处理」做好白底再添加；支持拖拽文件、Ctrl+V 粘贴<br>方向键 / + - ：选中图片时微调位置与大小，未选中时平移、缩放画布（Shift 加速）</span></p>
       </div>
     </div>
 
@@ -243,11 +251,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
   <div class="save-sheet" v-if="saveOpen" @click.self="saveOpen=false">
     <div class="save-panel">
       <div class="save-hd"><b>输出 / 打印预览</b><button class="icon-btn" title="关闭" @click="saveOpen=false">✖</button></div>
-      <div class="save-tip">A4 {{ state.orientation==='landscape' ? '横向' : '纵向' }} · {{ state.dpi }}DPI（{{ sheetW }}×{{ sheetH }}）· 打印时自动零边距。</div>
-      <div class="save-img-box"><img :src="saveUrl" alt="A4 拼图预览"></div>
+      <div class="save-tip">A4 {{ state.orientation==='landscape' ? '横向' : '纵向' }} · {{ state.dpi }}DPI（{{ sheetW }}×{{ sheetH }}）· {{ state.format==='jpg' ? 'JPG 白底' : (state.transparent ? 'PNG 透明背景' : 'PNG 白底') }} · 打印始终白底零边距。</div>
+      <div class="save-img-box" :class="{'transparent-bg': state.format==='png' && state.transparent}"><img :src="saveUrl" alt="A4 拼图预览"></div>
       <div class="print-opts">
         <label class="print-opt"><span>DPI</span><select class="select" v-model.number="state.dpi" @change="refreshPreview"><option v-for="d in dpiOptions" :key="d" :value="d">{{ d }}{{ d===200?'（推荐）':'' }}</option></select></label>
-        <label class="print-opt"><input class="check" type="checkbox" :checked="state.orientation==='landscape'" @change="toggleOrientation"><span>横向</span></label>
+        <label class="print-opt"><span>格式</span><select class="select" v-model="state.format" @change="refreshPreview"><option value="png">PNG</option><option value="jpg">JPG（90 质量）</option></select></label>
+        <label class="print-opt" :class="{disabled: state.format==='jpg'}" title="仅 PNG 支持透明；JPG 自动使用白底"><input class="check" type="checkbox" v-model="state.transparent" :disabled="state.format==='jpg'" @change="refreshPreview"><span>透明背景</span></label>
+        <label class="print-opt"><input class="check" type="checkbox" :checked="state.orientation==='landscape'" @change="onOrientationCheck($event)"><span>横向</span></label>
       </div>
       <div class="save-ft">
         <button class="btn btn-ghost" @click="downloadImage">下载图片</button>
@@ -278,6 +288,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         panX: 0,
         panY: 0,
         dpi: 200,
+        format: 'png',
+        transparent: false,
         keepCropArea: false,
         busy: false,
         histIdx: 0,
@@ -288,7 +300,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           cropL: 0, cropT: 0, cropR: 0, cropB: 0
         }
       });
-      const dpiOptions = [96, 150, 200, 300];
+      const dpiOptions = [75, 96, 150, 200, 250, 300, 350, 400];
       const theme = ref('light');
       try { theme.value = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { /* 默认白天 */ }
       const workspaceEl = ref(null);
@@ -824,11 +836,36 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         setOrientation(state.orientation === 'portrait' ? 'landscape' : 'portrait', false);
         if (saveOpen.value) refreshPreview();
       }
+      /* 输出弹框的「横向」复选框：按勾选值直接设定方向，与副栏按钮共用 state.orientation */
+      function onOrientationCheck(e) {
+        setOrientation(e.target.checked ? 'landscape' : 'portrait', false);
+        if (saveOpen.value) refreshPreview();
+      }
 
-      function cleanCanvas() {
-        canvas.discardActiveObject();
-        canvas.renderAll();
-        return canvas.toCanvasElement(1);
+      function outputSettings() {
+        const isJpg = state.format === 'jpg';
+        return {
+          transparent: !isJpg && state.transparent,
+          mime: isJpg ? 'image/jpeg' : 'image/png',
+          quality: isJpg ? 0.9 : undefined,
+          ext: isJpg ? 'jpg' : 'png'
+        };
+      }
+      /* 导出画布：透明模式临时去掉白底，导出后立刻恢复，编辑画面始终白底 */
+      function buildSheet(multiplier, transparent) {
+        const m = multiplier || state.dpi / DPI_BASE;
+        const prevBg = canvas.backgroundColor;
+        if (transparent) canvas.backgroundColor = '';
+        try {
+          canvas.discardActiveObject();
+          canvas.renderAll();
+          return canvas.toCanvasElement(m);
+        } finally {
+          if (transparent) {
+            canvas.backgroundColor = prevBg;
+            canvas.renderAll();
+          }
+        }
       }
       function openOutput() {
         saveOpen.value = true;
@@ -836,32 +873,30 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       }
       function refreshPreview() {
         if (!canvas) return;
-        try { saveUrl.value = cleanCanvas().toDataURL('image/jpeg', 0.85); }
-        catch (e) { notify('预览生成失败'); }
-      }
-      function buildSheet() {
-        const multiplier = state.dpi / DPI_BASE;
-        canvas.discardActiveObject();
-        canvas.renderAll();
-        return canvas.toCanvasElement(multiplier);
+        try {
+          const opt = outputSettings();
+          const sheet = buildSheet(1, opt.transparent);
+          saveUrl.value = sheet.toDataURL(opt.mime, opt.quality);
+        } catch (e) { notify('预览生成失败'); }
       }
       function downloadImage() {
         if (!canvas || state.count === 0 || state.busy) return;
+        const opt = outputSettings();
         state.busy = true;
         setTimeout(() => {
           try {
-            const sheet = buildSheet();
+            const sheet = buildSheet(state.dpi / DPI_BASE, opt.transparent);
             sheet.toBlob(blob => {
               state.busy = false;
               if (!blob) { notify('导出失败'); return; }
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
-              a.download = `A4拼图_${state.dpi}dpi.png`;
+              a.download = `A4拼图_${state.dpi}dpi.${opt.ext}`;
               a.href = url;
               a.click();
               setTimeout(() => URL.revokeObjectURL(url), 10000);
-              notify('已导出 PNG');
-            }, 'image/png');
+              notify('已导出 ' + opt.ext.toUpperCase());
+            }, opt.mime, opt.quality);
           } catch (e) {
             state.busy = false;
             notify('导出失败：' + (e && e.message ? e.message : '未知错误'));
@@ -896,7 +931,43 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (mod && key === 'y') { e.preventDefault(); redo(); return; }
         if (mod && key === 'd') { e.preventDefault(); duplicate(); return; }
         if (key === 'delete' || key === 'backspace') { e.preventDefault(); remove(); return; }
-        if (key === 'escape' && canvas) { canvas.discardActiveObject(); canvas.renderAll(); state.sel.id = null; }
+        if (key === 'escape' && canvas) { canvas.discardActiveObject(); canvas.renderAll(); state.sel.id = null; return; }
+
+        /* 选中图片：方向键微移、+/- 缩放图片；未选中：方向键平移、+/- 缩放画布视图 */
+        const step = e.shiftKey ? 10 : 1;
+        const dx = key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0;
+        const dy = key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0;
+        const grow = key === '=' || key === '+';
+        const shrink = key === '-' || key === '_';
+        if (!dx && !dy && !grow && !shrink) return;
+        if (mod) return;
+        e.preventDefault();
+
+        const o = activeObj();
+        if (dx || dy) {
+          if (o) {
+            o.set({ left: o.left + dx, top: o.top + dy });
+            o.setCoords();
+            canvas.renderAll();
+            commit();
+          } else {
+            state.panX += dx;
+            state.panY += dy;
+          }
+          return;
+        }
+        const factor = grow ? 1.05 : 1 / 1.05;
+        if (o) {
+          const center = o.getCenterPoint();
+          o.set({ scaleX: o.scaleX * factor, scaleY: o.scaleY * factor });
+          o.setPositionByOrigin(center, 'center', 'center');
+          o.setCoords();
+          canvas.renderAll();
+          syncSel();
+          commit();
+        } else {
+          zoomAt(state.zoom * factor, window.innerWidth / 2, window.innerHeight / 2);
+        }
       }
 
       onMounted(() => {
@@ -963,7 +1034,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         sheetW, sheetH, displayW, displayH, paperStyle, wrapStyle,
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
-        zoomIn, zoomOut, fitView, toggleOrientation,
+        zoomIn, zoomOut, fitView, toggleOrientation, onOrientationCheck,
         openFileDialog, onFileChange, undo, redo,
         setTone, onParamInput, commit, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
         fitToPage, duplicate, remove,

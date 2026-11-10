@@ -8,14 +8,14 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#fff1f7",
-  "theme_color": "#d4237a",
+  "theme_color": "#2563EB",
   "categories": ["productivity", "utilities"],
   "shortcuts": [
     {
       "name": "A4 拼图",
       "short_name": "拼图",
       "description": "固定 A4 纸面自由拼图与打印",
-      "url": "./collage.html",
+      "url": "./pt.html",
       "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
