@@ -128,6 +128,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .save-tip{flex:none;color:var(--muted);font-size:12px;line-height:1.5}
 .save-img-box{flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
 .save-img-box img{display:block;flex:none;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.print-opts{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:8px 2px 0;border-top:1px solid var(--line)}
+.print-opt{display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;white-space:nowrap;cursor:pointer}
+.print-opt .check{flex:none}
+.print-opt-val{margin-left:2px;color:var(--accent3);font-size:11px;font-style:normal}
+.print-opt-dpi{gap:6px}
+.print-opt-dpi .select{width:60px;padding:4px 8px;border-radius:8px;font-size:12px}
 .save-ft{flex:none;display:flex;gap:8px;padding-bottom:env(safe-area-inset-bottom, 0px)}
 .save-ft .btn{flex:1;justify-content:center}
 @media(max-width:440px){.save-ft{gap:6px}.save-ft .btn{padding:6px 1px;font-size:11px}}
@@ -145,7 +151,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 @media print{.canvas{display:block;transform:none!important;width:100%;max-width:100%;max-height:none;height:auto;background:#fff;border-radius:0;box-shadow:none;break-inside:avoid}}
 @media print{.canvas-original{display:none!important}}
 @media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.save-sheet,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
-/* 声明纵向纸张；部分移动浏览器 / 系统打印服务会忽略，还需在打印对话框里选一次「纵向」 size:A4 portrait;  */
+/* 打印预览专用输出画布：屏幕上隐藏，打印时由 JS 加上 print-sheet-mode 只输出这一张图 */
+.print-sheet{display:none}
+@media print{html.print-sheet-mode .app{display:none!important}}
+@media print{html.print-sheet-mode .print-sheet{display:block;width:100%;max-width:100%;height:auto;margin:0;padding:0;border:0;background:#fff;break-inside:avoid}}
+@media print{html.print-sheet-mode.force-a4,html.print-sheet-mode.force-a4 body{margin:0;padding:0;font-size:0;line-height:0}}
+@media print{html.print-sheet-mode.force-a4 .print-sheet{width:var(--a4-w,209.6mm);height:var(--a4-h,296.6mm);object-fit:contain;break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}}
+/* 不强制 A4 时沿用默认纸张边距；强制 A4 时由 JS 动态注入 @page{size:A4 ...;margin:0} */
 @page{  margin:10mm}
   </style>
   <!-- PWA：注册 Service Worker，收集安装 / 更新状态（放在 window.__pwa 供 Vue 读取，避免事件时序问题） -->
@@ -204,7 +216,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="btn btn-ghost" title="刷新页面" @click="reloadPage"><span class="ic">🔄</span></button>
       <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
       <button class="btn btn-ghost" :disabled="state.images.length===0" title="打印" @click="printImage">打印</button>
-      <button class="btn btn-ghost share-btn" :disabled="state.images.length===0" title="分享" @click="shareImage">分享</button>
+      <button class="btn btn-ghost share-btn" :disabled="state.images.length===0" title="分享" @click="shareImage()">分享</button>
       <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span>导出</span></button><!-- <span class="ic">⬇️</span> -->
     </div>
   </header>
@@ -331,14 +343,30 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
   <div class="save-sheet" :class="{hidden:!saveOpen}" @click.self="closeSaveSheet">
     <div class="save-panel">
-      <div class="save-hd"><b>保存 / 转发图片</b><button class="icon-btn" title="关闭" @click="closeSaveSheet"><span class="ic">✖</span></button></div>
+      <div class="save-hd"><b>打印预览</b><button class="icon-btn" title="关闭" @click="closeSaveSheet"><span class="ic">✖</span></button></div>
       <div class="save-tip">{{ saveTip }}</div>
-      <div class="save-img-box" ref="saveImgBox"><img :src="saveUrl" alt="处理后的扫描件"></div>
+      <div class="save-img-box" ref="saveImgBox"><img :src="saveUrl" alt="打印预览"></div>
+      <div class="print-opts">
+        <label class="print-opt">
+          <input class="check" type="checkbox" v-model="printForceA4">
+          <span>强制A4</span>
+        </label>
+        <label class="print-opt" v-show="printForceA4">
+          <input class="check" type="checkbox" v-model="printLandscape">
+          <span>横向</span>
+        </label>
+        <label class="print-opt print-opt-dpi" v-show="printForceA4">
+          <span>DPI</span>
+          <select class="select" v-model.number="printDpi">
+            <option v-for="d in dpiOptions" :key="d" :value="d">{{ d }}{{ d === 200 ? '（推荐）' : '' }}</option>
+          </select>
+        </label>
+      </div>
       <div class="save-ft">
-        <button class="btn btn-ghost" @click="download">下载图片</button>
-        <button class="btn btn-ghost" @click="tryPrint">尝试打印</button>
-        <button class="btn btn-ghost" @click="shareImage">尝试分享</button>
-        <button class="btn btn-primary" @click="closeSaveSheet">完成</button>
+        <button class="btn btn-ghost" @click="downloadPreview">下载图片</button>
+        <button class="btn btn-ghost" @click="sharePreview">尝试分享</button>
+        <button class="btn btn-ghost" @click="closeSaveSheet">完成</button>
+        <button class="btn btn-primary" @click="tryPrint">尝试打印</button>
       </div>
     </div>
   </div>
@@ -346,8 +374,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
 </div>
 
+<!-- 打印输出画布：位于 Vue 挂载点之外，打印时隐藏整个应用只输出这一张图 -->
+<canvas id="print-sheet" class="print-sheet"></canvas>
+
 <script>
-  const { createApp, reactive, ref, computed, onMounted, markRaw, nextTick } = Vue;
+  const { createApp, reactive, ref, computed, watch, onMounted, markRaw, nextTick } = Vue;
 
   /**
    * ScanDoc Mobile Engine (Vue 3)
@@ -409,8 +440,28 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const toastText = ref('');
       const saveOpen = ref(false);
       const saveUrl = ref('');
-      const saveTip = ref('');
       const saveImgBox = ref(null);
+      // 打印预览设置：只在弹窗里临时调整，不写入处理参数，默认「强制A4 + 纵向 + 200DPI」
+      const printForceA4 = ref(true);
+      const printLandscape = ref(false);
+      const printDpi = ref(200);
+      const dpiOptions = [72, 96, 150, 200, 300, 350, 400];
+      const savePurpose = ref('print');
+      const saveFallbackTip = ref('');
+      const a4SizeText = computed(() => {
+        const d = printDpi.value;
+        const w = Math.round((printLandscape.value ? 297 : 210) / 25.4 * d);
+        const h = Math.round((printLandscape.value ? 210 : 297) / 25.4 * d);
+        return `${w}×${h}`;
+      });
+      const saveTip = computed(() => {
+        if (savePurpose.value !== 'print') return saveFallbackTip.value || '长按下方图片保存到相册';
+        const mode = printForceA4.value
+          ? `A4 ${printLandscape.value ? '横向' : '纵向'} · ${printDpi.value}DPI（${a4SizeText.value}）`
+          : '按原图比例输出';
+        return `${mode}；点「尝试打印」输出，移动端也可「长按」保存后用相册打印`;
+      });
+      watch([printForceA4, printLandscape, printDpi], () => { if (saveOpen.value) refreshPreview(); });
       let toastTimer = null;
       function notify(msg) {
         toastText.value = msg;
@@ -910,17 +961,58 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
       /* ================= 8.1 打印与分享 (按浏览器能力降级) ================= */
 
-      /* 移动 WebView 里 <a download> 常被拦截，最可靠的出口是让用户长按 <img> 保存 */
-      function openSaveSheet(tip) {
-        const current = state.images[state.activeIndex];
-        if (!current) return;
-        try {
-          saveUrl.value = current.resultCanvas.toDataURL('image/png');
-        } catch (e) {
-          notify('图片生成失败');
-          return;
+      /* 强制 A4：把处理图等比合成到白底 A4 画布（contain，不裁剪），长图不再被分页切开 */
+      const MAX_UPSCALE = 2; // 小图最多放大 2 倍，避免插值放大后文字发糊
+      const pageStyleEl = document.createElement('style');
+      pageStyleEl.id = 'print-page-rule';
+      document.head.appendChild(pageStyleEl);
+
+      function buildA4Canvas() {
+        const landscape = !!printLandscape.value;
+        const W = Math.round((landscape ? 297 : 210) / 25.4 * printDpi.value);
+        const H = Math.round((landscape ? 210 : 297) / 25.4 * printDpi.value);
+        const c = document.createElement('canvas');
+        c.width = W;
+        c.height = H;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+        const item = state.images[state.activeIndex];
+        const src = item && item.resultCanvas;
+        if (src && src.width && src.height) {
+          // 大图按 contain 缩小贴边；小图最多放大 MAX_UPSCALE 倍，多余部分留白
+          const scale = Math.min(MAX_UPSCALE, W / src.width, H / src.height);
+          const dw = src.width * scale;
+          const dh = src.height * scale;
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh);
         }
-        saveTip.value = tip || '长按下方图片保存到相册，再从微信 / QQ 发送或打印';
+        return c;
+      }
+
+      function previewCanvas() {
+        const item = state.images[state.activeIndex];
+        if (!item) return null;
+        return printForceA4.value ? buildA4Canvas() : item.resultCanvas;
+      }
+
+      function refreshPreview() {
+        const c = previewCanvas();
+        if (!c) return;
+        try {
+          saveUrl.value = c.toDataURL('image/png');
+        } catch (e) {
+          notify('预览图生成失败');
+        }
+      }
+
+      /* 移动 WebView 里 <a download> 常被拦截，最可靠的出口是让用户长按 <img> 保存 */
+      function openSaveSheet(tip, purpose) {
+        if (!state.images[state.activeIndex]) return;
+        savePurpose.value = purpose || 'share';
+        saveFallbackTip.value = tip || '';
+        refreshPreview();
         saveOpen.value = true;
         nextTick(() => {
           const box = saveImgBox.value;
@@ -933,33 +1025,81 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         saveUrl.value = '';
       }
 
-      function tryPrint() {
-        if (typeof window.print !== 'function') {
-          saveTip.value = '当前浏览器不支持打印，请长按保存图片后用系统相册 / 其他 App 打印';
-          return;
+      function downloadPreview() {
+        if (!saveUrl.value) return;
+        const item = state.images[state.activeIndex];
+        const base = item ? item.name.replace(/\.[^/.]+$/, '') : 'image';
+        const link = document.createElement('a');
+        link.download = `clean_${printForceA4.value ? 'A4_' : ''}${base}.png`;
+        link.href = saveUrl.value;
+        link.click();
+      }
+
+      function sharePreview() { shareImage(true); }
+
+      // 打印时隐藏整个应用，只输出这张画布；A4 模式用动态 @page 声明纸张方向与零边距
+      function setupPrintSheet() {
+        const c = previewCanvas();
+        const sheet = document.getElementById('print-sheet');
+        if (!c || !sheet) return false;
+        if (sheet.width !== c.width || sheet.height !== c.height) {
+          sheet.width = c.width;
+          sheet.height = c.height;
         }
+        const ctx = sheet.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sheet.width, sheet.height);
+        ctx.drawImage(c, 0, 0);
+
+        const root = document.documentElement;
+        const force = !!printForceA4.value;
+        root.classList.add('print-sheet-mode');
+        root.classList.toggle('force-a4', force);
+        if (force) {
+          const landscape = !!printLandscape.value;
+          const w = landscape ? 297 : 210;
+          const h = landscape ? 210 : 297;
+          pageStyleEl.textContent =
+            `@page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:0}` +
+            `html.print-sheet-mode{--a4-w:${(w - 0.4).toFixed(1)}mm;--a4-h:${(h - 0.4).toFixed(1)}mm}`;
+        } else {
+          pageStyleEl.textContent = '';
+        }
+        return true;
+      }
+
+      function clearPrintSheet() {
+        document.documentElement.classList.remove('print-sheet-mode', 'force-a4');
+        pageStyleEl.textContent = '';
+      }
+
+      function tryPrint() {
+        if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
+        if (!setupPrintSheet()) { notify('没有可打印的图片'); return; }
         window.print();
       }
 
       function printImage() {
         if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
-        if (window.matchMedia && window.matchMedia('(max-width:640px)').matches) {
-          openSaveSheet('移动端浏览器多不支持网页打印，请「长按」保存图片后用系统相册 / 其他 App 打印；也可点「尝试打印」');
-          return;
-        }
-        if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
-        window.print();
+        // PC 与移动端统一：先弹出预览框，确认 A4 / 方向后再点「尝试打印」
+        // 每次打印独立设置，回到默认「强制A4 + 纵向 + 200DPI」
+        printForceA4.value = true;
+        printLandscape.value = false;
+        printDpi.value = 200;
+        openSaveSheet('', 'print');
       }
 
-      async function shareImage() {
+      async function shareImage(fromPreview) {
         if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
         const current = state.images[state.activeIndex];
-        const name = `clean_${current.name.replace(/\.[^/.]+$/, '')}.png`;
+        const useA4 = !!fromPreview && printForceA4.value;
+        const name = `clean_${useA4 ? 'A4_' : ''}${current.name.replace(/\.[^/.]+$/, '')}.png`;
+        const srcCanvas = useA4 ? buildA4Canvas() : current.resultCanvas;
         let blob = null;
         try {
-          blob = await new Promise(resolve => current.resultCanvas.toBlob(resolve, 'image/png'));
+          blob = await new Promise(resolve => srcCanvas.toBlob(resolve, 'image/png'));
         } catch (e) { /* 老内核可能没有 toBlob */ }
-        if (!blob) { openSaveSheet('图片生成受限，请长按下方图片保存到相册'); return; }
+        if (!blob) { openSaveSheet('图片生成受限，请长按下方图片保存到相册', 'share'); return; }
 
         const nav = window.navigator;
         let file = null, canShareFiles = false;
@@ -986,7 +1126,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         }
         openSaveSheet(canShareFiles
           ? '分享未完成，可长按下方图片保存后转发'
-          : '当前浏览器不支持直接分享，长按下方图片保存后即可转发');
+          : '当前浏览器不支持直接分享，长按下方图片保存后即可转发', 'share');
       }
 
       function loadSampleAndClose() {
@@ -1238,6 +1378,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           }
           if (!cropBusy && files.length > 0) addFiles(files);
         });
+        window.addEventListener('afterprint', clearPrintSheet);
 
         loadSample();
       });
@@ -1245,6 +1386,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       return {
         state, presets, drawerOpen, loading, dimText, previewStyle, toastText, theme,
         saveOpen, saveUrl, saveTip, saveImgBox, closeSaveSheet, tryPrint,
+        printForceA4, printLandscape, printDpi, dpiOptions, downloadPreview, sharePreview,
         previewEl, fileInputEl, canvasResult, canvasOriginal,
         openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample, loadSampleAndClose,
         printImage, shareImage, toggleTheme, reloadPage,
