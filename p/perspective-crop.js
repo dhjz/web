@@ -620,12 +620,12 @@
         btn.textContent = rectMode ? '▣ 直角 · 开' : '▣ 直角';
         edgeHandles.forEach(el => el.classList.toggle('show', rectMode));
         if (rectMode) quad = quadFromRect(safeRect(rectFromQuad(quad), sw, sh, minSidePx));
-        root.querySelector('.pc-hint-text').textContent = rectMode
-          ? '拖上/下边竖向、左/右边横向 · 拖角自动保持直角'
-          : '拖动四个圆点框住文档边缘 · 开启「直角」可拖边';
-        root.querySelector('.pc-title span').textContent = rectMode
-          ? '直角模式：四点吸附为矩形，拖边即可微调裁剪范围'
-          : '拖动四个圆点框住文档边缘，右侧实时预览矫正结果';
+        // root.querySelector('.pc-hint-text').textContent = rectMode
+        //   ? '拖上/下边竖向、左/右边横向 · 拖角自动保持直角'
+        //   : '拖动四个圆点框住文档边缘 · 开启「直角」可拖边';
+        // root.querySelector('.pc-title span').textContent = rectMode
+        //   ? '直角模式：四点吸附为矩形，拖边即可微调裁剪范围'
+        //   : '拖动四个圆点框住文档边缘，右侧实时预览矫正结果';
         draw();
         updatePreview();
       }
