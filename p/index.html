@@ -21,8 +21,8 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .disabled{opacity:.4;pointer-events:none}
 .ic{display:inline-block;font-size:16px;line-height:1}
 .pc-only{display:none}
-.hd{height:56px;flex:none;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);background:var(--hd-bg);backdrop-filter:blur(12px)}
-.icon-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:var(--bar-bg);color:var(--text2);font-size:16px;cursor:pointer;transition:.15s}
+.hd{height:46px;flex:none;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);background:var(--hd-bg);backdrop-filter:blur(12px)}
+.icon-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:var(--bar-bg);color:var(--text2);font-size:16px;cursor:pointer;transition:.15s}
 .icon-btn:hover{color:var(--heading)}
 .icon-btn:active{background:#2563eb;color:#fff}
 .brand{color:var(--heading);font-family:ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:0;white-space:nowrap}
@@ -59,12 +59,12 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .canvas{grid-area:1/1;min-width:0;min-height:0;max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 25px 50px -12px var(--shadow);transform:translate(var(--pan-x,0px),var(--pan-y,0px)) scale(var(--zoom,1));transition:opacity .15s}
 .canvas-original{z-index:1;opacity:0;pointer-events:none}
 .canvas-original.show{opacity:1}
-.compare-btn{position:absolute;left:24px;bottom:24px;bottom:calc(24px + env(safe-area-inset-bottom, 0px));z-index:20;display:flex;align-items:center;gap:2px;padding:8px 8px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;font-weight:600;box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);cursor:pointer;transition:.15s}
+.compare-btn{position:absolute;left:14px;bottom:10px;bottom:calc(10px + env(safe-area-inset-bottom, 0px));z-index:20;display:flex;align-items:center;gap:2px;padding:8px 8px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;font-weight:600;box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);cursor:pointer;transition:.15s}
 .compare-btn:active{transform:scale(.95)}
 .compare-btn .ic{color:var(--accent3)}
 .compare-btn.active{background:#2563eb;border-color:#3b82f6;color:#fff}
 .compare-btn.active .ic{color:#fff}
-.pager{position:absolute;right:24px;bottom:24px;bottom:calc(24px + env(safe-area-inset-bottom, 0px));z-index:20;display:flex;align-items:center;gap:8px;padding:6px 6px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);cursor:default}
+.pager{position:absolute;right:14px;bottom:10px;bottom:calc(10px + env(safe-area-inset-bottom, 0px));z-index:20;display:flex;align-items:center;gap:8px;padding:6px 6px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);cursor:default}
 .pager-btn{padding:4px;border:0;background:none;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s}
 .pager-btn:hover{color:var(--heading)}
 .pager-btn:active{transform:scale(.9)}
@@ -109,20 +109,28 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .pager-btn.crop-btn{display:flex;align-items:center;gap:3px;padding:4px 5px;font-size:14px;line-height:1}
 .pager-sep{width:1px;height:16px;flex:none;background:var(--line2)}
 @media(max-width:639px){.pager{gap:5px}}
+.save-sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay);backdrop-filter:blur(4px)}
+.save-panel{width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);box-shadow:0 25px 50px -12px var(--shadow)}
+.save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
+.save-tip{flex:none;color:var(--muted);font-size:12px;line-height:1.5}
+.save-img-box{flex:1;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:auto;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
+.save-img-box img{display:block;max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;user-select:auto}
+.save-ft{flex:none;display:flex;gap:8px;padding-bottom:env(safe-area-inset-bottom, 0px)}
+.save-ft .btn{flex:1;justify-content:center}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.hd{padding:0 16px}}
 @media(min-width:640px){.brand{font-size:16px}}
 @media(min-width:640px){.pc-only{display:inline}}
 @media(min-width:640px){.preview{padding:16px}}
-@media(min-width:640px){.compare-btn{bottom:32px;bottom:calc(32px + env(safe-area-inset-bottom, 0px))}}
-@media(min-width:640px){.pager{bottom:32px;bottom:calc(32px + env(safe-area-inset-bottom, 0px))}}
+@media(min-width:640px){.compare-btn{bottom:22px;bottom:calc(32px + env(safe-area-inset-bottom, 0px))}}
+@media(min-width:640px){.pager{bottom:22px;bottom:calc(32px + env(safe-area-inset-bottom, 0px))}}
 @media print{html,body{background:#fff!important;color:#000}}
 @media print{.app{display:block;height:auto;min-height:0;overflow:visible;background:#fff}}
 @media print{.workspace{display:block;background:#fff!important;background-image:none!important;overflow:visible}}
 @media print{.preview{position:static;display:block;width:100%;padding:0;background:#fff}}
 @media print{.canvas{display:block;transform:none!important;width:100%;max-width:100%;max-height:none;height:auto;background:#fff;border-radius:0;box-shadow:none;break-inside:avoid}}
 @media print{.canvas-original{display:none!important}}
-@media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
+@media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.save-sheet,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
 @page{margin:10mm}
   </style>
 </head>
@@ -265,6 +273,18 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     </div>
   </aside>
 
+  <div class="save-sheet" :class="{hidden:!saveOpen}" @click.self="closeSaveSheet">
+    <div class="save-panel">
+      <div class="save-hd"><b>保存 / 转发图片</b><button class="icon-btn" title="关闭" @click="closeSaveSheet"><span class="ic">✖</span></button></div>
+      <div class="save-tip">{{ saveTip }}</div>
+      <div class="save-img-box"><img :src="saveUrl" alt="处理后的扫描件"></div>
+      <div class="save-ft">
+        <button class="btn btn-ghost" @click="download">下载图片</button>
+        <button class="btn btn-ghost" @click="tryPrint">尝试打印</button>
+        <button class="btn btn-primary" @click="closeSaveSheet">完成</button>
+      </div>
+    </div>
+  </div>
   <div class="toast" :class="{hidden:!toastText}">{{ toastText }}</div>
 
 </div>
@@ -330,6 +350,9 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         applyTheme();
       }
       const toastText = ref('');
+      const saveOpen = ref(false);
+      const saveUrl = ref('');
+      const saveTip = ref('');
       let toastTimer = null;
       function notify(msg) {
         toastText.value = msg;
@@ -813,12 +836,40 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 
       /* ================= 8.1 打印与分享 (按浏览器能力降级) ================= */
 
+      /* 移动 WebView 里 <a download> 常被拦截，最可靠的出口是让用户长按 <img> 保存 */
+      function openSaveSheet(tip) {
+        const current = state.images[state.activeIndex];
+        if (!current) return;
+        try {
+          saveUrl.value = current.resultCanvas.toDataURL('image/png');
+        } catch (e) {
+          notify('图片生成失败');
+          return;
+        }
+        saveTip.value = tip || '长按下方图片保存到相册，再从微信 / QQ 发送或打印';
+        saveOpen.value = true;
+      }
+
+      function closeSaveSheet() {
+        saveOpen.value = false;
+        saveUrl.value = '';
+      }
+
+      function tryPrint() {
+        if (typeof window.print !== 'function') {
+          saveTip.value = '当前浏览器不支持打印，请长按保存图片后用系统相册 / 其他 App 打印';
+          return;
+        }
+        window.print();
+      }
+
       function printImage() {
         if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
-        if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
         if (window.matchMedia && window.matchMedia('(max-width:640px)').matches) {
-          notify('若未弹出打印，请用系统或厂商浏览器的打印功能');
+          openSaveSheet('移动端浏览器多不支持网页打印，请长按保存图片后用系统相册 / 其他 App 打印；也可点「尝试打印」');
+          return;
         }
+        if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
         window.print();
       }
 
@@ -826,30 +877,38 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
         const current = state.images[state.activeIndex];
         const name = `clean_${current.name.replace(/\.[^/.]+$/, '')}.png`;
-        const blob = await new Promise(resolve => current.resultCanvas.toBlob(resolve, 'image/png'));
-        if (!blob) { notify('图片生成失败'); return; }
+        let blob = null;
+        try {
+          blob = await new Promise(resolve => current.resultCanvas.toBlob(resolve, 'image/png'));
+        } catch (e) { /* 老内核可能没有 toBlob */ }
+        if (!blob) { openSaveSheet('图片生成受限，请长按下方图片保存到相册'); return; }
+
         const nav = window.navigator;
-        if (nav && nav.share) {
+        let file = null, canShareFiles = false;
+        try {
+          file = new File([blob], name, { type: 'image/png' });
+          canShareFiles = !!(nav && nav.share && (!nav.canShare || nav.canShare({ files: [file] })));
+        } catch (e) { /* 老内核可能没有 File / canShare */ }
+        if (canShareFiles && file) {
           try {
-            const file = new File([blob], name, { type: 'image/png' });
-            const canFiles = !nav.canShare || nav.canShare({ files: [file] });
-            await nav.share(canFiles
-              ? { files: [file], title: '扫描件去灰底' }
-              : { title: '扫描件去灰底', text: '已处理的扫描件' });
+            await nav.share({ files: [file], title: '扫描件去灰底' });
             return;
           } catch (e) {
             if (e && e.name === 'AbortError') return;
           }
         }
-        if (nav && nav.clipboard && window.ClipboardItem) {
+
+        const smallScreen = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+        if (!smallScreen && nav && nav.clipboard && window.ClipboardItem) {
           try {
             await nav.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
-            notify('当前浏览器不支持分享，图片已复制到剪贴板');
+            notify('图片已复制到剪贴板');
             return;
-          } catch (e) { /* 继续降级为下载 */ }
+          } catch (e) { /* 继续降级为长按保存 */ }
         }
-        notify('当前浏览器不支持分享，已改为下载');
-        download();
+        openSaveSheet(canShareFiles
+          ? '分享未完成，可长按下方图片保存后转发'
+          : '当前浏览器不支持直接分享，长按下方图片保存后即可转发');
       }
 
       function loadSampleAndClose() {
@@ -1045,6 +1104,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 
       return {
         state, presets, drawerOpen, loading, dimText, previewStyle, toastText, theme,
+        saveOpen, saveUrl, saveTip, closeSaveSheet, tryPrint,
         previewEl, fileInputEl, canvasResult, canvasOriginal,
         openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample, loadSampleAndClose,
         printImage, shareImage, toggleTheme,

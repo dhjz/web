@@ -375,7 +375,7 @@
 .pc-side-hd{height:32px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-bottom:1px solid var(--line,#e2e8f0);color:var(--muted,#64748b);font-size:11px}
 .pc-preview-box{position:relative;flex:1;min-height:0;overflow:hidden}
 .pc-preview{position:absolute;inset:0;width:100%;height:100%;display:block}
-.pc-ft{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));border-top:1px solid var(--line,#e2e8f0);background:var(--tabs-bg,#fff)}
+.pc-ft{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));border-top:1px solid var(--line,#e2e8f0);background:var(--tabs-bg,#fff)}
 .pc-ft label{display:flex;align-items:center;gap:4px;color:var(--muted,#64748b);font-size:11px}
 .pc-ft select{padding:5px 4px;border:1px solid var(--line2,#cbd5e1);border-radius:8px;background:var(--surface,#f1f5f9);color:var(--text2,#334155);font-size:11px;outline:none}
 .pc-ft .pc-grow{flex:1}
@@ -432,7 +432,6 @@
           <div class="pc-stage">
             <canvas class="pc-canvas"></canvas>
             <div class="pc-mag"><canvas width="110" height="110"></canvas></div>
-            <div class="pc-hint pc-hint-text">拖动四个圆点框住文档边缘 · 开启「直角」可拖边</div>
           </div>
           <div class="pc-side">
             <div class="pc-side-hd"><span>矫正预览（白底 · 标准长方形）</span></div>
