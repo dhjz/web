@@ -145,7 +145,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 @media print{.canvas{display:block;transform:none!important;width:100%;max-width:100%;max-height:none;height:auto;background:#fff;border-radius:0;box-shadow:none;break-inside:avoid}}
 @media print{.canvas-original{display:none!important}}
 @media print{.hd,.tabs-bar,.empty,.pager,.compare-btn,.backdrop,.drawer,.save-sheet,.loader,.toast,.dots,.icon-btn,.btn,.reset-btn{display:none!important}}
-@page{margin:10mm}
+/* 声明纵向纸张；部分移动浏览器 / 系统打印服务会忽略，还需在打印对话框里选一次「纵向」 */
+@page{size:A4 portrait;margin:10mm}
   </style>
   <!-- PWA：注册 Service Worker，收集安装 / 更新状态（放在 window.__pwa 供 Vue 读取，避免事件时序问题） -->
   <script>
