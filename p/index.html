@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>移动扫描宝 - 纯JS去灰底白底黑字工具</title>
+  <title>移动扫描宝</title>
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <!-- Vue 3（唯一依赖） -->
   <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
   <!-- 四点裁剪 / 透视矫正（本地零依赖模块，全局 PerspectiveCrop） -->
@@ -13,7 +14,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#f8fafc;--panel:#fff;--surface:#f1f5f9;--surface2:#e2e8f0;--line:#e2e8f0;--line2:#cbd5e1;--text:#0f172a;--text2:#334155;--muted:#64748b;--heading:#0f172a;--grid:#e2e8f0;--dot:#cbd5e1;--hd-bg:rgba(255,255,255,.9);--tabs-bg:rgba(255,255,255,.75);--bar-bg:rgba(241,245,249,.9);--float-bg:rgba(255,255,255,.92);--float-line:rgba(203,213,225,.9);--overlay:rgba(148,163,184,.25);--shadow:rgba(15,23,42,.18);--accent3:#2563eb;--accent4:#1d4ed8;--accent-soft:rgba(37,99,235,.12);--accent-line:rgba(37,99,235,.35);--accent-line2:rgba(37,99,235,.4);--accent-glow:rgba(37,99,235,.2);--danger:#e11d48;--danger2:#be123c;--danger-soft:rgba(225,29,72,.1)}
 html.dark{--bg:#020617;--panel:#0f172a;--surface:#1e293b;--surface2:#334155;--line:#1e293b;--line2:#334155;--text:#f1f5f9;--text2:#e2e8f0;--muted:#94a3b8;--heading:#fff;--grid:#1e293b;--dot:#475569;--hd-bg:rgba(15,23,42,.9);--tabs-bg:rgba(15,23,42,.6);--bar-bg:rgba(30,41,59,.8);--float-bg:rgba(15,23,42,.9);--float-line:rgba(51,65,85,.8);--overlay:rgba(2,6,23,.4);--shadow:rgba(0,0,0,.5);--accent3:#60a5fa;--accent4:#93c5fd;--accent-soft:rgba(37,99,235,.3);--accent-line:rgba(59,130,246,.3);--accent-line2:rgba(59,130,246,.4);--accent-glow:rgba(59,130,246,.2);--danger:#fb7185;--danger2:#fda4af;--danger-soft:rgba(244,63,94,.1)}
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;user-select:none;background:var(--bg);color:var(--text)}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;background:var(--bg);color:var(--text)}
+button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .row{display:flex;align-items:center;gap:8px}
 .tight{gap:6px}
@@ -108,13 +110,13 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .drawer-tools .btn{flex:1;min-width:0;padding:6px 4px;gap:4px;font-size:11px}
 .pager-btn.crop-btn{display:flex;align-items:center;gap:3px;padding:4px 5px;font-size:14px;line-height:1}
 .pager-sep{width:1px;height:16px;flex:none;background:var(--line2)}
-@media(max-width:639px){.pager{gap:5px}}
+@media(max-width:639px){.pager{gap:5px}.share-btn{display:none}}
 .save-sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay);backdrop-filter:blur(4px)}
 .save-panel{width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);box-shadow:0 25px 50px -12px var(--shadow)}
 .save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
 .save-tip{flex:none;color:var(--muted);font-size:12px;line-height:1.5}
-.save-img-box{flex:1;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:auto;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
-.save-img-box img{display:block;max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;user-select:auto}
+.save-img-box{flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
+.save-img-box img{display:block;flex:none;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
 .save-ft{flex:none;display:flex;gap:8px;padding-bottom:env(safe-area-inset-bottom, 0px)}
 .save-ft .btn{flex:1;justify-content:center}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
@@ -149,7 +151,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     <div class="row tight">
       <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
       <button class="btn btn-ghost" :disabled="state.images.length===0" title="打印" @click="printImage">打印</button>
-      <button class="btn btn-ghost" :disabled="state.images.length===0" title="分享" @click="shareImage">分享</button>
+      <button class="btn btn-ghost share-btn" :disabled="state.images.length===0" title="分享" @click="shareImage">分享</button>
       <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span>导出</span></button><!-- <span class="ic">⬇️</span> -->
     </div>
   </header>
@@ -178,7 +180,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     <div class="preview" ref="previewEl" :class="{hidden:state.images.length===0}" :style="previewStyle" @wheel.prevent="onWheel" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp">
       <canvas class="canvas" ref="canvasResult"></canvas>
       <canvas class="canvas canvas-original" :class="{show:state.isShowingOriginal}" ref="canvasOriginal"></canvas>
-      <button class="compare-btn" :class="{active:state.isShowingOriginal}" @click.prevent="toggleCompare" @touchstart.passive="showOriginal(true)" @touchend.passive="releaseCompare">
+      <button class="compare-btn" :class="{active:state.isShowingOriginal}" @click.prevent="toggleCompare" @touchstart="onCompareTouchStart" @touchend.passive="releaseCompare">
         <span class="ic">{{ state.isShowingOriginal ? '🙈' : '👁️' }}</span>
         <span class="pc-only">{{ compareLabel }}</span>
       </button>
@@ -277,7 +279,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     <div class="save-panel">
       <div class="save-hd"><b>保存 / 转发图片</b><button class="icon-btn" title="关闭" @click="closeSaveSheet"><span class="ic">✖</span></button></div>
       <div class="save-tip">{{ saveTip }}</div>
-      <div class="save-img-box"><img :src="saveUrl" alt="处理后的扫描件"></div>
+      <div class="save-img-box" ref="saveImgBox"><img :src="saveUrl" alt="处理后的扫描件"></div>
       <div class="save-ft">
         <button class="btn btn-ghost" @click="download">下载图片</button>
         <button class="btn btn-ghost" @click="tryPrint">尝试打印</button>
@@ -290,7 +292,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 </div>
 
 <script>
-  const { createApp, reactive, ref, computed, onMounted, markRaw } = Vue;
+  const { createApp, reactive, ref, computed, onMounted, markRaw, nextTick } = Vue;
 
   /**
    * ScanDoc Mobile Engine (Vue 3)
@@ -353,6 +355,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       const saveOpen = ref(false);
       const saveUrl = ref('');
       const saveTip = ref('');
+      const saveImgBox = ref(null);
       let toastTimer = null;
       function notify(msg) {
         toastText.value = msg;
@@ -814,6 +817,12 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         state.isShowingOriginal = show;
       }
 
+      function onCompareTouchStart(e) {
+        // 非 passive 监听才能阻止长按带来的系统选中 / 复制菜单
+        if (e.cancelable) e.preventDefault();
+        showOriginal(true);
+      }
+
       function toggleCompare() {
         showOriginal(!state.isShowingOriginal);
       }
@@ -848,6 +857,10 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         }
         saveTip.value = tip || '长按下方图片保存到相册，再从微信 / QQ 发送或打印';
         saveOpen.value = true;
+        nextTick(() => {
+          const box = saveImgBox.value;
+          if (box) { box.scrollTop = 0; box.scrollLeft = 0; }
+        });
       }
 
       function closeSaveSheet() {
@@ -866,7 +879,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       function printImage() {
         if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
         if (window.matchMedia && window.matchMedia('(max-width:640px)').matches) {
-          openSaveSheet('移动端浏览器多不支持网页打印，请长按保存图片后用系统相册 / 其他 App 打印；也可点「尝试打印」');
+          openSaveSheet('移动端浏览器多不支持网页打印，请「长按」保存图片后用系统相册 / 其他 App 打印；也可点「尝试打印」');
           return;
         }
         if (typeof window.print !== 'function') { notify('当前浏览器不支持打印'); return; }
@@ -1079,6 +1092,12 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         ctxResult = canvasResult.value.getContext('2d', { willReadFrequently: true });
         ctxOriginal = canvasOriginal.value.getContext('2d', { willReadFrequently: true });
 
+        // 拦截按钮上的长按/右键「复制」菜单，但不影响弹窗内图片的长按保存
+        document.addEventListener('contextmenu', (e) => {
+          const t = e.target;
+          if (t && t.closest && t.closest('button, .btn')) e.preventDefault();
+        });
+
         window.addEventListener('dragover', (e) => e.preventDefault());
         window.addEventListener('drop', (e) => {
           e.preventDefault();
@@ -1104,14 +1123,14 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 
       return {
         state, presets, drawerOpen, loading, dimText, previewStyle, toastText, theme,
-        saveOpen, saveUrl, saveTip, closeSaveSheet, tryPrint,
+        saveOpen, saveUrl, saveTip, saveImgBox, closeSaveSheet, tryPrint,
         previewEl, fileInputEl, canvasResult, canvasOriginal,
         openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample, loadSampleAndClose,
         printImage, shareImage, toggleTheme,
         setParam, onModeChange, onColorChange, applyPreset, resetParams,
         setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
         onWheel, onPointerDown, onPointerMove, onPointerUp,
-        toggleCompare, showOriginal, releaseCompare,
+        toggleCompare, showOriginal, releaseCompare, onCompareTouchStart,
         compareLabel, currentCropped, openCropEditor, restoreCrop
       };
     }
