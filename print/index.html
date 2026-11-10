@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>移动扫描宝 - 纯JS去灰底白底黑字工具</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    
+    /* 棋盘格底纹 */
+    .checkerboard-pattern {
+      background-color: #0f172a;
+      background-image: 
+        linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+
+    /* 隐藏滚动条但保留滚动功能 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    input[type=range] {
+      accent-color: #3b82f6;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-hidden">
+
+  <!-- 顶部导航栏 (移动端适配) -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-3 sm:px-4 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center space-x-2">
+      <!-- 移动端左侧参数菜单触发器 -->
+      <button id="btn-toggle-settings" class="p-2 -ml-1 text-slate-200 hover:text-white bg-slate-800/80 active:bg-blue-600 rounded-xl transition flex items-center justify-center">
+        <i class="ph ph-sliders-horizontal text-xl"></i>
+      </button>
+      <div class="flex items-center space-x-1.5">
+        <span class="font-bold text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
+          <i class="ph ph-file-text text-blue-400 text-lg"></i>
+          <span>扫描件去灰底</span>
+        </span>
+        <span id="badge-count" class="hidden text-[10px] bg-blue-600/30 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full font-mono font-bold">0</span>
+      </div>
+    </div>
+
+    <!-- 顶部右侧操作栏 -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2">
+      <!-- 示例图按钮 -->
+      <button id="btn-sample" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 active:scale-95 transition">
+        示例
+      </button>
+      <!-- 添加图片按钮 -->
+      <label class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 active:scale-95 transition cursor-pointer flex items-center gap-1 border border-slate-700">
+        <i class="ph ph-plus-circle text-sm text-blue-400"></i>
+        <span class="hidden sm:inline">加图</span>
+        <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+      </label>
+      <!-- 导出下载按钮 -->
+      <button id="btn-download" disabled class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-1 transition">
+        <i class="ph ph-download-simple text-sm"></i>
+        <span>导出</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 多图标签栏 (PC & 平板显示，移动端精简) -->
+  <div id="tabs-bar" class="hidden h-11 border-b border-slate-800/80 bg-slate-900/60 px-3 flex items-center space-x-2 overflow-x-auto no-scrollbar shrink-0">
+    <div id="tabs-container" class="flex items-center space-x-2 py-1">
+      <!-- Tab 动态渲染 -->
+    </div>
+  </div>
+
+  <!-- 主视图工作区 -->
+  <main id="workspace" class="flex-1 relative flex flex-col items-center justify-center checkerboard-pattern overflow-hidden">
+    
+    <!-- 空状态：引导上传 -->
+    <div id="empty-state" class="flex flex-col items-center justify-center p-6 text-center max-w-sm">
+      <div id="btn-upload-area" class="w-20 h-20 rounded-3xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center text-slate-400 mb-4 cursor-pointer hover:border-blue-500 hover:text-blue-400 active:scale-95 transition">
+        <i class="ph ph-cloud-arrow-up text-3xl"></i>
+      </div>
+      <h2 class="text-sm font-semibold text-slate-200 mb-1">点此选择多张或单张图片</h2>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        支持拍摄照片、发票、合同、错题本。<br>
+        <span class="hidden sm:inline">PC 端可直接拖拽文件或按 Ctrl+V 粘贴截图。</span>
+      </p>
+    </div>
+
+    <!-- 图片展示区 (带左右滑动触控手势) -->
+    <div id="preview-container" class="hidden absolute inset-0 flex items-center justify-center p-2 sm:p-4 touch-none">
+      
+      <!-- 主画布：处理后的增强图 -->
+      <canvas id="canvas-result" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-150"></canvas>
+      
+      <!-- 原图画布：覆盖在上方，用于 Toggle 对比 -->
+      <canvas id="canvas-original" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl absolute opacity-0 pointer-events-none transition-opacity duration-150"></canvas>
+
+      <!-- 移动端原图对比悬浮触发按钮 (支持点击 Toggle 与长按查看) -->
+      <button id="btn-compare" class="absolute bottom-6 sm:bottom-8 right-6 z-20 px-3.5 py-2 rounded-full bg-slate-900/90 hover:bg-slate-800 active:bg-blue-600 border border-slate-700/80 text-slate-200 text-xs font-semibold shadow-2xl flex items-center gap-1.5 backdrop-blur transition-all active:scale-95">
+        <i class="ph ph-eye text-base text-blue-400" id="compare-icon"></i>
+        <span id="compare-text">对比原图</span>
+      </button>
+
+      <!-- 移动端图片切换按钮与小圆点 (位于视口底部中央) -->
+      <div id="mobile-pager" class="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2 bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-slate-700/80 shadow-2xl">
+        <button id="btn-prev-img" class="text-slate-400 hover:text-white active:scale-90 p-1">
+          <i class="ph ph-caret-left-bold text-sm"></i>
+        </button>
+        <div id="pager-dots" class="flex items-center space-x-1 px-1">
+          <!-- 动态渲染圆点 -->
+        </div>
+        <button id="btn-next-img" class="text-slate-400 hover:text-white active:scale-90 p-1">
+          <i class="ph ph-caret-right-bold text-sm"></i>
+        </button>
+      </div>
+
+      <!-- 顶部轻量浮动状态提示 (耗时 / 尺寸) -->
+      <div class="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center space-x-2 pointer-events-none">
+        <span id="status-tag" class="text-[10px] font-mono bg-slate-900/80 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full backdrop-blur">就绪</span>
+        <span id="dim-tag" class="text-[10px] font-mono bg-slate-900/80 text-slate-400 border border-slate-700/80 px-2 py-0.5 rounded-full backdrop-blur">0×0</span>
+      </div>
+
+      <!-- 触屏左右翻页滑动提示遮罩 (首次上传提示后自动消失) -->
+      <div id="swipe-hint" class="hidden absolute inset-0 pointer-events-none flex items-center justify-between px-4 z-10 opacity-30 text-slate-400">
+        <i class="ph ph-caret-left text-4xl"></i>
+        <i class="ph ph-caret-right text-4xl"></i>
+      </div>
+
+    </div>
+
+    <!-- 计算处理中的轻量加载指示 -->
+    <div id="loader" class="absolute inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-30 hidden">
+      <div class="bg-slate-900/95 border border-slate-800 px-4 py-2.5 rounded-2xl flex items-center space-x-2.5 shadow-2xl text-xs text-slate-200">
+        <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24">
+          <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>像素优化计算中...</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 左侧抽屉式参数配置面板 (Drawer) -->
+  <div id="drawer-backdrop" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+  <aside id="settings-drawer" class="fixed top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-slate-900 border-r border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-out flex flex-col shadow-2xl">
+    
+    <!-- Drawer Header -->
+    <div class="h-14 border-b border-slate-800 px-4 flex items-center justify-between shrink-0">
+      <div class="flex items-center space-x-2">
+        <i class="ph ph-sliders-horizontal text-blue-400 text-lg"></i>
+        <h3 class="font-bold text-sm text-white">处理参数与微调</h3>
+      </div>
+      <button id="btn-close-drawer" class="p-2 text-slate-400 hover:text-white rounded-lg active:bg-slate-800">
+        <i class="ph ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Drawer Content (可滚动) -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+      
+      <!-- 预设方案选择 -->
+      <div>
+        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">预设效果</label>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button data-preset="clean-doc" class="preset-btn px-2 py-2 rounded-xl bg-blue-600/20 border border-blue-500/40 text-blue-300 flex flex-col items-center gap-1 active:scale-95 transition">
+            <i class="ph ph-file-text text-base"></i>
+            <span>文档白底</span>
+          </button>
+          <button data-preset="pure-binary" class="preset-btn px-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex flex-col items-center gap-1 active:scale-95 transition">
+            <i class="ph ph-stamp text-base"></i>
+            <span>纯正黑白</span>
+          </button>
+          <button data-preset="color-seal" class="preset-btn px-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex flex-col items-center gap-1 active:scale-95 transition">
+            <i class="ph ph-seal-check text-base"></i>
+            <span>保留印章</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 处理模式选择 -->
+      <div>
+        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">算法管线</label>
+        <select id="param-mode" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-500">
+          <option value="adaptive-clean">背景除法平场 (推荐：保留平滑字迹抗锯齿)</option>
+          <option value="adaptive-binary">局部自适应二值化 (彻底黑白)</option>
+          <option value="global-binary">全局二值化 (最快)</option>
+        </select>
+      </div>
+
+      <!-- 阴影消除半径 -->
+      <div id="box-radius">
+        <div class="flex justify-between mb-1">
+          <span class="text-slate-300">阴影/背景感知半径</span>
+          <span id="disp-radius" class="text-blue-400 font-mono">35px</span>
+        </div>
+        <input type="range" id="param-radius" min="10" max="90" step="2" value="35" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <p class="text-[10px] text-slate-500 mt-0.5">大图或有较大手机阴影渐变时调大该值。</p>
+      </div>
+
+      <!-- 文字黑度加深 (Black Level Clamp) -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="text-slate-300">文字墨迹加深 (Black Level)</span>
+          <span id="disp-blacklevel" class="text-blue-400 font-mono">40</span>
+        </div>
+        <input type="range" id="param-blacklevel" min="0" max="100" step="2" value="40" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+      </div>
+
+      <!-- 白底漂白偏移量 -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="text-slate-300">白底漂白强度 (Offset)</span>
+          <span id="disp-whiten" class="text-blue-400 font-mono">18</span>
+        </div>
+        <input type="range" id="param-whiten" min="0" max="60" step="1" value="18" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <p class="text-[10px] text-slate-500 mt-0.5">消除残留的极浅灰斑，过大会轻微削弱极淡笔迹。</p>
+      </div>
+
+      <!-- 对比度拉伸 -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="text-slate-300">整体对比度提升</span>
+          <span id="disp-contrast" class="text-blue-400 font-mono">1.3x</span>
+        </div>
+        <input type="range" id="param-contrast" min="0.8" max="2.5" step="0.05" value="1.3" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+      </div>
+
+      <!-- 全局阈值 (仅在全局二值化启用) -->
+      <div id="box-threshold" class="opacity-40 pointer-events-none">
+        <div class="flex justify-between mb-1">
+          <span class="text-slate-300">固定二值切分阈值</span>
+          <span id="disp-threshold" class="text-blue-400 font-mono">140</span>
+        </div>
+        <input type="range" id="param-threshold" min="40" max="220" step="1" value="140" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+      </div>
+
+      <!-- 保留彩色印章开关 -->
+      <div class="flex items-center justify-between pt-1 border-t border-slate-800">
+        <div>
+          <span class="text-slate-300 block">保留彩色笔迹/印章</span>
+          <span class="text-[10px] text-slate-500">红印章、蓝字不被转灰</span>
+        </div>
+        <input type="checkbox" id="param-color" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-700 cursor-pointer">
+      </div>
+
+    </div>
+
+    <!-- Drawer Footer: 重置与提示 -->
+    <div class="p-3 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between shrink-0">
+      <span class="text-[10px] text-slate-500">参数已自动存至本地</span>
+      <button id="btn-reset-params" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 active:scale-95 py-1 px-2 rounded-lg bg-rose-500/10">
+        <i class="ph ph-arrow-counter-clockwise"></i> 恢复默认
+      </button>
+    </div>
+
+  </aside>
+
+  <script>
+    /**
+     * ScanDoc Mobile Engine
+     * 移动端优先架构，支持多图、触屏滑动手势、localStorage实时同步与极速Canvas算法
+     */
+
+    // 默认配置
+    const DEFAULT_CONFIG = {
+      mode: 'adaptive-clean',
+      radius: 35,
+      blackLevel: 40,
+      whiten: 18,
+      contrast: 1.3,
+      threshold: 140,
+      keepColor: false
+    };
+
+    // 状态管理
+    const state = {
+      images: [], // 列表项: { id, name, originalCanvas, resultCanvas, width, height }
+      activeIndex: -1,
+      isShowingOriginal: false,
+      config: loadConfigFromStorage()
+    };
+
+    // DOM 元素获取
+    const drawer = document.getElementById('settings-drawer');
+    const drawerBackdrop = document.getElementById('drawer-backdrop');
+    const btnToggleSettings = document.getElementById('btn-toggle-settings');
+    const btnCloseDrawer = document.getElementById('btn-close-drawer');
+    const btnResetParams = document.getElementById('btn-reset-params');
+
+    const fileInput = document.getElementById('file-input');
+    const btnUploadArea = document.getElementById('btn-upload-area');
+    const btnSample = document.getElementById('btn-sample');
+    const btnDownload = document.getElementById('btn-download');
+
+    const emptyState = document.getElementById('empty-state');
+    const previewContainer = document.getElementById('preview-container');
+    const canvasResult = document.getElementById('canvas-result');
+    const canvasOriginal = document.getElementById('canvas-original');
+    const ctxResult = canvasResult.getContext('2d', { willReadFrequently: true });
+    const ctxOriginal = canvasOriginal.getContext('2d', { willReadFrequently: true });
+
+    const btnCompare = document.getElementById('btn-compare');
+    const compareIcon = document.getElementById('compare-icon');
+    const compareText = document.getElementById('compare-text');
+
+    const tabsBar = document.getElementById('tabs-bar');
+    const tabsContainer = document.getElementById('tabs-container');
+    const pagerDots = document.getElementById('pager-dots');
+    const btnPrevImg = document.getElementById('btn-prev-img');
+    const btnNextImg = document.getElementById('btn-next-img');
+    const badgeCount = document.getElementById('badge-count');
+
+    const statusTag = document.getElementById('status-tag');
+    const dimTag = document.getElementById('dim-tag');
+    const loader = document.getElementById('loader');
+
+    // 参数控件
+    const paramMode = document.getElementById('param-mode');
+    const paramRadius = document.getElementById('param-radius');
+    const paramBlacklevel = document.getElementById('param-blacklevel');
+    const paramWhiten = document.getElementById('param-whiten');
+    const paramContrast = document.getElementById('param-contrast');
+    const paramThreshold = document.getElementById('param-threshold');
+    const paramColor = document.getElementById('param-color');
+
+    const dispRadius = document.getElementById('disp-radius');
+    const dispBlacklevel = document.getElementById('disp-blacklevel');
+    const dispWhiten = document.getElementById('disp-whiten');
+    const dispContrast = document.getElementById('disp-contrast');
+    const dispThreshold = document.getElementById('disp-threshold');
+    const boxRadius = document.getElementById('box-radius');
+    const boxThreshold = document.getElementById('box-threshold');
+
+    let debounceTimer = null;
+
+    /* ================= 1. localStorage 持久化机制 ================= */
+
+    function loadConfigFromStorage() {
+      try {
+        const raw = localStorage.getItem('scan_cleaner_cfg');
+        if (raw) return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+      } catch (e) {
+        console.warn('读取 localStorage 失败', e);
+      }
+      return { ...DEFAULT_CONFIG };
+    }
+
+    function saveConfigToStorage() {
+      try {
+        localStorage.setItem('scan_cleaner_cfg', JSON.stringify(state.config));
+      } catch (e) {
+        console.warn('存储 localStorage 失败', e);
+      }
+    }
+
+    function syncUiWithConfig() {
+      const cfg = state.config;
+      paramMode.value = cfg.mode;
+      paramRadius.value = cfg.radius;
+      paramBlacklevel.value = cfg.blackLevel;
+      paramWhiten.value = cfg.whiten;
+      paramContrast.value = cfg.contrast;
+      paramThreshold.value = cfg.threshold;
+      paramColor.checked = cfg.keepColor;
+
+      dispRadius.textContent = `${cfg.radius}px`;
+      dispBlacklevel.textContent = `${cfg.blackLevel}`;
+      dispWhiten.textContent = `${cfg.whiten}`;
+      dispContrast.textContent = `${cfg.contrast}x`;
+      dispThreshold.textContent = `${cfg.threshold}`;
+
+      if (cfg.mode === 'global-binary') {
+        boxThreshold.classList.remove('opacity-40', 'pointer-events-none');
+        boxRadius.classList.add('opacity-40', 'pointer-events-none');
+      } else {
+        boxThreshold.classList.add('opacity-40', 'pointer-events-none');
+        boxRadius.classList.remove('opacity-40', 'pointer-events-none');
+      }
+    }
+
+    /* ================= 2. 抽屉式侧边栏交互 (移动端顺滑体验) ================= */
+
+    function openDrawer() {
+      drawer.classList.remove('-translate-x-full');
+      drawerBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closeDrawer() {
+      drawer.classList.add('-translate-x-full');
+      drawerBackdrop.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    btnToggleSettings.addEventListener('click', openDrawer);
+    btnCloseDrawer.addEventListener('click', closeDrawer);
+    drawerBackdrop.addEventListener('click', closeDrawer);
+
+    btnResetParams.addEventListener('click', () => {
+      state.config = { ...DEFAULT_CONFIG };
+      saveConfigToStorage();
+      syncUiWithConfig();
+      reprocessCurrent();
+    });
+
+    // 绑定参数调整监听
+    function bindParamEvents() {
+      const inputs = [
+        [paramRadius, 'radius', (v) => `${v}px`, dispRadius, parseInt],
+        [paramBlacklevel, 'blackLevel', (v) => `${v}`, dispBlacklevel, parseInt],
+        [paramWhiten, 'whiten', (v) => `${v}`, dispWhiten, parseInt],
+        [paramContrast, 'contrast', (v) => `${v}x`, dispContrast, parseFloat],
+        [paramThreshold, 'threshold', (v) => `${v}`, dispThreshold, parseInt]
+      ];
+
+      inputs.forEach(([el, key, formatter, disp, parser]) => {
+        el.addEventListener('input', (e) => {
+          const val = parser(e.target.value);
+          state.config[key] = val;
+          disp.textContent = formatter(val);
+          saveConfigToStorage();
+          debouncedProcess();
+        });
+      });
+
+      paramMode.addEventListener('change', (e) => {
+        state.config.mode = e.target.value;
+        syncUiWithConfig();
+        saveConfigToStorage();
+        debouncedProcess();
+      });
+
+      paramColor.addEventListener('change', (e) => {
+        state.config.keepColor = e.target.checked;
+        saveConfigToStorage();
+        debouncedProcess();
+      });
+
+      // 预设模式
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = btn.dataset.preset;
+          if (p === 'clean-doc') {
+            state.config = { ...state.config, mode: 'adaptive-clean', radius: 35, blackLevel: 40, whiten: 18, contrast: 1.3, keepColor: false };
+          } else if (p === 'pure-binary') {
+            state.config = { ...state.config, mode: 'adaptive-binary', radius: 30, blackLevel: 30, whiten: 16, keepColor: false };
+          } else if (p === 'color-seal') {
+            state.config = { ...state.config, mode: 'adaptive-clean', radius: 40, blackLevel: 35, whiten: 20, contrast: 1.25, keepColor: true };
+          }
+          syncUiWithConfig();
+          saveConfigToStorage();
+          debouncedProcess();
+        });
+      });
+    }
+
+    function debouncedProcess() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        reprocessCurrent();
+      }, 40);
+    }
+
+    /* ================= 3. 核心图像算法 (背景除法与自适应二值化) ================= */
+
+    /**
+     * 极速可分离一维盒式滤波 (Box Blur)
+     * 利用积分均值滑动窗口，计算时间复杂度严格为 O(W*H)，与滤波半径 R 无关！
+     */
+    function fastBoxBlur(src, w, h, r) {
+      const total = w * h;
+      const target = new Uint8Array(total);
+      const temp = new Float32Array(total);
+
+      // 水平滑动窗口累加
+      for (let y = 0; y < h; y++) {
+        const offset = y * w;
+        let sum = 0;
+        let count = 0;
+
+        for (let x = 0; x <= r && x < w; x++) {
+          sum += src[offset + x];
+          count++;
+        }
+
+        for (let x = 0; x < w; x++) {
+          const right = x + r;
+          if (right < w && x > 0) {
+            sum += src[offset + right];
+            count++;
+          }
+          const left = x - r - 1;
+          if (left >= 0) {
+            sum -= src[offset + left];
+            count--;
+          }
+          temp[offset + x] = sum / count;
+        }
+      }
+
+      // 垂直滑动窗口累加
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        let count = 0;
+
+        for (let y = 0; y <= r && y < h; y++) {
+          sum += temp[y * w + x];
+          count++;
+        }
+
+        for (let y = 0; y < h; y++) {
+          const bottom = y + r;
+          if (bottom < h && y > 0) {
+            sum += temp[bottom * w + x];
+            count++;
+          }
+          const top = y - r - 1;
+          if (top >= 0) {
+            sum -= temp[top * w + x];
+            count--;
+          }
+          target[y * w + x] = Math.round(sum / count);
+        }
+      }
+
+      return target;
+    }
+
+    /**
+     * 执行算法核心
+     */
+    function processImageItem(item) {
+      const { originalCanvas, resultCanvas, width: w, height: h } = item;
+      const originalCtx = originalCanvas.getContext('2d');
+      const resultCtx = resultCanvas.getContext('2d');
+
+      const srcData = originalCtx.getImageData(0, 0, w, h);
+      const srcPix = srcData.data;
+      const outData = resultCtx.createImageData(w, h);
+      const outPix = outData.data;
+
+      const { mode, radius, blackLevel, whiten, contrast, threshold, keepColor } = state.config;
+
+      // 1. 提取感知灰度
+      const gray = new Uint8Array(w * h);
+      for (let i = 0, p = 0; i < srcPix.length; i += 4, p++) {
+        gray[p] = (srcPix[i] * 299 + srcPix[i + 1] * 587 + srcPix[i + 2] * 114 + 500) / 1000;
+      }
+
+      if (mode === 'global-binary') {
+        // 全局固定切分
+        for (let i = 0, p = 0; i < srcPix.length; i += 4, p++) {
+          const v = gray[p] >= threshold ? 255 : 0;
+          outPix[i] = v;
+          outPix[i + 1] = v;
+          outPix[i + 2] = v;
+          outPix[i + 3] = 255;
+        }
+      } else {
+        // 2. 局部背景光场估计
+        const bg = fastBoxBlur(gray, w, h, radius);
+        const blackThreshold = blackLevel * 1.5;
+
+        for (let y = 0; y < h; y++) {
+          const rowOffset = y * w;
+          for (let x = 0; x < w; x++) {
+            const p = rowOffset + x;
+            const idx = p * 4;
+            const bgVal = Math.max(bg[p], 1);
+
+            if (mode === 'adaptive-binary') {
+              // 局部自适应切分
+              const dynThresh = bgVal - (whiten * 0.7);
+              const val = gray[p] > dynThresh ? 255 : 0;
+              outPix[idx] = val;
+              outPix[idx + 1] = val;
+              outPix[idx + 2] = val;
+              outPix[idx + 3] = 255;
+            } else {
+              // 背景除法平场 (Background Division)
+              if (!keepColor) {
+                // 黑白/灰度文档优化
+                let normalized = (gray[p] / bgVal) * 255 + whiten;
+                
+                // 黑阶截断强化 (字迹加深)
+                if (normalized < blackThreshold) {
+                  normalized = (normalized / blackThreshold) * (blackThreshold * 0.6);
+                }
+
+                // 对比度 S 曲线调整
+                if (contrast !== 1.0) {
+                  normalized = (normalized - 128) * contrast + 128;
+                }
+
+                const finalVal = Math.min(255, Math.max(0, normalized));
+                outPix[idx] = finalVal;
+                outPix[idx + 1] = finalVal;
+                outPix[idx + 2] = finalVal;
+                outPix[idx + 3] = 255;
+              } else {
+                // 彩色印章保留模式 (RGB 各自除以背景灰度)
+                for (let c = 0; c < 3; c++) {
+                  let norm = (srcPix[idx + c] / bgVal) * 255 + whiten;
+                  if (contrast !== 1.0) {
+                    norm = (norm - 128) * contrast + 128;
+                  }
+                  outPix[idx + c] = Math.min(255, Math.max(0, norm));
+                }
+                outPix[idx + 3] = 255;
+              }
+            }
+          }
+        }
+      }
+
+      resultCtx.putImageData(outData, 0, 0);
+    }
+
+    function reprocessCurrent() {
+      if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+      const t0 = performance.now();
+      loader.classList.remove('hidden');
+
+      // 使用 microtask 避免 UI 掉帧卡顿
+      setTimeout(() => {
+        const item = state.images[state.activeIndex];
+        processImageItem(item);
+        renderCurrentView();
+        const cost = Math.round(performance.now() - t0);
+        statusTag.textContent = `${cost}ms`;
+        loader.classList.add('hidden');
+      }, 10);
+    }
+
+    /* ================= 4. 图片文件加载 (单图/多图/粘贴/拖拽) ================= */
+
+    function addFiles(files) {
+      if (!files || files.length === 0) return;
+      loader.classList.remove('hidden');
+
+      const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (imageFiles.length === 0) {
+        loader.classList.add('hidden');
+        return;
+      }
+
+      let loadedCount = 0;
+      imageFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            // 控制最大分辨率以防移动设备 Canvas 内存崩溃
+            let w = img.naturalWidth || img.width;
+            let h = img.naturalHeight || img.height;
+            const maxDim = 2500;
+            if (w > maxDim || h > maxDim) {
+              const r = Math.min(maxDim / w, maxDim / h);
+              w = Math.round(w * r);
+              h = Math.round(h * r);
+            }
+
+            const origC = document.createElement('canvas');
+            origC.width = w;
+            origC.height = h;
+            const oCtx = origC.getContext('2d');
+            oCtx.drawImage(img, 0, 0, w, h);
+
+            const resC = document.createElement('canvas');
+            resC.width = w;
+            resC.height = h;
+
+            const newItem = {
+              id: 'doc_' + Math.random().toString(36).substr(2, 9),
+              name: file.name || `扫描件_${state.images.length + 1}.png`,
+              originalCanvas: origC,
+              resultCanvas: resC,
+              width: w,
+              height: h
+            };
+
+            // 立即处理
+            processImageItem(newItem);
+            state.images.push(newItem);
+
+            loadedCount++;
+            if (loadedCount === imageFiles.length) {
+              loader.classList.add('hidden');
+              // 激活最新添加的那张
+              setActiveIndex(state.images.length - 1);
+            }
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 上传绑定
+    fileInput.addEventListener('change', (e) => {
+      addFiles(e.target.files);
+      fileInput.value = ''; // 清空以允许重复上传同一张
+    });
+    btnUploadArea.addEventListener('click', () => fileInput.click());
+
+    // PC 拖拽上传
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files) {
+        addFiles(e.dataTransfer.files);
+      }
+    });
+
+    // PC 剪贴板粘贴 (Ctrl+V)
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      const files = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) files.push(blob);
+        }
+      }
+      if (files.length > 0) addFiles(files);
+    });
+
+    /* ================= 5. 多图展示、Tabs与轮播圆点 ================= */
+
+    function setActiveIndex(index) {
+      if (index < 0 || index >= state.images.length) return;
+      state.activeIndex = index;
+      renderTabs();
+      renderDots();
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      if (state.activeIndex < 0 || state.images.length === 0) {
+        emptyState.classList.remove('hidden');
+        previewContainer.classList.add('hidden');
+        tabsBar.classList.add('hidden');
+        btnDownload.setAttribute('disabled', 'true');
+        badgeCount.classList.add('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      previewContainer.classList.remove('hidden');
+      btnDownload.removeAttribute('disabled');
+      badgeCount.classList.remove('hidden');
+      badgeCount.textContent = `${state.images.length}`;
+
+      if (state.images.length > 1) {
+        tabsBar.classList.remove('hidden');
+      }
+
+      const item = state.images[state.activeIndex];
+      canvasResult.width = item.width;
+      canvasResult.height = item.height;
+      canvasOriginal.width = item.width;
+      canvasOriginal.height = item.height;
+
+      // 绘制至视口 Canvas
+      ctxResult.drawImage(item.resultCanvas, 0, 0);
+      ctxOriginal.drawImage(item.originalCanvas, 0, 0);
+
+      dimTag.textContent = `${item.width}×${item.height}`;
+    }
+
+    function renderTabs() {
+      tabsContainer.innerHTML = '';
+      state.images.forEach((img, idx) => {
+        const isActive = idx === state.activeIndex;
+        const tab = document.createElement('div');
+        tab.className = `flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 ${
+          isActive 
+            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+            : 'bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+        }`;
+        
+        tab.innerHTML = `
+          <i class="ph ph-image text-sm"></i>
+          <span class="max-w-[80px] truncate">${img.name}</span>
+          <button class="delete-btn ml-1 hover:text-rose-300 p-0.5 rounded" title="移除此图">
+            <i class="ph ph-x text-xs"></i>
+          </button>
+        `;
+
+        tab.addEventListener('click', (e) => {
+          if (e.target.closest('.delete-btn')) {
+            e.stopPropagation();
+            removeImage(idx);
+          } else {
+            setActiveIndex(idx);
+          }
+        });
+
+        tabsContainer.appendChild(tab);
+      });
+    }
+
+    function renderDots() {
+      pagerDots.innerHTML = '';
+      if (state.images.length <= 1) {
+        btnPrevImg.classList.add('hidden');
+        btnNextImg.classList.add('hidden');
+        return;
+      }
+
+      btnPrevImg.classList.remove('hidden');
+      btnNextImg.classList.remove('hidden');
+
+      state.images.forEach((_, idx) => {
+        const dot = document.createElement('span');
+        const isActive = idx === state.activeIndex;
+        dot.className = `w-1.5 h-1.5 rounded-full transition-all ${
+          isActive ? 'bg-blue-400 w-3' : 'bg-slate-600'
+        }`;
+        pagerDots.appendChild(dot);
+      });
+    }
+
+    function removeImage(index) {
+      state.images.splice(index, 1);
+      if (state.activeIndex >= state.images.length) {
+        state.activeIndex = state.images.length - 1;
+      }
+      renderTabs();
+      renderDots();
+      renderCurrentView();
+    }
+
+    btnPrevImg.addEventListener('click', () => {
+      if (state.activeIndex > 0) setActiveIndex(state.activeIndex - 1);
+    });
+
+    btnNextImg.addEventListener('click', () => {
+      if (state.activeIndex < state.images.length - 1) setActiveIndex(state.activeIndex + 1);
+    });
+
+    /* ================= 6. 移动端左右滑动触控切换 (Touch Gestures) ================= */
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    previewContainer.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    previewContainer.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+      handleSwipe();
+    }, { passive: true });
+
+    function handleSwipe() {
+      const diffX = touchEndX - touchStartX;
+      const diffY = touchEndY - touchStartY;
+      // 保证水平滑动大于垂直滑动且滑行距离超 50px
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+        if (diffX < 0 && state.activeIndex < state.images.length - 1) {
+          // 向左滑 -> 下一张
+          setActiveIndex(state.activeIndex + 1);
+        } else if (diffX > 0 && state.activeIndex > 0) {
+          // 向右滑 -> 上一张
+          setActiveIndex(state.activeIndex - 1);
+        }
+      }
+    }
+
+    /* ================= 7. 原图 / 优化效果 对比切换 (Toggle & Hold) ================= */
+
+    function setShowOriginal(show) {
+      state.isShowingOriginal = show;
+      if (show) {
+        canvasOriginal.classList.remove('opacity-0');
+        canvasOriginal.classList.add('opacity-100');
+        btnCompare.classList.add('bg-blue-600', 'text-white', 'border-blue-500');
+        btnCompare.classList.remove('bg-slate-900/90');
+        compareText.textContent = '松开看白底';
+        compareIcon.className = 'ph ph-eye-slash text-base text-white';
+      } else {
+        canvasOriginal.classList.remove('opacity-100');
+        canvasOriginal.classList.add('opacity-0');
+        btnCompare.classList.remove('bg-blue-600', 'text-white', 'border-blue-500');
+        btnCompare.classList.add('bg-slate-900/90');
+        compareText.textContent = '对比原图';
+        compareIcon.className = 'ph ph-eye text-base text-blue-400';
+      }
+    }
+
+    // 支持移动端点击 Toggle，同时支持长按即看、松开即还
+    btnCompare.addEventListener('click', (e) => {
+      e.preventDefault();
+      setShowOriginal(!state.isShowingOriginal);
+    });
+
+    btnCompare.addEventListener('touchstart', (e) => {
+      setShowOriginal(true);
+    }, { passive: true });
+
+    btnCompare.addEventListener('touchend', (e) => {
+      // 延时恢复
+      setTimeout(() => setShowOriginal(false), 200);
+    }, { passive: true });
+
+    /* ================= 8. 下载与导出 ================= */
+
+    btnDownload.addEventListener('click', () => {
+      if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
+      const current = state.images[state.activeIndex];
+      const link = document.createElement('a');
+      link.download = `clean_${current.name.replace(/\.[^/.]+$/, '')}.png`;
+      link.href = current.resultCanvas.toDataURL('image/png');
+      link.click();
+    });
+
+    /* ================= 9. 生成逼真示例图 ================= */
+
+    btnSample.addEventListener('click', () => {
+      const w = 900;
+      const h = 1200;
+      const tempC = document.createElement('canvas');
+      tempC.width = w;
+      tempC.height = h;
+      const ctx = tempC.getContext('2d');
+
+      // 逼真阴影背景 (手机阴影从左上覆盖到右下)
+      const grad = ctx.createRadialGradient(250, 250, 40, 450, 600, 800);
+      grad.addColorStop(0, '#f2eee3');
+      grad.addColorStop(0.4, '#d8d2c4');
+      grad.addColorStop(1, '#9b9487');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 杂色折痕
+      for (let i = 0; i < 3000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)';
+        ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+      }
+
+      // 发票公文排版
+      ctx.fillStyle = '#222222';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('技术服务结算清单', 280, 130);
+
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(60, 180, 780, 260);
+
+      ctx.font = '20px sans-serif';
+      ctx.fillText('开票日期: 2026年11月09日', 90, 235);
+      ctx.fillText('项目: 移动端原生图像去灰底算法部署', 90, 290);
+      ctx.fillText('状态: 验收通过 (已核验)', 90, 345);
+      ctx.fillText('经办部门: 前端工程与图形算法团队', 90, 400);
+
+      // 模拟手写签名笔迹
+      ctx.strokeStyle = '#1e3a8a';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(560, 390);
+      ctx.bezierCurveTo(590, 360, 640, 420, 680, 385);
+      ctx.bezierCurveTo(700, 370, 720, 410, 750, 390);
+      ctx.stroke();
+
+      // 条目清单
+      ctx.fillStyle = '#333';
+      ctx.font = '16px serif';
+      const lines = [
+        "1. 本图片包含手机随手拍常见的不均匀暗区与灰黄底色；",
+        "2. 算法通过 O(N) 盒式滤波估计光照场并归一化除法；",
+        "3. 在手机上可点击右下角按钮直接覆盖对比原图效果；",
+        "4. 支持多图左右滑动轮播，随时导出高清透明无灰底文稿。"
+      ];
+      lines.forEach((l, idx) => ctx.fillText(l, 70, 500 + idx * 42));
+
+      // 鲜红防伪公章
+      ctx.save();
+      ctx.translate(650, 520);
+      ctx.rotate(-0.15);
+      ctx.strokeStyle = 'rgba(225, 29, 72, 0.85)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(-90, -45, 180, 90);
+      ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('业务审核章', 0, 0);
+      ctx.font = '13px sans-serif';
+      ctx.fillText('2026-11-09 有效', 0, 24);
+      ctx.restore();
+
+      tempC.toBlob((blob) => {
+        const file = new File([blob], `样例单据_${state.images.length + 1}.png`, { type: 'image/png' });
+        addFiles([file]);
+      });
+    });
+
+    // 页面初始化
+    syncUiWithConfig();
+    bindParamEvents();
+
+    // 启动时自动载入一个样本图
+    window.addEventListener('DOMContentLoaded', () => {
+      btnSample.click();
+    });
+  </script>
+</body>
+</html>
