@@ -20,18 +20,17 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .icon-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:rgba(30,41,59,.8);color:#e2e8f0;font-size:16px;cursor:pointer;transition:.15s}
 .icon-btn:hover{color:#fff}
 .icon-btn:active{background:#2563eb}
-.brand{display:flex;align-items:center;gap:6px;color:#fff;font-size:14px;font-weight:700;letter-spacing:-.02em}
-.brand .ic{color:#60a5fa;font-size:18px}
+.brand{color:#fff;font-family:ui-monospace,monospace;font-size:14px;font-weight:700;letter-spacing:0}
 .badge{padding:2px 6px;border-radius:999px;border:1px solid rgba(59,130,246,.3);background:rgba(37,99,235,.3);color:#60a5fa;font-family:ui-monospace,monospace;font-size:10px;font-weight:700}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 10px;border:0;border-radius:12px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;transition:.15s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 6px;border:0;border-radius:12px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;transition:.15s}
 .btn:active{transform:scale(.95)}
 .btn-ghost{background:#1e293b;border:1px solid #334155;color:#cbd5e1}
 .btn-ghost:hover{background:#334155}
-.btn-primary{background:#2563eb;padding:6px 12px;color:#fff;font-weight:600;box-shadow:0 10px 15px -3px rgba(59,130,246,.2)}
+.btn-primary{background:#2563eb;padding:6px 6px;color:#fff;font-weight:600;box-shadow:0 10px 15px -3px rgba(59,130,246,.2)}
 .btn-primary:hover{background:#3b82f6}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .file-input{display:none}
-.tabs-bar{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;overflow-x:auto;border-bottom:1px solid rgba(30,41,59,.8);background:rgba(15,23,42,.6);scrollbar-width:none}
+.tabs-bar{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px;overflow-x:auto;border-bottom:1px solid rgba(30,41,59,.8);background:rgba(15,23,42,.6);scrollbar-width:none}
 .tabs-bar::-webkit-scrollbar{display:none}
 .tabs{display:flex;align-items:center;gap:8px;padding:4px 0}
 .tab{flex:none;display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;background:#1e293b;color:#94a3b8;font-size:12px;font-weight:500;cursor:pointer;transition:.15s}
@@ -49,27 +48,24 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .upload-area .ic{font-size:32px}
 .empty-title{margin-bottom:4px;color:#e2e8f0;font-size:14px;font-weight:600}
 .empty-desc{color:#64748b;font-size:12px;line-height:1.6}
-.preview{position:absolute;inset:0;display:grid;grid-template:1fr/1fr;place-items:center;padding:8px;touch-action:none}
-.canvas{grid-area:1/1;min-width:0;min-height:0;max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);transition:opacity .15s}
+.preview{position:absolute;inset:0;display:grid;grid-template:1fr/1fr;place-items:center;padding:8px;touch-action:none;cursor:grab}
+.preview:active{cursor:grabbing}
+.canvas{grid-area:1/1;min-width:0;min-height:0;max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);transform:translate(var(--pan-x,0px),var(--pan-y,0px)) scale(var(--zoom,1));transition:opacity .15s}
 .canvas-original{z-index:1;opacity:0;pointer-events:none}
 .canvas-original.show{opacity:1}
-.compare-btn{position:absolute;right:24px;bottom:24px;z-index:20;display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(51,65,85,.8);border-radius:999px;background:rgba(15,23,42,.9);color:#e2e8f0;font-size:12px;font-weight:600;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);backdrop-filter:blur(12px);cursor:pointer;transition:.15s}
+.compare-btn{position:absolute;left:24px;bottom:24px;z-index:20;display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(51,65,85,.8);border-radius:999px;background:rgba(15,23,42,.9);color:#e2e8f0;font-size:12px;font-weight:600;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);backdrop-filter:blur(12px);cursor:pointer;transition:.15s}
 .compare-btn:active{transform:scale(.95)}
 .compare-btn .ic{color:#60a5fa}
 .compare-btn.active{background:#2563eb;border-color:#3b82f6;color:#fff}
 .compare-btn.active .ic{color:#fff}
-.pager{position:absolute;left:50%;bottom:24px;z-index:20;display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(51,65,85,.8);border-radius:999px;background:rgba(15,23,42,.9);box-shadow:0 25px 50px -12px rgba(0,0,0,.5);backdrop-filter:blur(12px);transform:translateX(-50%)}
+.pager{position:absolute;right:24px;bottom:24px;z-index:20;display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(51,65,85,.8);border-radius:999px;background:rgba(15,23,42,.9);box-shadow:0 25px 50px -12px rgba(0,0,0,.5);backdrop-filter:blur(12px);cursor:default}
 .pager-btn{padding:4px;border:0;background:none;color:#94a3b8;font-size:12px;cursor:pointer;transition:.15s}
 .pager-btn:hover{color:#fff}
 .pager-btn:active{transform:scale(.9)}
+.zoom-btn{font-size:15px;font-weight:700;line-height:1}
 .dots{display:flex;align-items:center;gap:4px;padding:0 4px}
 .dot{width:6px;height:6px;border-radius:999px;background:#475569;transition:.15s}
 .dot.active{width:12px;background:#60a5fa}
-.top-status{position:absolute;top:12px;left:50%;z-index:10;display:flex;align-items:center;gap:8px;pointer-events:none;transform:translateX(-50%)}
-.tag{padding:2px 8px;border-radius:999px;background:rgba(15,23,42,.8);font-family:ui-monospace,monospace;font-size:10px;backdrop-filter:blur(12px)}
-.tag-ok{border:1px solid rgba(16,185,129,.3);color:#34d399}
-.tag-dim{border:1px solid rgba(51,65,85,.8);color:#94a3b8}
-.swipe-hint{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 16px;pointer-events:none;opacity:.3;color:#94a3b8;font-size:36px}
 .loader{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.4);backdrop-filter:blur(2px)}
 .loader-box{display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid #1e293b;border-radius:16px;background:rgba(15,23,42,.95);box-shadow:0 25px 50px -12px rgba(0,0,0,.5);color:#e2e8f0;font-size:12px}
 .spin{width:16px;height:16px;color:#3b82f6;animation:spin 1s linear infinite}
@@ -118,7 +114,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     <div class="row">
       <button class="icon-btn" title="参数设置" @click="openDrawer"><span class="ic">⚙️</span></button>
       <div class="row tight">
-        <span class="brand"><span class="ic">📄</span><span>扫描件去灰底</span></span>
+        <span class="brand">{{ dimText }}</span>
         <span class="badge" :class="{hidden:state.images.length===0}">{{ state.images.length }}</span>
       </div>
     </div>
@@ -150,7 +146,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     </div>
 
     <!-- 图片展示区 (带左右滑动触控手势) -->
-    <div class="preview" :class="{hidden:state.images.length===0}" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
+    <div class="preview" ref="previewEl" :class="{hidden:state.images.length===0}" :style="previewStyle" @wheel.prevent="onWheel" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp">
       <canvas class="canvas" ref="canvasResult"></canvas>
       <canvas class="canvas canvas-original" :class="{show:state.isShowingOriginal}" ref="canvasOriginal"></canvas>
       <button class="compare-btn" :class="{active:state.isShowingOriginal}" @click.prevent="toggleCompare" @touchstart.passive="showOriginal(true)" @touchend.passive="releaseCompare">
@@ -158,15 +154,12 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         <span>{{ state.isShowingOriginal ? '松开看白底' : '对比原图' }}</span>
       </button>
       <div class="pager">
+        <button class="pager-btn zoom-btn" title="缩小" @click="zoomOut">－</button>
+        <button class="pager-btn zoom-btn" title="放大" @click="zoomIn">＋</button>
         <button class="pager-btn" :class="{hidden:state.images.length<=1}" @click="prevImg">◀</button>
         <div class="dots"><span class="dot" :class="{active:idx===state.activeIndex}" v-for="(img,idx) in state.images" :key="img.id"></span></div>
         <button class="pager-btn" :class="{hidden:state.images.length<=1}" @click="nextImg">▶</button>
       </div>
-      <div class="top-status">
-        <span class="tag tag-ok">{{ statusText }}</span>
-        <span class="tag tag-dim">{{ dimText }}</span>
-      </div>
-      <div class="swipe-hint hidden"><span class="ic">◀</span><span class="ic">▶</span></div>
     </div>
 
     <!-- 计算处理中的轻量加载指示 -->
@@ -246,7 +239,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 </div>
 
 <script>
-  const { createApp, reactive, ref, onMounted, markRaw } = Vue;
+  const { createApp, reactive, ref, computed, onMounted, markRaw } = Vue;
 
   /**
    * ScanDoc Mobile Engine (Vue 3)
@@ -295,8 +288,22 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 
       const drawerOpen = ref(false);
       const loading = ref(false);
-      const statusText = ref('就绪');
       const dimText = ref('0×0');
+
+      // 视图缩放与平移 (两张画布共用同一变换)
+      const MIN_ZOOM = 0.5;
+      const MAX_ZOOM = 4;
+      const zoom = ref(1);
+      const panX = ref(0);
+      const panY = ref(0);
+      const previewStyle = computed(() => ({
+        '--zoom': zoom.value,
+        '--pan-x': `${panX.value}px`,
+        '--pan-y': `${panY.value}px`
+      }));
+      function clampZoom(z) { return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)); }
+      function zoomIn() { zoom.value = clampZoom(zoom.value * 1.25); }
+      function zoomOut() { zoom.value = clampZoom(zoom.value / 1.25); }
       const presets = [
         { key: 'clean-doc', label: '文档白底', icon: '📄' },
         { key: 'pure-binary', label: '纯正黑白', icon: '◼️' },
@@ -304,6 +311,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       ];
 
       // DOM 元素 (Vue 模板引用)
+      const previewEl = ref(null);
       const fileInputEl = ref(null);
       const canvasResult = ref(null);
       const canvasOriginal = ref(null);
@@ -518,7 +526,6 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 
       function reprocessCurrent() {
         if (state.activeIndex < 0 || !state.images[state.activeIndex]) return;
-        const t0 = performance.now();
         loading.value = true;
 
         // 使用 microtask 避免 UI 掉帧卡顿
@@ -526,8 +533,6 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
           const item = state.images[state.activeIndex];
           processImageItem(item);
           renderCurrentView();
-          const cost = Math.round(performance.now() - t0);
-          statusText.value = `${cost}ms`;
           loading.value = false;
         }, 10);
       }
@@ -614,7 +619,10 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       }
 
       function renderCurrentView() {
-        if (state.activeIndex < 0 || state.images.length === 0) return;
+        if (state.activeIndex < 0 || state.images.length === 0) {
+          dimText.value = '0×0';
+          return;
+        }
 
         const item = state.images[state.activeIndex];
         canvasResult.value.width = item.width;
@@ -645,37 +653,71 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
         if (state.activeIndex < state.images.length - 1) setActiveIndex(state.activeIndex + 1);
       }
 
-      /* ================= 6. 移动端左右滑动触控切换 (Touch Gestures) ================= */
+      /* ================= 6. 滚轮缩放 / 拖拽平移 / 双指捏合 ================= */
 
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let touchEndX = 0;
-      let touchEndY = 0;
-
-      function onTouchStart(e) {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
+      // 以指定屏幕坐标为锚点缩放，保持锚点下的画面不动
+      function zoomAt(next, clientX, clientY) {
+        const z = clampZoom(next);
+        const rect = previewEl.value.getBoundingClientRect();
+        const ax = clientX - rect.left - rect.width / 2;
+        const ay = clientY - rect.top - rect.height / 2;
+        const k = z / zoom.value;
+        panX.value += (ax - panX.value) * (1 - k);
+        panY.value += (ay - panY.value) * (1 - k);
+        zoom.value = z;
       }
 
-      function onTouchEnd(e) {
-        touchEndX = e.changedTouches[0].screenX;
-        touchEndY = e.changedTouches[0].screenY;
-        handleSwipe();
+      function onWheel(e) {
+        zoomAt(zoom.value * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
       }
 
-      function handleSwipe() {
-        const diffX = touchEndX - touchStartX;
-        const diffY = touchEndY - touchStartY;
-        // 保证水平滑动大于垂直滑动且滑行距离超 50px
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-          if (diffX < 0 && state.activeIndex < state.images.length - 1) {
-            // 向左滑 -> 下一张
-            setActiveIndex(state.activeIndex + 1);
-          } else if (diffX > 0 && state.activeIndex > 0) {
-            // 向右滑 -> 上一张
-            setActiveIndex(state.activeIndex - 1);
-          }
+      const pointers = new Map();
+      let pinchDist = 0;
+      let pinchCx = 0;
+      let pinchCy = 0;
+
+      function onPointerDown(e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target.closest && e.target.closest('button')) return;
+        if (previewEl.value.setPointerCapture) previewEl.value.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 2) {
+          const [a, b] = [...pointers.values()];
+          pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+          pinchCx = (a.x + b.x) / 2;
+          pinchCy = (a.y + b.y) / 2;
         }
+      }
+
+      function onPointerMove(e) {
+        const prev = pointers.get(e.pointerId);
+        if (!prev) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 1) {
+          // 鼠标左键 / 单指按住拖动
+          panX.value += e.clientX - prev.x;
+          panY.value += e.clientY - prev.y;
+        } else if (pointers.size === 2) {
+          // 双指捏合：距离比缩放、中心位移平移
+          const [a, b] = [...pointers.values()];
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          const cx = (a.x + b.x) / 2;
+          const cy = (a.y + b.y) / 2;
+          if (pinchDist > 0 && dist > 0) zoomAt(zoom.value * dist / pinchDist, cx, cy);
+          panX.value += cx - pinchCx;
+          panY.value += cy - pinchCy;
+          pinchDist = dist;
+          pinchCx = cx;
+          pinchCy = cy;
+        }
+      }
+
+      function onPointerUp(e) {
+        pointers.delete(e.pointerId);
+        if (previewEl.value.releasePointerCapture && previewEl.value.hasPointerCapture && previewEl.value.hasPointerCapture(e.pointerId)) {
+          previewEl.value.releasePointerCapture(e.pointerId);
+        }
+        if (pointers.size < 2) pinchDist = 0;
       }
 
       /* ================= 7. 原图 / 优化效果 对比切换 (Toggle & Hold) ================= */
@@ -813,12 +855,13 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
       });
 
       return {
-        state, presets, drawerOpen, loading, statusText, dimText,
-        fileInputEl, canvasResult, canvasOriginal,
+        state, presets, drawerOpen, loading, dimText, previewStyle,
+        previewEl, fileInputEl, canvasResult, canvasOriginal,
         openDrawer, closeDrawer, openFileDialog, onFileChange, download, loadSample,
         setParam, onModeChange, onColorChange, applyPreset, resetParams,
-        setActiveIndex, removeImage, prevImg, nextImg,
-        onTouchStart, onTouchEnd, toggleCompare, showOriginal, releaseCompare
+        setActiveIndex, removeImage, prevImg, nextImg, zoomIn, zoomOut,
+        onWheel, onPointerDown, onPointerMove, onPointerUp,
+        toggleCompare, showOriginal, releaseCompare
       };
     }
   }).mount('#app');
