@@ -70,7 +70,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
 .loader-box{display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid #1e293b;border-radius:16px;background:rgba(15,23,42,.95);box-shadow:0 25px 50px -12px rgba(0,0,0,.5);color:#e2e8f0;font-size:12px}
 .spin{width:16px;height:16px;color:#3b82f6;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.backdrop{position:fixed;inset:0;z-index:40;background:rgba(2,6,23,.7);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .3s}
+.backdrop{position:fixed;inset:0;z-index:40;opacity:0;pointer-events:none;transition:opacity .3s}
 .backdrop.show{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;bottom:0;left:0;z-index:50;width:320px;max-width:85vw;display:flex;flex-direction:column;border-right:1px solid #1e293b;background:#0f172a;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);transform:translateX(-100%);transition:transform .3s ease-out}
 .drawer.show{transform:translateX(0)}
@@ -121,7 +121,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highl
     <div class="row tight">
       <button class="btn btn-ghost" @click="loadSample">示例</button>
       <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
-      <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span class="ic">⬇️</span><span>导出</span></button>
+      <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span>导出</span></button><!-- <span class="ic">⬇️</span> -->
     </div>
   </header>
 
