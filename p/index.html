@@ -130,6 +130,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .save-img-box img{display:block;flex:none;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
 .save-ft{flex:none;display:flex;gap:8px;padding-bottom:env(safe-area-inset-bottom, 0px)}
 .save-ft .btn{flex:1;justify-content:center}
+@media(max-width:440px){.save-ft{gap:6px}.save-ft .btn{padding:6px 1px;font-size:11px}}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.hd{padding:0 16px}}
 @media(min-width:640px){.brand{font-size:16px}}
@@ -335,6 +336,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <div class="save-ft">
         <button class="btn btn-ghost" @click="download">下载图片</button>
         <button class="btn btn-ghost" @click="tryPrint">尝试打印</button>
+        <button class="btn btn-ghost" @click="shareImage">尝试分享</button>
         <button class="btn btn-primary" @click="closeSaveSheet">完成</button>
       </div>
     </div>
