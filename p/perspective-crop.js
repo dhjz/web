@@ -347,7 +347,7 @@
   /* ================= 四点拖拽编辑器 ================= */
 
   const CSS = `
-.pc-root{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;background:var(--panel,#fff);color:var(--text2,#334155);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;user-select:none;-webkit-user-select:none}
+.pc-root{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;z-index:100;display:flex;flex-direction:column;background:var(--panel,#fff);color:var(--text2,#334155);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;user-select:none;-webkit-user-select:none}
 .pc-root *{box-sizing:border-box}
 .pc-hd{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line,#e2e8f0);background:var(--hd-bg,#fff)}
 .pc-hd .btn{flex:none}
@@ -375,7 +375,7 @@
 .pc-side-hd{height:32px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-bottom:1px solid var(--line,#e2e8f0);color:var(--muted,#64748b);font-size:11px}
 .pc-preview-box{position:relative;flex:1;min-height:0;overflow:hidden}
 .pc-preview{position:absolute;inset:0;width:100%;height:100%;display:block}
-.pc-ft{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--line,#e2e8f0);background:var(--tabs-bg,#fff)}
+.pc-ft{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));border-top:1px solid var(--line,#e2e8f0);background:var(--tabs-bg,#fff)}
 .pc-ft label{display:flex;align-items:center;gap:4px;color:var(--muted,#64748b);font-size:11px}
 .pc-ft select{padding:5px 4px;border:1px solid var(--line2,#cbd5e1);border-radius:8px;background:var(--surface,#f1f5f9);color:var(--text2,#334155);font-size:11px;outline:none}
 .pc-ft .pc-grow{flex:1}
