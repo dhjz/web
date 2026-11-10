@@ -83,6 +83,7 @@ window.config = {
         { name: 'FunAsr', short: 'ASR', url: './funasr/index.html', color: '#4565ac' },
         { name: '字幕提取', short: 'ASR', url: './srt/index.html', color: '#039f9c' },
         { name: '扫描处理', short: '扫描', url: './p/index.html', color: '#034948' },
+        { name: 'A4拼图', short: '拼图', url: './p/collage.html', color: '#1d4ed8' },
       ]
     },
     {

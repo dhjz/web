@@ -19,6 +19,8 @@
   <script src="./vue.global.prod.js"></script>
   <!-- 四点裁剪 / 透视矫正（本地零依赖模块，全局 PerspectiveCrop） -->
   <script src="./perspective-crop.js"></script>
+  <!-- A4 尺寸换算与打印规则（扫描页 / 拼图页共用，全局 PrintUtils） -->
+  <script src="./print-utils.js"></script>
   <script>try{if(localStorage.getItem('scan_cleaner_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}</script>
   <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -215,6 +217,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
     <div class="row tight">
       <button class="btn btn-ghost" title="刷新页面" @click="reloadPage"><span class="ic">🔄</span></button>
       <label class="btn btn-ghost"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
+      <a class="btn btn-ghost" href="./pt.html" title="打开 A4 拼图页">🧩<span class="pc-only">拼图</span></a>
       <button class="btn btn-ghost" :disabled="state.images.length===0" title="打印" @click="printImage">打印</button>
       <button class="btn btn-ghost share-btn" :disabled="state.images.length===0" title="分享" @click="shareImage()">分享</button>
       <button class="btn btn-primary" :disabled="state.images.length===0" @click="download"><span>导出</span></button><!-- <span class="ic">⬇️</span> -->
@@ -968,27 +971,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       document.head.appendChild(pageStyleEl);
 
       function buildA4Canvas() {
-        const landscape = !!printLandscape.value;
-        const W = Math.round((landscape ? 297 : 210) / 25.4 * printDpi.value);
-        const H = Math.round((landscape ? 210 : 297) / 25.4 * printDpi.value);
-        const c = document.createElement('canvas');
-        c.width = W;
-        c.height = H;
-        const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, W, H);
         const item = state.images[state.activeIndex];
         const src = item && item.resultCanvas;
-        if (src && src.width && src.height) {
-          // 大图按 contain 缩小贴边；小图最多放大 MAX_UPSCALE 倍，多余部分留白
-          const scale = Math.min(MAX_UPSCALE, W / src.width, H / src.height);
-          const dw = src.width * scale;
-          const dh = src.height * scale;
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh);
-        }
-        return c;
+        return PrintUtils.composeA4(src, {
+          landscape: !!printLandscape.value,
+          dpi: printDpi.value,
+          maxUpscale: MAX_UPSCALE
+        });
       }
 
       function previewCanvas() {
@@ -1059,9 +1048,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           const landscape = !!printLandscape.value;
           const w = landscape ? 297 : 210;
           const h = landscape ? 210 : 297;
-          pageStyleEl.textContent =
-            `@page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:0}` +
-            `html.print-sheet-mode{--a4-w:${(w - 0.4).toFixed(1)}mm;--a4-h:${(h - 0.4).toFixed(1)}mm}`;
+          pageStyleEl.textContent = PrintUtils.pageRule(true, landscape, w, h);
         } else {
           pageStyleEl.textContent = '';
         }
