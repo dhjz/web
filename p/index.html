@@ -118,9 +118,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .reset-btn:active{transform:scale(.95)}
 .drawer-tools{display:flex;flex-direction:row;gap:8px}
 .drawer-tools .btn{flex:1;min-width:0;padding:6px 4px;gap:4px;font-size:11px}
+.drawer-tools .pwa-btn{flex:0 0 auto;padding:6px 10px}
 .pager-btn.crop-btn{display:flex;align-items:center;gap:3px;padding:4px 5px;font-size:14px;line-height:1}
 .pager-sep{width:1px;height:16px;flex:none;background:var(--line2)}
-@media(max-width:639px){.pager{gap:5px}.share-btn{display:none}.pwa-btn .pwa-label{display:none}}
+@media(max-width:639px){.pager{gap:5px}.share-btn{display:none}}
 .save-sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay);backdrop-filter:blur(4px)}
 .save-panel{width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);box-shadow:0 25px 50px -12px var(--shadow)}
 .save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
@@ -192,7 +193,6 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
   <header class="hd">
     <div class="row">
       <button class="icon-btn" title="参数设置" @click="openDrawer"><span class="ic">⚙️</span></button>
-      <button class="btn btn-ghost pwa-btn" :class="{hidden:!pwaBtnVisible}" :title="pwaBtnTitle" @click="onPwaBtnClick"><span class="ic">{{ pwaBtnIcon }}</span><span class="pwa-label">{{ pwaBtnLabel }}</span></button>
       <div class="row tight">
         <span class="brand">{{ dimText }}</span>
         <span class="badge" :class="{hidden:state.images.length===0}">{{ state.images.length }}</span>
@@ -268,6 +268,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <div class="drawer-tools">
         <button class="btn btn-ghost sample-btn" @click="loadSampleAndClose"><span class="ic">🧾</span>加载示例图</button>
         <button class="btn btn-ghost sample-btn" @click="toggleTheme" :title="theme === 'light' ? '切换到黑夜模式' : '切换到白天模式'"><span class="ic">{{ theme === 'light' ? '🌙' : '☀️' }}</span>{{ theme === 'light' ? '黑夜模式' : '白天模式' }}</button>
+        <button class="btn btn-ghost pwa-btn" :class="{hidden:!pwaBtnVisible}" :title="pwaBtnTitle" @click="onPwaBtnClick"><span class="ic">{{ pwaBtnIcon }}</span>{{ pwaBtnLabel }}</button>
       </div>
 
       <div>
