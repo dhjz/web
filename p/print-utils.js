@@ -83,6 +83,8 @@
     display:block;width:var(--print-scale);height:auto;max-width:100%;margin:0 auto;padding:0;border:0;object-fit:contain;object-position:center;
     break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}
   #print-sheets .print-sheet:not(:last-child){break-after:page;page-break-after:always}
+  /* 非 A4 比例的图（无限画布按内容边界裁切）：长宽都受页面限制，保证缩在单页内 */
+  #print-sheets.fit-page .print-sheet{width:auto;height:auto;max-width:var(--print-scale,100%);max-height:96vh}
 }
 `;
 
@@ -108,12 +110,14 @@
   /**
    * 把若干张「已经按 A4 比例排好版」的画布挂到打印容器。
    * 传入 HTMLCanvasElement 数组，天然预留多页扩展。
+   * opts.fitPage：图片不是 A4 比例（如无限画布按内容边界裁切）时，长宽都限制在单页内。
    */
   function showSheets(canvases, opts) {
     const o = opts || {};
     const landscape = !!o.landscape;
     installPrintStyle();
     const host = ensureHost();
+    host.classList.toggle('fit-page', !!o.fitPage);
     host.innerHTML = '';
     (canvases || []).forEach(c => {
       c.removeAttribute('style');

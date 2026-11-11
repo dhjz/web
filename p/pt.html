@@ -62,11 +62,18 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .orient-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent3);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
 .orient-btn:hover{background:var(--surface2)}
 .orient-btn:active{transform:scale(.95)}
-.zoom-val{display:inline-block;min-width:40px;text-align:center;color:var(--accent3);font-family:ui-monospace,monospace;font-weight:700}
+.orient-btn.active{background:var(--accent-soft);border-color:var(--accent-line2);box-shadow:inset 0 0 0 1px var(--accent-line2)}
+.orient-btn:disabled{cursor:not-allowed}
+.pad-field{display:inline-flex;align-items:center;gap:3px;color:var(--muted);font-size:11px;white-space:nowrap}
+.pad-input{width:48px;padding:2px 4px;border:1px solid var(--line2);border-radius:6px;outline:none;background:var(--panel);color:var(--accent3);font-family:ui-monospace,monospace;font-size:11px;font-weight:700;text-align:center}
+.pad-input:focus{border-color:var(--accent-line2)}
+.zoom-val{display:inline-block;text-align:center;color:var(--accent3);font-family:ui-monospace,monospace;font-weight:700}
 .workspace{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;background-color:var(--bg);background-image:linear-gradient(45deg,var(--grid) 25%,transparent 25%),linear-gradient(-45deg,var(--grid) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--grid) 75%),linear-gradient(-45deg,transparent 75%,var(--grid) 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
 .paper-wrap{flex:none;transform-origin:center center;will-change:transform}
 .paper{background:#fff;box-shadow:0 25px 50px -12px var(--shadow);position:relative}
 .paper .canvas-container{display:block}
+.workspace.infinite{background:#fff;background-image:none}
+.workspace.infinite .paper{box-shadow:none}
 .empty{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;text-align:center}
 .empty-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:22px 28px;border:1px solid var(--line2);border-radius:20px;background:var(--float-bg);box-shadow:0 25px 50px -12px var(--shadow);pointer-events:auto;cursor:pointer}
 .empty-card .ic{font-size:30px}
@@ -125,7 +132,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.pc-only{display:inline}.hd{padding:0 16px}.brand{font-size:15px}.inspector{width:288px}.toolbar{left:12px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;align-items:stretch;width:46px;max-width:none;max-height:calc(100% - 24px);overflow-x:hidden;overflow-y:auto}.toolbar .tool{width:100%;min-width:0;padding:0}.toolbar .pc-only{display:none}.toolbar .tool-sep{width:auto;height:1px;margin:2px 6px}}
-@media(max-width:639px){.toolbar .tool-sep{display:none}.inspector{top:auto;bottom:0;right:0;left:0;width:100%;height:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}.inspector.show{transform:translateY(0)}.toolbar{bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}}
+@media(max-width:639px){.toolbar .tool-sep{display:none}.inspector{top:auto;bottom:0;right:0;left:0;width:100%;height:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}.inspector.show{transform:translateY(0)}.toolbar{padding: 2px 4px;bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}.subbar .mode-label{display:none}.subbar .pad-input{width:32px}}
   </style>
 </head>
 <body>
@@ -134,7 +141,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
   <header class="hd">
     <div class="row tight">
       <a class="icon-btn" href="./index.html" title="返回扫描处理">←</a>
-      <span class="brand">A4 拼图</span>
+      <span class="brand">{{ state.infinite ? '无限拼图' : 'A4 拼图' }}</span>
       <span class="badge">{{ state.count }}</span>
     </div>
     <div class="row tight">
@@ -146,9 +153,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
   <div class="subbar">
     <div class="row tight">
-      <span>A4</span>
-      <button class="orient-btn" :title="state.orientation==='landscape' ? '当前横向，点击切换为纵向' : '当前纵向，点击切换为横向'" @click="toggleOrientation">{{ state.orientation==='landscape' ? '横向' : '纵向' }} 🔄</button>
-      <span class="pc-only" title="A4 逻辑坐标仍按 96dpi（794×1123）计算；此处为编辑画面的渲染分辨率">· {{ previewDpi }}dpi 预览</span>
+      <span class="mode-label">{{ state.infinite ? '∞' : 'A4' }}</span>
+      <button class="orient-btn" :class="{disabled:state.infinite}" :disabled="state.infinite" :title="state.infinite ? '无限画布无需纸张方向' : (state.orientation==='landscape' ? '当前横向，点击切换为纵向' : '当前纵向，点击切换为横向')" @click="toggleOrientation">{{ state.orientation==='landscape' ? '横向' : '纵向' }} 🔄</button>
+      <button class="orient-btn" :class="{active:state.infinite}" :aria-pressed="state.infinite" :title="state.infinite ? '当前无限画布，点击返回 A4 纸面' : '切换为无限画布：满屏白底，导出按内容边界自动裁切'" @click="toggleInfinite">∞ 无限</button>
+      <label class="pad-field" v-if="state.infinite" title="导出 / 打印的边界留白（成品图像素，四周等宽）"><span>空</span><input class="pad-input" type="number" min="0" max="400" step="1" inputmode="numeric" v-model.number="state.padding" @change="onPaddingChange"><span class="pc-only">px</span></label>
+      <span class="pc-only" :title="state.infinite ? '导出与打印共用内容边界：自动包含全部拼图并加上留白' : 'A4 逻辑坐标仍按 96dpi（794×1123）计算；此处为编辑画面的渲染分辨率'">{{ state.infinite ? '· 导出自动匹配内容边界' : '· ' + previewDpi + 'dpi 预览' }}</span>
     </div>
     <div class="row">
       <button class="icon-btn" style="width:24px;height:24px" title="缩小视图" @click="zoomOut">－</button>
@@ -156,12 +165,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="icon-btn" style="width:24px;height:24px" title="放大视图" @click="zoomIn">＋</button>
       <button class="icon-btn lock-btn" :class="{locked:state.locked}" :aria-pressed="state.locked" :title="state.locked ? '画布已锁定：拖动 / 滚轮 / 双指缩放已禁用，工具栏缩放按钮仍可用，点击解锁' : '锁定画布：禁止拖动、滚轮和双指缩放，只操作图片'" @click="toggleLock">{{ state.locked ? '🔒' : '🔓' }}</button>
       <button class="icon-btn" style="width:24px;height:24px" title="适应窗口" @click="fitView">⤢</button>
-      <button class="icon-btn" style="width:24px;height:24px" :title="state.orientation==='landscape'?'切换为纵向':'切换为横向'" @click="toggleOrientation">🔄</button>
+      <button class="icon-btn" :class="{disabled:state.infinite}" style="width:24px;height:24px" :disabled="state.infinite" :title="state.infinite?'无限画布无需纸张方向':(state.orientation==='landscape'?'切换为纵向':'切换为横向')" @click="toggleOrientation">🔄</button>
       <button class="icon-btn" style="width:24px;height:24px" :title="theme==='light'?'切换到黑夜模式':'切换到白天模式'" @click="toggleTheme">{{ theme==='light' ? '🌙' : '☀️' }}</button>
     </div>
   </div>
 
-  <main class="workspace" ref="workspaceEl" @wheel.prevent="onWheel" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp">
+  <main class="workspace" :class="{infinite:state.infinite}" ref="workspaceEl" @wheel.prevent="onWheel" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp">
     <div class="paper-wrap" :style="wrapStyle">
       <div class="paper" :style="paperStyle"><canvas id="paper-canvas"></canvas></div>
     </div>
@@ -170,7 +179,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <div class="empty-card" @click="openFileDialog">
         <span class="ic">🧩</span>
         <h2 class="empty-title">点此添加图片开始拼图</h2>
-        <p class="empty-desc">固定 A4 纸面，可不断加图<br>拖动 / 缩放 / 旋转 / 裁剪 / 黑白<br><span class="pc-only">扫描件可先在「扫描处理」做好白底再添加；支持拖拽文件、Ctrl+V 粘贴<br>方向键 / + - ：选中图片时微调位置与大小，未选中时平移、缩放画布（Shift 加速）</span></p>
+        <p class="empty-desc">{{ state.infinite ? '满屏无限白底，可不断加图' : '固定 A4 纸面，可不断加图' }}<br>拖动 / 缩放 / 旋转 / 裁剪 / 黑白<br><span class="pc-only">扫描件可先在「扫描处理」做好白底再添加；支持拖拽文件、Ctrl+V 粘贴<br>方向键 / + - ：选中图片时微调位置与大小，未选中时平移、缩放画布（Shift 加速）</span></p>
       </div>
     </div>
 
@@ -188,7 +197,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="tool desktop-only" :disabled="!hasSelection" title="置于顶层" @click="layer('front')">⏫</button>
       <button class="tool desktop-only" :disabled="!hasSelection" title="置于底层" @click="layer('back')">⏬</button>
       <span class="tool-sep"></span>
-      <button class="tool" :disabled="!hasSelection" title="等比适应 A4 并居中" @click="fitToPage">⤢<span class="pc-only">适应</span></button>
+      <button class="tool" :disabled="!hasSelection" :title="state.infinite?'等比适应当前画面并居中':'等比适应 A4 并居中'" @click="fitToPage">⤢<span class="pc-only">适应</span></button>
       <button class="tool" :disabled="!hasSelection" title="复制 (Ctrl+D)" @click="duplicate">⧉<span class="pc-only">复制</span></button>
       <button class="tool danger" :disabled="!hasSelection" title="删除 (Delete)" @click="remove">🗑️<span class="pc-only">删除</span></button>
       <span class="tool-sep"></span>
@@ -251,13 +260,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           <input class="range" type="range" min="0" max="360" step="1" :value="state.sel.angle" @input="onParamInput('angle',$event)" @change="commit">
           <div class="param-head"><span class="param-name">整体缩放</span><span class="param-value">{{ state.sel.scale }}%</span></div>
           <input class="range" type="range" min="5" max="400" step="1" :value="state.sel.scale" @input="onParamInput('scale',$event)" @change="commit">
-          <p class="param-tip">纸面显示约 {{ displayW }} × {{ displayH }} mm。</p>
+          <p class="param-tip">{{ state.infinite ? '画面显示约 ' + displayW + ' × ' + displayH + ' px。' : '纸面显示约 ' + displayW + ' × ' + displayH + ' mm。' }}</p>
         </div>
 
         <div>
           <div class="btn-row">
             <button class="btn btn-ghost" title="恢复原图与全部默认属性（可撤销）" @click="resetAll">↺ 还原全部</button>
-            <button class="btn btn-ghost" @click="fitToPage">适应 A4</button>
+            <button class="btn btn-ghost" @click="fitToPage">{{ state.infinite ? '适应画面' : '适应 A4' }}</button>
           </div>
           <div class="btn-row">
             <button class="btn btn-ghost" @click="duplicate">复制</button>
@@ -274,12 +283,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
     <div class="save-panel">
       <div class="save-hd"><b>输出 / 打印预览</b><button class="icon-btn" title="关闭" @click="saveOpen=false">✖</button></div>
       <div class="save-tip">{{ saveTip }}</div>
-      <div class="save-img-box" :class="{'transparent-bg': state.format==='png' && state.transparent}"><img :src="saveUrl" alt="A4 拼图预览"></div>
+      <div class="save-img-box" :class="{'transparent-bg': state.format==='png' && state.transparent}"><img :src="saveUrl" :alt="state.infinite ? '无限画布拼图预览' : 'A4 拼图预览'"></div>
       <div class="print-opts">
         <label class="print-opt"><span>DPI</span><select class="select" v-model.number="state.dpi" @change="refreshPreview"><option v-for="d in dpiOptions" :key="d" :value="d">{{ d }}{{ d===200?'（推荐）':'' }}</option></select></label>
         <label class="print-opt"><span>格式</span><select class="select" v-model="state.format" @change="refreshPreview"><option value="png">PNG</option><option value="jpg">JPG（90 质量）</option></select></label>
         <label class="print-opt" :class="{disabled: state.format==='jpg'}" title="仅 PNG 支持透明；JPG 自动使用白底"><input class="check" type="checkbox" v-model="state.transparent" :disabled="state.format==='jpg'" @change="refreshPreview"><span>透明背景</span></label>
-        <label class="print-opt"><input class="check" type="checkbox" :checked="state.orientation==='landscape'" @change="onOrientationCheck($event)"><span>横向</span></label>
+        <label class="print-opt" v-if="!state.infinite"><input class="check" type="checkbox" :checked="state.orientation==='landscape'" @change="onOrientationCheck($event)"><span>横向</span></label>
       </div>
       <div class="save-ft">
         <button class="btn btn-ghost" @click="downloadImage">下载图片</button>
@@ -309,6 +318,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
       const state = reactive({
         orientation: 'portrait',
+        infinite: false,          // 无限画布：满屏白底，导出/打印按内容边界裁切
+        padding: 10,              // 无限画布导出留白（成品图像素，四周等宽）
+        outW: 0, outH: 0,         // 最近一次输出尺寸，用于提示
         count: 0,
         zoom: 0.65,
         panX: 0,
@@ -338,16 +350,20 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const shareFallbackTip = ref('');
       const showInspector = ref(false);
       const toastText = ref('');
+      const viewport = reactive({ w: 0, h: 0 });   // 无限画布时 Fabric 画布即工作区大小，平移交给 viewportTransform
       const hasSelection = computed(() => !!state.sel.id);
       const canUndo = computed(() => state.histIdx > 0);
       const canRedo = computed(() => state.histIdx < state.histLen - 1);
-      const logical = computed(() => A4[state.orientation]);
+      const logical = computed(() => state.infinite ? { w: viewport.w, h: viewport.h } : A4[state.orientation]);
       const sheetSize = computed(() => PrintUtils.a4Size(state.orientation === 'landscape', state.dpi));
       const sheetW = computed(() => sheetSize.value.w);
       const sheetH = computed(() => sheetSize.value.h);
       const saveTip = computed(() => {
         if (shareFallbackTip.value) return shareFallbackTip.value;
         const fmt = state.format === 'jpg' ? 'JPG 白底' : (state.transparent ? 'PNG 透明背景' : 'PNG 白底');
+        if (state.infinite) {
+          return `无限画布 · 自动匹配全部拼图边界 · 留白 ${exportPadding()}px · ${state.dpi}DPI（${state.outW}×${state.outH}）· ${fmt} · 打印按同一边界输出。`;
+        }
         return `A4 ${state.orientation === 'landscape' ? '横向' : '纵向'} · ${state.dpi}DPI（${sheetW.value}×${sheetH.value}）· ${fmt} · 打印始终白底零边距。`;
       });
       const displayW = computed(() => {
@@ -355,21 +371,27 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const sc = state.sel.scale;
         if (!sel || !sc) return 0;
         const o = activeObj();
-        return o ? Math.round(o.width * o.scaleX / logical.value.w * (state.orientation === 'landscape' ? 297 : 210)) : 0;
+        if (!o) return 0;
+        if (state.infinite) return Math.round(o.width * o.scaleX);
+        return Math.round(o.width * o.scaleX / logical.value.w * (state.orientation === 'landscape' ? 297 : 210));
       });
       const displayH = computed(() => {
         const sel = state.sel.id;
         const sc = state.sel.scale;
         if (!sel || !sc) return 0;
         const o = activeObj();
-        return o ? Math.round(o.height * o.scaleY / logical.value.h * (state.orientation === 'landscape' ? 210 : 297)) : 0;
+        if (!o) return 0;
+        if (state.infinite) return Math.round(o.height * o.scaleY);
+        return Math.round(o.height * o.scaleY / logical.value.h * (state.orientation === 'landscape' ? 210 : 297));
       });
       const paperStyle = computed(() => ({ width: logical.value.w + 'px', height: logical.value.h + 'px' }));
-      const wrapStyle = computed(() => ({
-        width: logical.value.w + 'px',
-        height: logical.value.h + 'px',
-        transform: `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`
-      }));
+      const wrapStyle = computed(() => state.infinite
+        ? { width: viewport.w + 'px', height: viewport.h + 'px', transform: 'none' }
+        : {
+            width: logical.value.w + 'px',
+            height: logical.value.h + 'px',
+            transform: `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`
+          });
 
       let canvas = null;
       const sources = new Map();      // imgId -> { name, original }
@@ -396,9 +418,15 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         return o && o.imgId ? o : null;
       }
       const clampZoom = z => Math.min(3, Math.max(0.2, z));
-      /* 纸面用 CSS transform 缩放，而 Fabric 的控制点是画布坐标：视图越缩小，
-         控制点在屏幕上就越小。按 zoom 反向补偿，让锚点始终是固定屏幕尺寸。 */
+      /* A4 模式：纸面用 CSS transform 缩放，控制点在画布坐标里会跟着变小，需按 zoom 反向补偿。
+         无限模式：缩放由 Fabric viewportTransform 承担，Fabric 已按 getZoom() 抵消，尺寸固定即可。 */
       function controlSizes() {
+        if (state.infinite) {
+          return {
+            dot: 16, cornerTouch: 44, sideTouch: 30, rotateTouch: 28,
+            rotateOffset: -36, borderScaleFactor: 2, padding: 5
+          };
+        }
         const z = state.zoom || 1;
         return {
           dot: 16 / z,                // 可见圆点约 16 屏幕像素
@@ -415,20 +443,98 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.getObjects().forEach(o => { styleObject(o); o.setCoords(); });
         canvas.requestRenderAll();
       }
-      watch(() => state.zoom, updateControlSizes);
+      watch([() => state.zoom, () => state.infinite], updateControlSizes);
 
       /* ================= 视图缩放与平移 ================= */
+
+      function measureWorkspace() {
+        const el = workspaceEl.value;
+        if (!el) return false;
+        const w = Math.max(1, Math.round(el.clientWidth));
+        const h = Math.max(1, Math.round(el.clientHeight));
+        if (w === viewport.w && h === viewport.h) return false;
+        viewport.w = w;
+        viewport.h = h;
+        return true;
+      }
+      /* 无限画布：编辑画布就是工作区大小，缩放/平移写进 viewportTransform（无边界）。
+         与 A4 的 CSS transform 公式等价，保证 zoomAt / 拖动 / 快捷键的手感一致。 */
+      function viewportTransform() {
+        const z = state.zoom || 1;
+        return [
+          z, 0, 0, z,
+          (1 - z) * viewport.w / 2 + state.panX,
+          (1 - z) * viewport.h / 2 + state.panY
+        ];
+      }
+      function syncViewport() {
+        if (!canvas) return;
+        const vpt = state.infinite ? viewportTransform() : [1, 0, 0, 1, 0, 0];
+        const cur = canvas.viewportTransform;
+        if (cur[0] === vpt[0] && cur[4] === vpt[4] && cur[5] === vpt[5]) return;
+        canvas.setViewportTransform(vpt);
+      }
+      watch([
+        () => state.zoom, () => state.panX, () => state.panY,
+        () => viewport.w, () => viewport.h, () => state.infinite
+      ], syncViewport);
+      function applyCanvasMode() {
+        if (!canvas) return;
+        measureWorkspace();
+        const size = state.infinite
+          ? { width: viewport.w, height: viewport.h }
+          : { width: A4[state.orientation].w, height: A4[state.orientation].h };
+        canvas.setDimensions(size);
+        syncViewport();
+        canvas.backgroundColor = '#ffffff';
+        updateControlSizes();
+        canvas.renderAll();
+      }
+      /* 当前可见区域（场景坐标），用于新加图 / 适应画面的落点 */
+      function visibleRect() {
+        const vpt = viewportTransform();
+        const z = vpt[0] || 1;
+        return {
+          left: -vpt[4] / z, top: -vpt[5] / z,
+          width: viewport.w / z, height: viewport.h / z
+        };
+      }
+      function workArea() {
+        return state.infinite ? visibleRect()
+          : { left: 0, top: 0, width: logical.value.w, height: logical.value.h };
+      }
 
       function fitView() {
         const el = workspaceEl.value;
         if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const w = Math.max(1, rect.width - PAPER_GAP * 2);
-        const h = Math.max(1, rect.height - PAPER_GAP * 2);
+        measureWorkspace();
+        const w = Math.max(1, viewport.w - PAPER_GAP * 2);
+        const h = Math.max(1, viewport.h - PAPER_GAP * 2);
+        if (state.infinite) {
+          const b = contentBounds();
+          if (!b) { state.zoom = 1; state.panX = 0; state.panY = 0; return; }
+          const bw = Math.max(1, b.maxX - b.minX);
+          const bh = Math.max(1, b.maxY - b.minY);
+          const z = clampZoom(Math.min(1, w / bw, h / bh));
+          const cx = (b.minX + b.maxX) / 2;
+          const cy = (b.minY + b.maxY) / 2;
+          state.zoom = z;
+          state.panX = z * (viewport.w / 2 - cx);
+          state.panY = z * (viewport.h / 2 - cy);
+          return;
+        }
         const z = Math.min(w / logical.value.w, h / logical.value.h);
         state.zoom = clampZoom(z);
         state.panX = 0;
         state.panY = 0;
+      }
+      function onResize() {
+        const changed = measureWorkspace();
+        if (state.infinite && changed && canvas) {
+          canvas.setDimensions({ width: viewport.w, height: viewport.h });
+        }
+        fitView();
+        syncViewport();
       }
       function zoomAt(next, clientX, clientY) {
         const el = workspaceEl.value;
@@ -564,12 +670,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       }
 
       function defaultRecord(id, src) {
-        const s = Math.min(logical.value.w * 0.72 / src.width, logical.value.h * 0.72 / src.height, 1);
+        const area = workArea();
+        const s = Math.min(area.width * 0.72 / src.width, area.height * 0.72 / src.height, 1);
         const off = (addOffset++ % 5) * 18;
         return {
           id,
-          left: (logical.value.w - src.width * s) / 2 + off,
-          top: (logical.value.h - src.height * s) / 2 + off,
+          left: area.left + (area.width - src.width * s) / 2 + off,
+          top: area.top + (area.height - src.height * s) / 2 + off,
           scaleX: s, scaleY: s, angle: 0, flipX: false, flipY: false, opacity: 1,
           width: src.width, height: src.height, cropX: 0, cropY: 0,
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
@@ -648,6 +755,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function snapshot() {
         return {
           orientation: state.orientation,
+          infinite: state.infinite,
           objects: canvas.getObjects().map(readObject)
         };
       }
@@ -664,7 +772,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const snap = history[i];
         if (!snap) return;
         restoring = true;
-        if (snap.orientation !== state.orientation) setOrientation(snap.orientation, true);
+        const modeChanged = !!snap.infinite !== state.infinite || snap.orientation !== state.orientation;
+        state.infinite = !!snap.infinite;
+        state.orientation = snap.orientation || 'portrait';
+        if (modeChanged) applyCanvasMode();
         canvas.discardActiveObject();
         canvas.getObjects().slice().forEach(o => canvas.remove(o));
         snap.objects.forEach(rec => {
@@ -674,6 +785,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.renderAll();
         state.count = snap.objects.length;
         state.sel.id = null;
+        if (modeChanged) { fitView(); syncViewport(); }
         histIdx = i;
         state.histIdx = i;
         restoring = false;
@@ -848,9 +960,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const src = sources.get(o.imgId);
         if (!src) return;
         const center = o.getCenterPoint();
+        const area = workArea();
         const s = Math.min(
-          logical.value.w * 0.72 / src.original.width,
-          logical.value.h * 0.72 / src.original.height,
+          area.width * 0.72 / src.original.width,
+          area.height * 0.72 / src.original.height,
           1
         );
         Object.assign(o, {
@@ -909,11 +1022,13 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function fitToPage() {
         const o = activeObj();
         if (!o) return;
-        const s = Math.min(logical.value.w / o.width, logical.value.h / o.height);
+        const area = workArea();
+        const margin = state.infinite ? 0.9 : 1;
+        const s = Math.min(area.width * margin / o.width, area.height * margin / o.height);
         o.set({
           angle: 0, scaleX: s, scaleY: s,
-          left: (logical.value.w - o.width * s) / 2,
-          top: (logical.value.h - o.height * s) / 2
+          left: area.left + (area.width - o.width * s) / 2,
+          top: area.top + (area.height - o.height * s) / 2
         });
         o.setCoords();
         canvas.renderAll();
@@ -948,16 +1063,36 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (state.orientation === next) return;
         state.orientation = next;
         const size = A4[next];
-        if (canvas) canvas.setDimensions({ width: size.w, height: size.h });
+        if (canvas && !state.infinite) canvas.setDimensions({ width: size.w, height: size.h });
         if (!silent) { fitView(); commit(); }
       }
       function toggleOrientation() {
+        if (state.infinite) return;
         setOrientation(state.orientation === 'portrait' ? 'landscape' : 'portrait', false);
         if (saveOpen.value) refreshPreview();
       }
       /* 输出弹框的「横向」复选框：按勾选值直接设定方向，与副栏按钮共用 state.orientation */
       function onOrientationCheck(e) {
+        if (state.infinite) return;
         setOrientation(e.target.checked ? 'landscape' : 'portrait', false);
+        if (saveOpen.value) refreshPreview();
+      }
+      function toggleInfinite() {
+        if (!canvas) return;
+        state.infinite = !state.infinite;
+        applyCanvasMode();
+        fitView();
+        syncViewport();
+        if (saveOpen.value) refreshPreview();
+        commit();
+        notify(state.infinite ? '无限画布：导出 / 打印自动匹配全部拼图边界' : '已返回 A4 纸面');
+      }
+      function exportPadding() {
+        const v = Number(state.padding);
+        return Number.isFinite(v) ? Math.min(2000, Math.max(0, Math.round(v))) : 0;
+      }
+      function onPaddingChange() {
+        state.padding = exportPadding();
         if (saveOpen.value) refreshPreview();
       }
 
@@ -970,20 +1105,60 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           ext: isJpg ? 'jpg' : 'png'
         };
       }
-      /* 导出画布：透明模式临时去掉白底，导出后立刻恢复，编辑画面始终白底 */
+      /* 无限画布：取全部拼图对象的真实边界（场景坐标，含旋转 / 缩放 / 裁剪 / 边框），
+         与当前视图缩放、平移无关，画面外的图片也会被包含进来。 */
+      function contentBounds() {
+        if (!canvas) return null;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        canvas.getObjects().forEach(o => {
+          if (!o.imgId) return;
+          const r = o.getBoundingRect();
+          minX = Math.min(minX, r.left);
+          minY = Math.min(minY, r.top);
+          maxX = Math.max(maxX, r.left + r.width);
+          maxY = Math.max(maxY, r.top + r.height);
+        });
+        return minX === Infinity ? null : { minX, minY, maxX, maxY };
+      }
+      /* padding 以成品图像素计：预览(m=1)与高 DPI 导出的白边宽度一致 */
+      function contentCrop(multiplier) {
+        const e = multiplier || 1;
+        const pad = exportPadding() / e;
+        const b = contentBounds();
+        if (!b) return { left: 0, top: 0, width: A4[state.orientation].w, height: A4[state.orientation].h };
+        const left = Math.floor(b.minX - pad);
+        const top = Math.floor(b.minY - pad);
+        const right = Math.ceil(b.maxX + pad);
+        const bottom = Math.ceil(b.maxY + pad);
+        return { left, top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+      }
+      function exportSize(multiplier) {
+        const e = multiplier || 1;
+        const c = state.infinite ? contentCrop(e)
+          : { width: A4[state.orientation].w, height: A4[state.orientation].h };
+        return { w: Math.round(c.width * e), h: Math.round(c.height * e) };
+      }
+      /* 导出 / 预览 / 打印共用同一张画布：A4 用固定纸面，无限画布按内容边界 + padding 裁切。
+         无限模式先把 viewportTransform 归零，输出尺寸就不会受当前视图缩放影响；
+         透明模式临时去掉白底，结束后立刻恢复，编辑画面始终白底。 */
       function buildSheet(multiplier, transparent) {
         const m = multiplier || state.dpi / DPI_BASE;
+        const crop = state.infinite ? contentCrop(m) : null;
+        const size = exportSize(state.dpi / DPI_BASE);
+        state.outW = size.w;
+        state.outH = size.h;
         const prevBg = canvas.backgroundColor;
+        const prevVpt = canvas.viewportTransform.slice();
         if (transparent) canvas.backgroundColor = '';
         try {
           canvas.discardActiveObject();
-          canvas.renderAll();
-          return canvas.toCanvasElement(m);
+          if (crop) canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+          else canvas.renderAll();
+          return canvas.toCanvasElement(m, crop || undefined);
         } finally {
-          if (transparent) {
-            canvas.backgroundColor = prevBg;
-            canvas.renderAll();
-          }
+          if (crop) canvas.setViewportTransform(prevVpt);
+          if (transparent) canvas.backgroundColor = prevBg;
+          canvas.renderAll();
         }
       }
       function openOutput() {
@@ -1011,7 +1186,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
               if (!blob) { notify('导出失败'); return; }
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
-              a.download = `A4拼图_${state.dpi}dpi.${opt.ext}`;
+              a.download = `${state.infinite ? '无限拼图' : 'A4拼图'}_${state.dpi}dpi.${opt.ext}`;
               a.href = url;
               a.click();
               setTimeout(() => URL.revokeObjectURL(url), 10000);
@@ -1040,12 +1215,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const nav = window.navigator;
         let file = null, canShareFiles = false;
         try {
-          file = new File([blob], `A4拼图_${state.dpi}dpi.${opt.ext}`, { type: opt.mime });
+          file = new File([blob], `${state.infinite ? '无限拼图' : 'A4拼图'}_${state.dpi}dpi.${opt.ext}`, { type: opt.mime });
           canShareFiles = !!(nav && nav.share && (!nav.canShare || nav.canShare({ files: [file] })));
         } catch (e) { /* 老内核可能没有 File / canShare */ }
         if (canShareFiles && file) {
           try {
-            await nav.share({ files: [file], title: 'A4 拼图' });
+            await nav.share({ files: [file], title: state.infinite ? '无限拼图' : 'A4 拼图' });
             return;
           } catch (e) {
             if (e && e.name === 'AbortError') return;
@@ -1073,7 +1248,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
             const sheet = buildSheet();
             // 打印后保留预览弹窗，由用户手动关闭：与扫描页一致，也方便改方向重试 / 下载 / 分享。
             // 打印时 #app 已被 @media print 整体隐藏，弹窗不会进入打印内容。
-            if (!PrintUtils.printSheets([sheet], { landscape: state.orientation === 'landscape' })) {
+            // 无限画布直接打印这张按内容边界裁好的图，纸张方向按图的宽高自动选择。
+            const landscape = state.infinite ? sheet.width >= sheet.height : state.orientation === 'landscape';
+            if (!PrintUtils.printSheets([sheet], { landscape, fitPage: state.infinite })) {
               notify('当前浏览器不支持打印');
             }
           } catch (e) {
@@ -1137,6 +1314,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       onMounted(() => {
         applyTheme();
         PrintUtils.installPrintStyle();
+        measureWorkspace();
 
         /* 编辑画面按 PREVIEW_DPI 渲染：逻辑尺寸仍是 794×1123，仅把 backing store
            放大到 PREVIEW_DPI/96 倍，CSS 尺寸、对象坐标、控制点和命中检测都不变。
@@ -1169,7 +1347,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.on('mouse:up', onCanvasMouseUp);
 
         // 不监听 afterprint 清理打印容器：系统预览改动纸张方向会重新渲染页面
-        window.addEventListener('resize', fitView);
+        window.addEventListener('resize', onResize);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('pointerup', onCanvasMouseUp);
         window.addEventListener('pointercancel', onCanvasMouseUp);
@@ -1194,6 +1372,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         history = [snapshot()];
         histIdx = 0;
         state.histLen = 1;
+        const size = exportSize(state.dpi / DPI_BASE);
+        state.outW = size.w;
+        state.outH = size.h;
         fitView();
       });
 
@@ -1203,6 +1384,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
         zoomIn, zoomOut, fitView, toggleLock, toggleOrientation, onOrientationCheck,
+        toggleInfinite, onPaddingChange,
         openFileDialog, onFileChange, undo, redo,
         setTone, onParamInput, commit, clearBorder, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
         fitToPage, duplicate, remove,
