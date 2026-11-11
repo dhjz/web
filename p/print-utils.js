@@ -44,23 +44,23 @@
     return c;
   }
 
-  /* index.html 的打印样式：--a4-w/--a4-h 供 .print-sheet 缩放，减 0.4mm 防止分页 */
-  function pageRule(force, landscape, wMm, hMm) {
+  /* 只声明纸张方向与零边距；具体尺寸交给 CSS 自适应可用区，避免顶满纸张导致溢出分页。
+     手机自带打印服务常忽略 size 里的 orientation，不能依赖它计算页面宽高。 */
+  function pageRule(force, landscape) {
     if (!force) return '';
-    return `@page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:0}` +
-      `html.print-sheet-mode{--a4-w:${(wMm - 0.4).toFixed(1)}mm;--a4-h:${(hMm - 0.4).toFixed(1)}mm}`;
+    return `@page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:0}`;
   }
 
   const PRINT_CSS = `
 .print-sheets{display:none}
 @media print{
-  html,body{margin:0!important;padding:0!important;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{margin:0!important;padding:0!important;width:100%;height:100%;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   html.print-sheet-mode body>*:not(#print-sheets){display:none!important}
-  html.print-sheet-mode #print-sheets{display:block!important}
+  html.print-sheet-mode #print-sheets{display:block!important;width:100%;height:100%;font-size:0;line-height:0;overflow:hidden}
   html.print-sheet-mode #print-sheets .print-sheet{
     display:block;width:var(--sheet-w,209.6mm)!important;height:var(--sheet-h,296.6mm)!important;
-    max-width:none!important;max-height:none!important;margin:0;padding:0;border:0;
-    break-inside:avoid;page-break-inside:avoid}
+    max-width:100%;max-height:100%;margin:0;padding:0;border:0;object-fit:contain;object-position:center;
+    break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}
   html.print-sheet-mode #print-sheets .print-sheet:not(:last-child){break-after:page;page-break-after:always}
 }
 `;

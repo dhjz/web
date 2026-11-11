@@ -157,10 +157,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .print-sheet{display:none}
 @media print{html.print-sheet-mode .app{display:none!important}}
 @media print{html.print-sheet-mode .print-sheet{display:block;width:100%;max-width:100%;height:auto;margin:0;padding:0;border:0;background:#fff;break-inside:avoid}}
-@media print{html.print-sheet-mode.force-a4,html.print-sheet-mode.force-a4 body{margin:0;padding:0;font-size:0;line-height:0}}
-@media print{html.print-sheet-mode.force-a4 .print-sheet{width:var(--a4-w,209.6mm);height:var(--a4-h,296.6mm);object-fit:contain;break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}}
-/* 不强制 A4 时沿用默认纸张边距；强制 A4 时由 JS 动态注入 @page{size:A4 ...;margin:0} */
-@page{  margin:10mm}
+/* 强制 A4：手机自带打印常忽略 @page 的 size/orientation，还会自带页边距、页眉页脚。
+   不再把画布写死成 296.6mm（只留 0.4mm 余量），改为限制在「实际可用区」内等比 contain，
+   否则多出几毫米就会溢出到第二页；overflow:hidden 兜底裁掉亚像素溢出。 */
+@media print{html.print-sheet-mode.force-a4,html.print-sheet-mode.force-a4 body{margin:0!important;padding:0!important;width:100%;height:100%;font-size:0;line-height:0;overflow:hidden}}
+@media print{html.print-sheet-mode.force-a4 .print-sheet{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center;break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}}
+/* @page 全程只保留一条，由 JS 动态注入；避免多条 @page 在旧移动内核里被合并/误用 */
   </style>
   <!-- PWA：注册 Service Worker，收集安装 / 更新状态（放在 window.__pwa 供 Vue 读取，避免事件时序问题） -->
   <script>
@@ -1045,12 +1047,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         root.classList.add('print-sheet-mode');
         root.classList.toggle('force-a4', force);
         if (force) {
-          const landscape = !!printLandscape.value;
-          const w = landscape ? 297 : 210;
-          const h = landscape ? 210 : 297;
-          pageStyleEl.textContent = PrintUtils.pageRule(true, landscape, w, h);
+          pageStyleEl.textContent = PrintUtils.pageRule(true, !!printLandscape.value);
         } else {
-          pageStyleEl.textContent = '';
+          // 非强制 A4 时沿用默认页边距；全程只注入一条 @page 规则
+          pageStyleEl.textContent = '@page{margin:10mm}';
         }
         return true;
       }
