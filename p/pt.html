@@ -74,7 +74,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .empty-desc{color:var(--muted);font-size:12px;line-height:1.6}
 .toolbar{position:absolute;left:50%;bottom:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:20;transform:translateX(-50%);display:flex;align-items:center;gap:4px;max-width:calc(100vw - 20px);padding:6px;border:1px solid var(--float-line);border-radius:999px;background:var(--float-bg);box-shadow:0 25px 50px -12px var(--shadow);backdrop-filter:blur(12px);overflow-x:auto;scrollbar-width:none}
 .toolbar::-webkit-scrollbar{display:none}
-.tool{flex:none;min-width:22px;height:32px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;border:0;border-radius:999px;background:transparent;color:var(--text2);font-size:12px;white-space:nowrap;cursor:pointer}
+.tool{flex:none;min-width:22px;height:32px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 5px;border:0;border-radius:999px;background:transparent;color:var(--text2);font-size:12px;white-space:nowrap;cursor:pointer}
 .tool:hover{background:var(--surface)}
 .tool:active{background:#2563eb;color:#fff}
 .tool.active{background:var(--accent-soft);color:var(--accent4)}
@@ -125,7 +125,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.pc-only{display:inline}.hd{padding:0 16px}.brand{font-size:15px}.inspector{width:288px}.toolbar{left:12px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;align-items:stretch;width:46px;max-width:none;max-height:calc(100% - 24px);overflow-x:hidden;overflow-y:auto}.toolbar .tool{width:100%;min-width:0;padding:0}.toolbar .pc-only{display:none}.toolbar .tool-sep{width:auto;height:1px;margin:2px 6px}}
-@media(max-width:639px){.inspector{top:auto;bottom:0;right:0;left:0;width:100%;height:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}.inspector.show{transform:translateY(0)}.toolbar{bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}}
+@media(max-width:639px){.toolbar .tool-sep{display:none}.inspector{top:auto;bottom:0;right:0;left:0;width:100%;height:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}.inspector.show{transform:translateY(0)}.toolbar{bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}}
   </style>
 </head>
 <body>
@@ -178,7 +178,6 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="tool" :disabled="!canUndo" title="撤销 (Ctrl+Z)" @click="undo">↶<span class="pc-only">撤销</span></button>
       <button class="tool" :disabled="!canRedo" title="前进 / 重做 (Ctrl+Shift+Z)" @click="redo">↷<span class="pc-only">前进</span></button>
       <span class="tool-sep"></span>
-      <button class="tool" :class="{active:showInspector}" :disabled="!hasSelection" title="图片属性（也可双击图片打开）" @click="showInspector=!showInspector">🎛️<span class="pc-only">属性</span></button>
       <button class="tool" :disabled="!hasSelection" title="逆时针旋转 90°" @click="rotate(-90)">↺</button>
       <button class="tool" :disabled="!hasSelection" title="顺时针旋转 90°" @click="rotate(90)">↻</button>
       <button class="tool" :disabled="!hasSelection" title="水平翻转" @click="flip('flipX')">↔️</button>
@@ -192,6 +191,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="tool" :disabled="!hasSelection" title="等比适应 A4 并居中" @click="fitToPage">⤢<span class="pc-only">适应</span></button>
       <button class="tool" :disabled="!hasSelection" title="复制 (Ctrl+D)" @click="duplicate">⧉<span class="pc-only">复制</span></button>
       <button class="tool danger" :disabled="!hasSelection" title="删除 (Delete)" @click="remove">🗑️<span class="pc-only">删除</span></button>
+      <span class="tool-sep"></span>
+      <button class="tool" :class="{active:showInspector}" :disabled="!hasSelection" title="图片属性（也可双击图片打开）" @click="showInspector=!showInspector">🎛️<span class="pc-only">属性</span></button>
     </div>
 
     <aside class="inspector" :class="{show:showInspector && hasSelection}" @wheel.stop>
