@@ -113,11 +113,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .save-tip{flex:none;color:var(--muted);font-size:12px;line-height:1.5}
 .save-img-box{flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
 .save-img-box.transparent-bg{background-color:#fff;background-image:linear-gradient(45deg,#e2e8f0 25%,transparent 25%),linear-gradient(-45deg,#e2e8f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e2e8f0 75%),linear-gradient(-45deg,transparent 75%,#e2e8f0 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
-.save-img-box img{display:block;flex:none;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain}
+.save-img-box img{display:block;flex:none;margin:auto;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
 .print-opts{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:8px 2px 0;border-top:1px solid var(--line)}
 .print-opt{display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;white-space:nowrap;cursor:pointer}
 .save-ft{flex:none;display:flex;gap:8px;padding-bottom:env(safe-area-inset-bottom, 0px)}
 .save-ft .btn{flex:1;justify-content:center}
+@media(max-width:440px){.save-ft{gap:6px}.save-ft .btn{padding:6px 1px;font-size:11px}}
 .loader{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:var(--overlay)}
 .loader-box{display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--line);border-radius:16px;background:var(--float-bg);color:var(--text2);font-size:12px}
 .spin{width:16px;height:16px;color:#3b82f6;animation:spin 1s linear infinite}
@@ -271,7 +272,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
   <div class="save-sheet" v-if="saveOpen" @click.self="saveOpen=false">
     <div class="save-panel">
       <div class="save-hd"><b>输出 / 打印预览</b><button class="icon-btn" title="关闭" @click="saveOpen=false">✖</button></div>
-      <div class="save-tip">A4 {{ state.orientation==='landscape' ? '横向' : '纵向' }} · {{ state.dpi }}DPI（{{ sheetW }}×{{ sheetH }}）· {{ state.format==='jpg' ? 'JPG 白底' : (state.transparent ? 'PNG 透明背景' : 'PNG 白底') }} · 打印始终白底零边距。</div>
+      <div class="save-tip">{{ saveTip }}</div>
       <div class="save-img-box" :class="{'transparent-bg': state.format==='png' && state.transparent}"><img :src="saveUrl" alt="A4 拼图预览"></div>
       <div class="print-opts">
         <label class="print-opt"><span>DPI</span><select class="select" v-model.number="state.dpi" @change="refreshPreview"><option v-for="d in dpiOptions" :key="d" :value="d">{{ d }}{{ d===200?'（推荐）':'' }}</option></select></label>
@@ -281,6 +282,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       </div>
       <div class="save-ft">
         <button class="btn btn-ghost" @click="downloadImage">下载图片</button>
+        <button class="btn btn-ghost" @click="sharePreview">尝试分享</button>
         <button class="btn btn-ghost" @click="saveOpen=false">完成</button>
         <button class="btn btn-primary" @click="tryPrint">打印</button>
       </div>
@@ -332,6 +334,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const fileInputEl = ref(null);
       const saveOpen = ref(false);
       const saveUrl = ref('');
+      const shareFallbackTip = ref('');
       const showInspector = ref(false);
       const toastText = ref('');
       const hasSelection = computed(() => !!state.sel.id);
@@ -341,6 +344,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const sheetSize = computed(() => PrintUtils.a4Size(state.orientation === 'landscape', state.dpi));
       const sheetW = computed(() => sheetSize.value.w);
       const sheetH = computed(() => sheetSize.value.h);
+      const saveTip = computed(() => {
+        if (shareFallbackTip.value) return shareFallbackTip.value;
+        const fmt = state.format === 'jpg' ? 'JPG 白底' : (state.transparent ? 'PNG 透明背景' : 'PNG 白底');
+        return `A4 ${state.orientation === 'landscape' ? '横向' : '纵向'} · ${state.dpi}DPI（${sheetW.value}×${sheetH.value}）· ${fmt} · 打印始终白底零边距。`;
+      });
       const displayW = computed(() => {
         const sel = state.sel.id;
         const sc = state.sel.scale;
@@ -982,6 +990,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         refreshPreview();
       }
       function refreshPreview() {
+        shareFallbackTip.value = '';
         if (!canvas) return;
         try {
           const opt = outputSettings();
@@ -1013,6 +1022,48 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           }
         }, 20);
       }
+      /* 与扫描页一致的分享出口：按当前 DPI / 格式 / 透明设置输出，系统分享 → PC 剪贴板 → 长按预览图保存 */
+      async function sharePreview() {
+        if (!canvas || state.count === 0 || state.busy) return;
+        const opt = outputSettings();
+        let blob = null;
+        try {
+          const sheet = buildSheet(state.dpi / DPI_BASE, opt.transparent);
+          blob = await new Promise(resolve => sheet.toBlob(resolve, opt.mime, opt.quality));
+        } catch (e) { /* 老内核可能没有 toBlob */ }
+        if (!blob) {
+          shareFallbackTip.value = '图片生成受限，请长按下方图片保存到相册';
+          return;
+        }
+
+        const nav = window.navigator;
+        let file = null, canShareFiles = false;
+        try {
+          file = new File([blob], `A4拼图_${state.dpi}dpi.${opt.ext}`, { type: opt.mime });
+          canShareFiles = !!(nav && nav.share && (!nav.canShare || nav.canShare({ files: [file] })));
+        } catch (e) { /* 老内核可能没有 File / canShare */ }
+        if (canShareFiles && file) {
+          try {
+            await nav.share({ files: [file], title: 'A4 拼图' });
+            return;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+          }
+        }
+
+        const smallScreen = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+        if (!smallScreen && opt.mime === 'image/png' && nav && nav.clipboard && window.ClipboardItem) {
+          try {
+            await nav.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
+            notify('图片已复制到剪贴板');
+            return;
+          } catch (e) { /* 继续降级为长按保存 */ }
+        }
+        shareFallbackTip.value = canShareFiles
+          ? '分享未完成，可长按下方图片保存后转发'
+          : '当前浏览器不支持直接分享，长按下方图片保存后即可转发';
+      }
+
       function tryPrint() {
         if (!canvas || state.busy) return;
         state.busy = true;
@@ -1146,14 +1197,14 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
       return {
         state, theme, dpiOptions, previewDpi, hasSelection, canUndo, canRedo,
-        sheetW, sheetH, displayW, displayH, paperStyle, wrapStyle,
+        sheetW, sheetH, saveTip, displayW, displayH, paperStyle, wrapStyle,
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
         zoomIn, zoomOut, fitView, toggleLock, toggleOrientation, onOrientationCheck,
         openFileDialog, onFileChange, undo, redo,
         setTone, onParamInput, commit, clearBorder, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
         fitToPage, duplicate, remove,
-        openOutput, refreshPreview, downloadImage, tryPrint
+        openOutput, refreshPreview, downloadImage, sharePreview, tryPrint
       };
     }
   }).mount('#app');
