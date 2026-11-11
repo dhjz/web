@@ -57,10 +57,11 @@
     .sidebar-list li.active { background-color: #007bff; color: white; }
     .sidebar-list li i {font-size: 12px; float: right; opacity: .6; user-select: none; }
     .content { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
-    .toggle-btn { position: absolute; top: 4px; left: 4px; background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ddd; 
+    .toggle-btn, .intro-btn { position: absolute; top: 4px; left: 4px; background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ddd; 
       border-radius: 50%; cursor: pointer; font-size: 13px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; 
       z-index: 1000; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); opacity: 1; }
-    .toggle-btn:hover { background-color: #f0f0f0; }
+    .toggle-btn:hover, .intro-btn:hover { background-color: #f0f0f0; }
+    .intro-btn { top: 34px; }
     .iframe-container { flex: 1; width: 100%; border: none; }
     .blank-tip { padding: 40px; color: #999; text-align: center; user-select: none; }
     .input-row { display: flex; align-items: center; margin: 0 8px; }
@@ -71,8 +72,8 @@
     /* 移动端：导航栏悬浮覆盖，不挤压内容 */
     @media (max-width: 767px) {
       .sidebar { position: fixed; left: 0; top: 0; z-index: 1; }
-      .toggle-btn { left: 178px; }
-      .sb-hide .toggle-btn { left: 4px; }
+      .toggle-btn, .intro-btn { left: 178px; }
+      .sb-hide .toggle-btn, .sb-hide .intro-btn { left: 4px; }
     }
     /* PC 端：导航栏与内容区平级 */
     @media (min-width: 768px) {
@@ -118,6 +119,7 @@
     </div>
     <div class="content" id="content">
       <button class="toggle-btn" id="toggleBtn">◀</button>
+      <button class="intro-btn" id="introBtn" title="打开搜索框">🔍</button>
       <div class="blank-tip" id="blankTip" hidden>该站点不支持内嵌，点击左侧导航将在新页面打开 ↗</div>
     </div>
     <div class="intro-mask" id="introMask">
@@ -287,6 +289,12 @@
         $introMask.style.display = 'none';
       }
 
+      function openIntro() {
+        $introMask.style.display = '';
+        $introInput.focus();
+        $introInput.select();
+      }
+
       $keyword.addEventListener('input', function () {
         $introInput.value = $keyword.value;
       });
@@ -316,6 +324,7 @@
       });
 
       document.getElementById('introSkip').addEventListener('click', closeIntro);
+      document.getElementById('introBtn').addEventListener('click', openIntro);
 
       $introMask.addEventListener('click', function (e) {
         if (e.target === $introMask) closeIntro();
