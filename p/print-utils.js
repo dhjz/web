@@ -12,6 +12,24 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
+  /* 打印画布相对「页面可用宽度」的百分比（index.html / pt.html 共用的打印配置）。
+     手机自带打印服务常忽略 @page、自带边距且 mm→px 会舍入，留余量可避免横向打印
+     多出空白第二页；PC 浏览器按 @page 精确排版，用满幅即可。
+     按 UA 判定设备而非窗口宽度：PC 缩窗口、大屏手机横屏都不会误判。
+     以 CSS 变量 --print-scale 注入 <html>，两个页面的打印 CSS 都读它。 */
+  const MOBILE_PRINT_SCALE = 97;   // 仍有空白第二页就调小（如 90）
+  const PC_PRINT_SCALE = 100;      // 若个别 PC 打印机也分页，可改 99
+  function isMobileClient() {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return /Android|iPhone|iPad|iPod|Mobile|HarmonyOS/i.test(ua)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 桌面 UA
+  }
+  const PRINT_SCALE = isMobileClient() ? MOBILE_PRINT_SCALE : PC_PRINT_SCALE;
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.style.setProperty('--print-scale', PRINT_SCALE + '%');
+  }
+
   /* 210×297mm 按 DPI 换算为位图尺寸 */
   function a4Size(landscape, dpi) {
     const d = dpi || 200;
@@ -51,17 +69,20 @@
     return `@page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:0}`;
   }
 
+  /* 打印态不依赖 print-sheet-mode：系统预览切换纸张方向会重新渲染页面，
+     此时 afterprint 往往已触发，class 一旦被移除就会把整个 app 打出来。
+     画布位图本身是严格 A4 比例，按 --print-scale 等比缩放即可落在单页内；
+     不给 html/body 设 height:100% / overflow:hidden，分页媒体里那样会多算一页。 */
   const PRINT_CSS = `
 .print-sheets{display:none}
 @media print{
-  html,body{margin:0!important;padding:0!important;width:100%;height:100%;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  html.print-sheet-mode body>*:not(#print-sheets){display:none!important}
-  html.print-sheet-mode #print-sheets{display:block!important;width:100%;height:100%;font-size:0;line-height:0;overflow:hidden}
-  html.print-sheet-mode #print-sheets .print-sheet{
-    display:block;width:var(--sheet-w,209.6mm)!important;height:var(--sheet-h,296.6mm)!important;
-    max-width:100%;max-height:100%;margin:0;padding:0;border:0;object-fit:contain;object-position:center;
+  html,body{margin:0!important;padding:0!important;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body>*:not(#print-sheets){display:none!important}
+  #print-sheets{display:block!important;font-size:0;line-height:0}
+  #print-sheets .print-sheet{
+    display:block;width:var(--print-scale);height:auto;max-width:100%;margin:0 auto;padding:0;border:0;object-fit:contain;object-position:center;
     break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}
-  html.print-sheet-mode #print-sheets .print-sheet:not(:last-child){break-after:page;page-break-after:always}
+  #print-sheets .print-sheet:not(:last-child){break-after:page;page-break-after:always}
 }
 `;
 
@@ -101,9 +122,8 @@
     });
 
     const rootEl = document.documentElement;
-    rootEl.style.setProperty('--sheet-w', (landscape ? 296.6 : 209.6) + 'mm');
-    rootEl.style.setProperty('--sheet-h', (landscape ? 209.6 : 296.6) + 'mm');
-
+    // 保留打印容器内容与 @page 规则，不要在 afterprint 里清理：
+    // 移动端打印预览改动纸张方向时会重新渲染页面，清理后重渲染就只剩空容器或整个 app。
     let rule = document.getElementById('collage-page-rule');
     if (!rule) {
       rule = document.createElement('style');
@@ -114,21 +134,12 @@
     rootEl.classList.add('print-sheet-mode');
   }
 
-  function clearSheets() {
-    const rootEl = document.documentElement;
-    rootEl.classList.remove('print-sheet-mode');
-    const host = document.getElementById('print-sheets');
-    if (host) host.innerHTML = '';
-    const rule = document.getElementById('collage-page-rule');
-    if (rule) rule.textContent = '';
-  }
-
   function printSheets(canvases, opts) {
     if (typeof window.print !== 'function') return false;
-    showSheets(canvases, opts);
+    showSheets(canvases, opts);   // 每次打印都会覆盖上一张，无需额外清理
     window.print();
     return true;
   }
 
-  return { a4Size, composeA4, pageRule, installPrintStyle, showSheets, clearSheets, printSheets };
+  return { a4Size, composeA4, pageRule, installPrintStyle, showSheets, printSheets, printScale: PRINT_SCALE };
 });

@@ -1070,7 +1070,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         setTimeout(() => {
           try {
             const sheet = buildSheet();
-            saveOpen.value = false;
+            // 打印后保留预览弹窗，由用户手动关闭：与扫描页一致，也方便改方向重试 / 下载 / 分享。
+            // 打印时 #app 已被 @media print 整体隐藏，弹窗不会进入打印内容。
             if (!PrintUtils.printSheets([sheet], { landscape: state.orientation === 'landscape' })) {
               notify('当前浏览器不支持打印');
             }
@@ -1166,7 +1167,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.on('mouse:move', onCanvasMouseMove);
         canvas.on('mouse:up', onCanvasMouseUp);
 
-        window.addEventListener('afterprint', PrintUtils.clearSheets);
+        // 不监听 afterprint 清理打印容器：系统预览改动纸张方向会重新渲染页面
         window.addEventListener('resize', fitView);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('pointerup', onCanvasMouseUp);
