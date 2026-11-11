@@ -17,7 +17,7 @@
      多出空白第二页；PC 浏览器按 @page 精确排版，用满幅即可。
      按 UA 判定设备而非窗口宽度：PC 缩窗口、大屏手机横屏都不会误判。
      以 CSS 变量 --print-scale 注入 <html>，两个页面的打印 CSS 都读它。 */
-  const MOBILE_PRINT_SCALE = 97;   // 仍有空白第二页就调小（如 90）
+  const MOBILE_PRINT_SCALE = 98;   // 仍有空白第二页就调小（如 90）
   const PC_PRINT_SCALE = 100;      // 若个别 PC 打印机也分页，可改 99
   function isMobileClient() {
     if (typeof navigator === 'undefined') return false;
