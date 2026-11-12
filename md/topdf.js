@@ -5,21 +5,24 @@
  *
  *   ToPdf.toTextPdf(source, options)  文本版 PDF：浏览器打印，文字可选中/复制
  *   ToPdf.exportPdf(source, options)  同上（兼容入口）
+ *   ToPdf.toHtml(source, options)     导出可独立打开的 HTML 文件并下载
  *
  * source 可以是：
  *   - HTMLElement：克隆 DOM（保留宿主页面渲染后的排版、图片、代码高亮）
  *   - string：默认按纯文本处理（按行）；传 { isHtml: true } 则按 HTML 解析
  *
  * options：
- *   filename     打印默认文件名
+ *   filename     打印/下载的文件名
+ *   title        toHtml 生成的页面标题，默认取文件名
  *   isHtml       字符串是否按 HTML 解析
- *   margin       页边距 mm，默认 20
+ *   margin       页边距 mm，默认 20（仅 PDF）
  *   onStatus     状态回调 (message)
  *
- * 原理：把内容放进临时 #topdf-print-area，注入 @media print 只显示该区域，
+ * 原理：PDF 把内容放进临时 #topdf-print-area，注入 @media print 只显示该区域，
  * 调用 window.print() 由浏览器「另存为 PDF」；afterprint 时清理临时节点与样式。
- * 不加载任何外部库，也不修改宿主页面原有的 DOM 与样式。
- * 返回 Promise。
+ * HTML 导出会把宿主当前 CSS（主题变量、字号、精调排版）内联进完整文档，
+ * 令 <html> 带上相同的 data-theme 与根字号，并把 blob: 本地图片转成 data URL 后下载。
+ * 不加载任何外部库，也不修改宿主页面原有的 DOM 与样式。均返回 Promise。
  */
 (function (global) {
   'use strict';
@@ -68,6 +71,23 @@
 #topdf-print-area .copy-button, #topdf-print-area .mermaid-actions, #topdf-print-area button { display: none !important; }
 `;
 
+  // 代码高亮兜底配色：放在宿主 CSS 之前，外部 Prism 主题可读时会被其覆盖；用主题变量自适应明暗
+  var TOKEN_CSS = `
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--text-secondary, #6a737d); }
+.token.punctuation, .token.operator, .token.entity, .token.variable { color: var(--text-primary, #24292e); }
+.token.keyword, .token.atrule, .token.tag, .token.property, .token.constant, .token.symbol, .token.deleted { color: var(--accent-color, #d73a49); }
+.token.string, .token.char, .token.attr-value, .token.number, .token.boolean, .token.selector, .token.attr-name, .token.builtin, .token.inserted { color: #0a7d55; }
+.token.function, .token.class-name, .token.regex, .token.important { color: #b06f2c; }
+`;
+
+  // 导出页只补容器和残留控件，宿主的主题变量、字号与 .markdown-body 精调规则保持原样
+  var EXPORT_CSS = `
+html, body { margin: 0; padding: 0; }
+#topdf-print-area { max-width: 960px; margin: 0 auto; padding: 24px; box-sizing: border-box; }
+#topdf-print-area .copy-button, #topdf-print-area .mermaid-actions, #topdf-print-area button { display: none !important; }
+#topdf-print-area img.local-image-missing { border: 0; padding: 0; min-width: 0; min-height: 0; background-image: none; }
+`;
+
   function num(value, fallback) {
     var n = parseFloat(value);
     return isNaN(n) ? fallback : n;
@@ -94,8 +114,8 @@
     document.head.appendChild(style);
   }
 
-  function buildArea(source, opts) {
-    ensureBaseStyle();
+  function buildArea(source, opts, withBaseStyle) {
+    if (withBaseStyle !== false) ensureBaseStyle();
     var old = document.getElementById(AREA_ID);
     if (old && old.parentNode) old.parentNode.removeChild(old);
 
@@ -183,8 +203,109 @@
     });
   }
 
+  // 收集宿主页面当前生效的 CSS：内联 <style> 直接取文本，外部样式表能读到规则就一并带上
+  function collectHostCss() {
+    var parts = [];
+    Array.prototype.forEach.call(document.styleSheets || [], function (sheet) {
+      var node = sheet.ownerNode;
+      if (node && (node.id === STYLE_ID || node.id === PRINT_STYLE_ID)) return;
+      if (node && node.tagName === 'STYLE') {
+        parts.push(node.textContent || '');
+        return;
+      }
+      try {
+        var rules = sheet.cssRules;
+        if (rules && rules.length) {
+          parts.push(Array.prototype.map.call(rules, function (rule) { return rule.cssText; }).join('\n'));
+        }
+      } catch (e) { /* 跨域样式表不允许读 cssRules，忽略 */ }
+    });
+    return parts.join('\n');
+  }
+
+  function escapeHtml(text) {
+    var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(text == null ? '' : text).replace(/[&<>"']/g, function (ch) { return map[ch]; });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error || new Error('图片读取失败')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // 预览页里的本地图片是 blob: URL，离开页面就失效，导出时内嵌为 data URL
+  function inlineLocalImages(area) {
+    if (typeof global.fetch !== 'function') return Promise.resolve(area);
+    var imgs = Array.prototype.slice.call(area.querySelectorAll('img'));
+    return Promise.all(imgs.map(function (img) {
+      var src = img.getAttribute('src') || '';
+      if (!/^blob:/i.test(src)) return Promise.resolve();
+      return global.fetch(src)
+        .then(function (res) { return res.blob(); })
+        .then(blobToDataUrl)
+        .then(function (dataUrl) { img.setAttribute('src', dataUrl); })
+        .catch(function () { /* 取不到就保留原地址，不影响其余内容 */ });
+    })).then(function () { return area; });
+  }
+
+  function triggerDownload(blob, filename) {
+    var url = global.URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    if (link.parentNode) link.parentNode.removeChild(link);
+    setTimeout(function () { global.URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // 生成完整 HTML 文档：内联宿主当前样式，保留主题与字号，无外部依赖，直接下载
+  function toHtml(source, opts) {
+    opts = opts || {};
+    if (!hasContent(source)) return Promise.reject(new Error('没有可导出的内容'));
+    var filename = String(opts.filename || 'document.html').replace(/\.pdf$/i, '.html');
+    if (!/\.html?$/i.test(filename)) filename += '.html';
+    var title = escapeHtml(opts.title || filename.replace(/\.html?$/i, ''));
+    var area = buildArea(source, opts, false);
+    // 未关联图片的占位提示在静态文件里没有意义
+    area.querySelectorAll('img.local-image-missing').forEach(function (img) {
+      img.removeAttribute('title');
+    });
+    notify(opts, '正在生成 HTML…');
+
+    // [data-theme] 与根字号决定预览页的配色和字体大小，导出页要带上同样的属性
+    var root = document.documentElement || {};
+    var theme = root.getAttribute ? root.getAttribute('data-theme') : '';
+    var themeAttr = theme ? ' data-theme="' + escapeHtml(theme) + '"' : '';
+    var fontSize = '';
+    try {
+      var cs = global.getComputedStyle ? global.getComputedStyle(root) : null;
+      fontSize = (cs && cs.fontSize) || (root.style && root.style.fontSize) || '';
+    } catch (e) { /* 取不到就沿用宿主 CSS 里的默认字号 */ }
+    var sizeAttr = fontSize ? ' style="font-size:' + escapeHtml(fontSize) + '"' : '';
+
+    return inlineLocalImages(area).then(function () {
+      var html = '<!DOCTYPE html>\n' +
+        '<html lang="zh-CN"' + themeAttr + sizeAttr + '>\n<head>\n' +
+        '<meta charset="UTF-8">\n' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+        '<title>' + title + '</title>\n' +
+        '<style>\n' + TOKEN_CSS + '\n' + collectHostCss() + '\n' + EXPORT_CSS + '</style>\n' +
+        '</head>\n<body>\n' + area.outerHTML + '\n</body>\n</html>\n';
+      triggerDownload(new Blob([html], { type: 'text/html;charset=utf-8' }), filename);
+      notify(opts, 'HTML 已导出');
+      return html;
+    });
+  }
+
   global.ToPdf = {
     toTextPdf: toTextPdf,
+    toHtml: toHtml,
     exportPdf: function (source, opts) {
       return toTextPdf(source, opts);
     }
