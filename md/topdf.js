@@ -83,7 +83,7 @@
   // 导出页只补容器和残留控件，宿主的主题变量、字号与 .markdown-body 精调规则保持原样
   var EXPORT_CSS = `
 html, body { margin: 0; padding: 0; }
-#topdf-print-area { max-width: 960px; margin: 0 auto; padding: 24px; box-sizing: border-box; }
+#topdf-print-area { max-width: 960px; margin: 0 auto; padding: 6px 24px; box-sizing: border-box; }
 #topdf-print-area .copy-button, #topdf-print-area .mermaid-actions, #topdf-print-area button { display: none !important; }
 #topdf-print-area img.local-image-missing { border: 0; padding: 0; min-width: 0; min-height: 0; background-image: none; }
 `;
