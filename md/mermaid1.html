@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>离线全功能 Flowchart 渲染引擎</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f8fafc; color: #1e293b; overflow: hidden; }
+    .topbar { height: 52px; padding: 0 14px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-shrink: 0; }
+    .brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: #0f172a; white-space: nowrap; }
+    .samples { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; }
+    .s-btn { border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; padding: 5px 8px; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; transition: all .15s; }
+    .s-btn:hover { background: #f1f5f9; color: #0f172a; }
+    .s-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: 600; }
+    .controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .density-box { display: flex; align-items: center; gap: 5px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 7px; font-size: 12px; color: #475569; white-space: nowrap; }
+    .density-box input[type="range"] { width: 64px; accent-color: #2563eb; cursor: pointer; }
+    .density-val { font-weight: 600; color: #2563eb; min-width: 28px; text-align: right; }
+    .seg { display: flex; background: #f1f5f9; padding: 2px; border-radius: 7px; border: 1px solid #e2e8f0; }
+    .seg-btn { border: none; background: transparent; padding: 4px 8px; font-size: 12px; color: #64748b; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+    .seg-btn.active { background: #fff; color: #2563eb; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .act-btn { border: 1px solid #cbd5e1; background: #fff; color: #334155; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+    .act-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+    .main { flex: 1; display: flex; overflow: hidden; position: relative; }
+    .editor-box { width: 410px; border-right: 1px solid #e2e8f0; background: #fff; display: flex; flex-direction: column; flex-shrink: 0; }
+    .pane-hd { height: 34px; padding: 0 14px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-weight: 600; color: #64748b; }
+    textarea#code { flex: 1; width: 100%; padding: 14px; border: none; outline: none; resize: none; font-family: "JetBrains Mono", Consolas, Monaco, monospace; font-size: 12.5px; line-height: 1.6; color: #0f172a; background: #fff; tab-size: 4; }
+    .preview-box { flex: 1; background: #f8fafc; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; overflow: hidden; position: relative; cursor: grab; display: flex; justify-content: center; align-items: center; }
+    .preview-box:active { cursor: grabbing; }
+    #viewport { transform-origin: 0 0; }
+    .zoom-bar { position: absolute; right: 16px; bottom: 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); display: flex; align-items: center; padding: 3px; gap: 2px; z-index: 10; }
+    .z-btn { border: none; background: transparent; width: 28px; height: 28px; border-radius: 5px; font-size: 14px; font-weight: 600; color: #475569; cursor: pointer; }
+    .z-btn:hover { background: #f1f5f9; color: #0f172a; }
+    .z-val { font-size: 12px; color: #64748b; padding: 0 6px; min-width: 44px; text-align: center; user-select: none; }
+    .status-bar { height: 26px; padding: 0 16px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748b; flex-shrink: 0; }
+    body.v-code .editor-box { width: 100%; border-right: none; }
+    body.v-code .preview-box { display: none; }
+    body.v-graph .editor-box { display: none; }
+  </style>
+</head>
+<body class="v-split">
+
+  <div class="topbar">
+    <div class="brand">
+      <span>📐 Flowchart 离线引擎</span>
+    </div>
+
+    <div class="samples" id="sample-tabs">
+      <button class="s-btn active" onclick="loadPreset(0, this)">1. 标准流程 (RAG)</button>
+      <button class="s-btn" onclick="loadPreset(1, this)">2. 循环分支 + classDef</button>
+      <button class="s-btn" onclick="loadPreset(2, this)">3. 跨部门泳道图</button>
+      <button class="s-btn" onclick="loadPreset(3, this)">4. 分层系统架构</button>
+      <button class="s-btn" onclick="loadPreset(4, this)">5. 多级决策树</button>
+      <button class="s-btn" onclick="loadPreset(5, this)">6. CI/CD (v11形状)</button>
+    </div>
+
+    <div class="controls">
+      <!-- 新增：连线风格切换 -->
+      <div class="seg" title="切换连线走线风格">
+        <button class="seg-btn active" onclick="setCurveMode('ortho', this)">大横折线</button>
+        <button class="seg-btn" onclick="setCurveMode('curve', this)">平滑曲线</button>
+      </div>
+
+      <div class="density-box" title="调节节点间距 (0.5x - 3.0x)">
+        <span>松紧</span>
+        <input type="range" id="spacing-slider" min="0.5" max="3.0" step="0.1" value="1.0" oninput="onSpacingChange(this.value)">
+        <span class="density-val" id="spacing-val">1.0x</span>
+      </div>
+
+      <div class="seg">
+        <button class="seg-btn" onclick="setMode('v-code', this)">源码</button>
+        <button class="seg-btn active" onclick="setMode('v-split', this)">分屏</button>
+        <button class="seg-btn" onclick="setMode('v-graph', this)">图表</button>
+      </div>
+      <button class="act-btn" onclick="exportSVG()">导出 SVG</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="editor-box">
+      <div class="pane-hd">
+        <span>MERMAID FLOWCHART 源码</span>
+        <span id="dir-badge" style="color:#2563eb;">方向: TD</span>
+      </div>
+      <textarea id="code" spellcheck="false"></textarea>
+    </div>
+
+    <div class="preview-box" id="canvas-wrap">
+      <div id="viewport"></div>
+      <div class="zoom-bar">
+        <button class="z-btn" onclick="adjustZoom(-0.15)" title="缩小">－</button>
+        <span class="z-val" id="zoom-text">100%</span>
+        <button class="z-btn" onclick="adjustZoom(0.15)" title="放大">＋</button>
+        <button class="z-btn" style="width:auto;padding:0 8px;font-size:12px;" onclick="fitCanvas()">适应屏幕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span id="stat-info">就绪</span>
+    <span>支持大横折线 / 平滑曲线切换 · 支持 classDef / Subgraph / v11.3 命名形状 / 纯矢量 SVG 导出</span>
+  </div>
+
+<script>
+// ==================== 6 大典型应用模式示例 ====================
+const PRESETS = [
+  // 1. 标准流程图 (RAG)
+  `flowchart TD
+    A[开始：question + history] --> B[意图识别 LLM]
+    B -->|GREETING| C[固定问候语]
+    B -->|REJECT| D[固定拒绝语]
+    B -->|QUERY| E[查询改写 LLM]
+    E --> F[解析 JSON + 问句清洗 + 焦点抽取]
+    F --> G[并行检索]
+    G --> H[FAQ 库：阈值0.45 / Top5 / 重排看 enableRerankFaq]
+    G --> I[普通知识库：默认阈值 / Top15 / 重排看 enableRerank]
+    H --> J{存在 similarity ≥ 0.6?}
+    J -->|是| K[取最高分 FAQ 作答并丢弃普通库结果]
+    J -->|否| L[普通库上下文构建]
+    L --> M[无条件追加 FAQ 参考前3条 0.45~0.6]
+    M --> N{上下文为空?}
+    N -->|是| O[固定回复：抱歉，我还没学到]
+    N -->|否| P[拼接检索上下文]
+    K --> Q[问答 LLM]
+    O --> Q
+    P --> Q
+    Q --> R[追加 AI 生成声明]
+    R --> S[结束]
+    C --> S
+    D --> S`,
+
+  // 2. 循环分支 + classDef 自定义样式
+  `flowchart TD
+    A([开始]) --> B[读取输入]
+    B --> C{输入类型}
+    C -- 数字 --> D[计算平方]
+    C -- 文本 --> E[统计长度]
+    C -- 空值 --> F[提示错误]
+    D --> G[输出结果]
+    E --> G
+    F --> H{是否重试}
+    H -- 是 --> B
+    H -- 否 --> I([结束])
+    G --> I
+
+    classDef success fill:#d4edda,stroke:#28a745,color:#155724;
+    classDef danger fill:#f8d7da,stroke:#dc3545,color:#721c24;
+    classDef process fill:#e2e3e5,stroke:#6c757d,color:#383d41;
+    class H success;
+    class E,I danger;
+    class B,D,F process;`,
+
+  // 3. 跨部门泳道图
+  `flowchart LR
+    subgraph U [👤 客户前端]
+      U1([提交退换货申请]) --> U2[/填写物流单号/]
+      U2 --> U3([确认收货/退款完成])
+    end
+
+    subgraph S [🎧 客服与风控审核]
+      S1{订单是否超过7天?} -->|否| S2[自动审核通过]
+      S1 -->|是| S3[[人工介入复核]]
+      S3 -->|同意| S2
+      S3 -->|驳回| S4(发送拒绝通知)
+    end
+
+    subgraph W [🏭 仓储与财务系统]
+      W1[(仓库扫码验货入库)] --> W2{{触发原路退款指令}}
+      W2 --> W3[(更新财务流水账单)]
+    end
+
+    U1 --> S1
+    S2 --> U2
+    U2 --> W1
+    W3 --> U3`,
+
+  // 4. 分层系统架构图
+  `flowchart TD
+    subgraph Client [终端接入层]
+      C1([Web 浏览器])
+      C2([移动端 App / 小程序])
+    end
+
+    subgraph Gateway [网关与安全层]
+      G1{{Nginx 反向代理 / SSL 卸载}}
+      G2[[API Gateway 鉴权与限流]]
+    end
+
+    subgraph Service [核心微服务层]
+      S1[用户中心服务]
+      S2[智能体编排引擎]
+      S3[订单交易服务]
+    end
+
+    subgraph Data [数据与模型存储层]
+      D1[(MySQL 主从集群)]
+      D2[(Redis 7 分布式缓存)]
+      D3[(向量知识库 Milvus)]
+      D4@{ shape: cloud, label: "大模型推理集群 LLM" }
+    end
+
+    C1 & C2 --> G1 --> G2
+    G2 --> S1 & S2 & S3
+    S1 --> D1 & D2
+    S2 --> D2 & D3 & D4
+    S3 --> D1`,
+
+  // 5. 多级决策树
+  `flowchart TD
+    R{用户请求类型判定} -->|静态资源| R1([命中 CDN 边缘缓存 304])
+    R -->|动态 API| R2{是否携带有效 JWT?}
+    R2 -->|否| R2A([返回 401 Unauthorized])
+    R2 -->|是| R3{Token 剩余有效期 < 5分钟?}
+    R3 -->|是| R3A[[签发新 Token 写入响应头]] --> R4{接口 QPS 是否超限?}
+    R3 -->|否| R4
+    R4 -->|超限| R4A([触发令牌桶限流 429])
+    R4 -->|正常| R5[(穿透查询后端微服务与数据库)]`,
+
+  // 6. CI/CD 自动化管道
+  `flowchart LR
+    A@{ shape: sm-circ, label: "Git Push" } --> B@{ shape: rect, label: "拉取代码 & 依赖缓存" }
+    B --> C@{ shape: hex, label: "SonarQube 静态扫描" }
+    C --> D@{ shape: diamond, label: "单测覆盖率 ≥ 80%?" }
+    D -->|不达标| E@{ shape: bang, label: "阻断并企微告警" }
+    D -->|通过| F@{ shape: subproc, label: "Docker 多架构镜像构建" }
+    F --> G@{ shape: cyl, label: "推送私有镜像仓库" }
+    G --> H@{ shape: notch-rect, label: "K8s 5% 金丝雀灰度发布" }
+    H --> I@{ shape: doc, label: "生成自动化压测报告" }
+    I --> J@{ shape: dbl-circ, label: "全量上线完成" }`
+];
+
+let spacingFactor = 1.0;
+let curveMode = 'ortho'; // 'ortho' | 'curve'
+
+// ==================== 1. 文本测量与折行工具 ====================
+function measureTextUnits(str) {
+  let units = 0;
+  for (let i = 0; i < str.length; i++) {
+    units += str.charCodeAt(i) > 255 ? 1.0 : 0.56;
+  }
+  return units;
+}
+
+function wrapTextLines(text, maxUnitsPerLine) {
+  const rawLines = text.split(/<br\s*\/?>|\n/i);
+  const result = [];
+  rawLines.forEach(line => {
+    if (measureTextUnits(line) <= maxUnitsPerLine) {
+      result.push(line);
+      return;
+    }
+    let current = '';
+    let currentUnits = 0;
+    for (const ch of line) {
+      const u = ch.charCodeAt(0) > 255 ? 1.0 : 0.56;
+      if (currentUnits + u > maxUnitsPerLine && current.length > 0) {
+        result.push(current);
+        current = ch;
+        currentUnits = u;
+      } else {
+        current += ch;
+        currentUnits += u;
+      }
+    }
+    if (current) result.push(current);
+  });
+  return result.length > 0 ? result : [''];
+}
+
+function escapeXML(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ==================== 2. 词法与语法解析器 ====================
+const SHAPE_ALIAS_MAP = {
+  'rect': 'rect', 'rectangle': 'rect', 'proc': 'rect', 'process': 'rect',
+  'rounded': 'rounded', 'event': 'rounded',
+  'stadium': 'stadium', 'pill': 'stadium', 'terminal': 'stadium',
+  'subproc': 'subroutine', 'subroutine': 'subroutine', 'subprocess': 'subroutine', 'fr-rect': 'subroutine',
+  'cyl': 'cylinder', 'cylinder': 'cylinder', 'db': 'cylinder', 'database': 'cylinder',
+  'circle': 'circle', 'circ': 'circle',
+  'dbl-circ': 'doublecircle', 'doublecircle': 'doublecircle', 'fr-circ': 'framed-circle', 'framed-circle': 'framed-circle',
+  'sm-circ': 'small-circle', 'small-circle': 'small-circle', 'start': 'small-circle',
+  'diamond': 'rhombus', 'rhombus': 'rhombus', 'decision': 'rhombus', 'question': 'rhombus',
+  'hex': 'hexagon', 'hexagon': 'hexagon', 'prepare': 'hexagon',
+  'lean-r': 'parallelogram', 'parallelogram': 'parallelogram', 'in-out': 'parallelogram',
+  'lean-l': 'parallelogram-alt', 'parallelogram-alt': 'parallelogram-alt', 'out-in': 'parallelogram-alt',
+  'trap-b': 'trapezoid', 'trapezoid': 'trapezoid', 'priority': 'trapezoid',
+  'trap-t': 'trapezoid-alt', 'trapezoid-alt': 'trapezoid-alt', 'manual': 'trapezoid-alt',
+  'odd': 'asymmetric', 'asymmetric': 'asymmetric', 'flag': 'asymmetric',
+  'doc': 'doc', 'document': 'doc', 'docs': 'docs', 'documents': 'docs',
+  'delay': 'delay', 'half-rounded-rectangle': 'delay',
+  'display': 'display', 'curve': 'display',
+  'manual-input': 'manual-input', 'sl-rect': 'manual-input',
+  'fork': 'fork', 'join': 'fork',
+  'cloud': 'cloud', 'bang': 'bang',
+  'notch-rect': 'card', 'card': 'card', 'lin-rect': 'lin-rect'
+};
+
+function stripQuotes(str) {
+  str = str.trim();
+  if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+    return str.slice(1, -1);
+  }
+  return str;
+}
+
+function parseStyleProps(propStr) {
+  const res = {};
+  propStr.split(',').forEach(pair => {
+    const idx = pair.indexOf(':');
+    if (idx > -1) {
+      const k = pair.slice(0, idx).trim().toLowerCase();
+      const v = pair.slice(idx + 1).trim();
+      if (k && v) res[k] = v;
+    }
+  });
+  return res;
+}
+
+function parseNodeToken(token) {
+  token = token.trim();
+  if (!token) return null;
+
+  let inlineClass = null;
+  const clsSuffix = token.match(/:::([a-zA-Z0-9_-]+)$/);
+  if (clsSuffix) {
+    inlineClass = clsSuffix[1];
+    token = token.slice(0, clsSuffix.index).trim();
+  }
+
+  const v11Match = token.match(/^([a-zA-Z0-9_-]+)\s*@\{\s*([^}]+)\s*\}$/);
+  if (v11Match) {
+    const id = v11Match[1];
+    const propsRaw = v11Match[2];
+    let shapeName = 'rect';
+    let label = id;
+    const shapeM = propsRaw.match(/shape\s*:\s*([a-zA-Z0-9_-]+)/);
+    if (shapeM && SHAPE_ALIAS_MAP[shapeM[1]]) shapeName = SHAPE_ALIAS_MAP[shapeM[1]];
+    const labelM = propsRaw.match(/label\s*:\s*(?:"([^"]*)"|'([^']*)'|([^,}]+))/);
+    if (labelM) label = (labelM[1] ?? labelM[2] ?? labelM[3]).trim();
+    return { id, label, shape: shapeName, inlineClass };
+  }
+
+  const patterns = [
+    { re: /^([a-zA-Z0-9_-]+)\s*\(\(\((.+?)\)\)\)$/, shape: 'doublecircle' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\(\((.+?)\)\)$/, shape: 'circle' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\(\[(.+?)\]\)$/, shape: 'stadium' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[\((.+?)\)\]$/, shape: 'cylinder' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[\[(.+?)\]\]$/, shape: 'subroutine' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\{\{(.+?)\}\}$/, shape: 'hexagon' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[\/(.+?)\\\]$/, shape: 'trapezoid' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[\\(.+?)\/\]$/, shape: 'trapezoid-alt' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[\/(.+?)\/\]$/, shape: 'parallelogram' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[\\(.+?)\\\]$/, shape: 'parallelogram-alt' },
+    { re: /^([a-zA-Z0-9_-]+)\s*>(.+?)\]$/, shape: 'asymmetric' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\{(.+?)\}$/, shape: 'rhombus' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\((.+?)\)$/, shape: 'rounded' },
+    { re: /^([a-zA-Z0-9_-]+)\s*\[(.+?)\]$/, shape: 'rect' }
+  ];
+
+  for (const p of patterns) {
+    const m = token.match(p.re);
+    if (m) return { id: m[1], label: stripQuotes(m[2]), shape: p.shape, inlineClass };
+  }
+
+  const idMatch = token.match(/^([a-zA-Z0-9_-]+)$/);
+  if (idMatch) return { id: idMatch[1], label: null, shape: null, inlineClass };
+  return null;
+}
+
+function parseMermaidFull(dsl) {
+  const rawLines = dsl.split('\n');
+  let direction = 'TD';
+  const nodes = {};
+  const edges = [];
+  const subgraphs = [];
+  const sgStack = [];
+
+  const classDefs = {};
+  const nodeClassMap = {};
+  const nodeInlineStyles = {};
+
+  const ensureNode = (parsed) => {
+    if (!parsed) return null;
+    const currentSg = sgStack.length > 0 ? sgStack[sgStack.length - 1].id : null;
+    if (!nodes[parsed.id]) {
+      nodes[parsed.id] = {
+        id: parsed.id,
+        label: parsed.label || parsed.id,
+        shape: parsed.shape || 'rect',
+        subgraphId: currentSg
+      };
+    } else {
+      if (parsed.label) nodes[parsed.id].label = parsed.label;
+      if (parsed.shape) nodes[parsed.id].shape = parsed.shape;
+      if (!nodes[parsed.id].subgraphId && currentSg) nodes[parsed.id].subgraphId = currentSg;
+    }
+    if (parsed.inlineClass) nodeClassMap[parsed.id] = parsed.inlineClass;
+    if (currentSg) {
+      const sg = subgraphs.find(s => s.id === currentSg);
+      if (sg && !sg.nodeIds.includes(parsed.id)) sg.nodeIds.push(parsed.id);
+    }
+    return parsed.id;
+  };
+
+  const statements = [];
+  rawLines.forEach(line => {
+    const clean = line.replace(/%%.*$/, '').trim();
+    if (!clean) return;
+    clean.split(';').forEach(s => { if (s.trim()) statements.push(s.trim()); });
+  });
+
+  for (const stmt of statements) {
+    const dirM = stmt.match(/^(?:flowchart|graph)\s+(TD|TB|BT|LR|RL)\b/i);
+    if (dirM) {
+      direction = dirM[1].toUpperCase();
+      if (direction === 'TB') direction = 'TD';
+      continue;
+    }
+
+    const cDefM = stmt.match(/^classDef\s+([a-zA-Z0-9_-]+)\s+(.+)$/i);
+    if (cDefM) {
+      classDefs[cDefM[1]] = parseStyleProps(cDefM[2]);
+      continue;
+    }
+
+    const clsM = stmt.match(/^class\s+([a-zA-Z0-9_,\s-]+?)\s+([a-zA-Z0-9_-]+)$/i);
+    if (clsM) {
+      const ids = clsM[1].split(',').map(s => s.trim()).filter(Boolean);
+      const clsName = clsM[2].trim();
+      ids.forEach(id => { nodeClassMap[id] = clsName; });
+      continue;
+    }
+
+    const styM = stmt.match(/^style\s+([a-zA-Z0-9_-]+)\s+(.+)$/i);
+    if (styM) {
+      nodeInlineStyles[styM[1]] = parseStyleProps(styM[2]);
+      continue;
+    }
+
+    if (/^(?:linkStyle|click)\b/i.test(stmt)) continue;
+
+    const sgM = stmt.match(/^subgraph\s+([^\[\n]+?)(?:\s*\[([^\]]+)\])?$/i);
+    if (sgM) {
+      const rawId = sgM[1].trim();
+      const title = sgM[2] ? stripQuotes(sgM[2]) : stripQuotes(rawId);
+      const sgId = 'sg_' + subgraphs.length + '_' + rawId.replace(/\W+/g, '_');
+      const parentId = sgStack.length > 0 ? sgStack[sgStack.length - 1].id : null;
+      const sgObj = { id: sgId, title, parentId, nodeIds: [] };
+      subgraphs.push(sgObj);
+      sgStack.push(sgObj);
+      continue;
+    }
+
+    if (/^end$/i.test(stmt)) {
+      if (sgStack.length > 0) sgStack.pop();
+      continue;
+    }
+
+    const linkSplitter = /(\s*(?:<-->|<-\.->|<==>|--\s+[^->]+?\s+-->|-\.\s+[^.]+?\s+\.->|==\s+[^=]+?\s+==>|-->|-\.->|==>|---|--o|--x)\s*(?:\|[^|]+\|)?\s*)/g;
+    if (linkSplitter.test(stmt)) {
+      const parts = stmt.split(linkSplitter).filter(Boolean);
+      for (let i = 0; i < parts.length - 2; i += 2) {
+        const leftGroup = parts[i].split('&').map(s => ensureNode(parseNodeToken(s))).filter(Boolean);
+        const arrowRaw = parts[i + 1].trim();
+        const rightGroup = parts[i + 2].split('&').map(s => ensureNode(parseNodeToken(s))).filter(Boolean);
+
+        let lineStyle = 'solid';
+        if (arrowRaw.includes('-.')) lineStyle = 'dotted';
+        else if (arrowRaw.includes('==')) lineStyle = 'thick';
+
+        let label = '';
+        const pipeM = arrowRaw.match(/\|([^|]+)\|/);
+        if (pipeM) {
+          label = stripQuotes(pipeM[1]);
+        } else {
+          const midM = arrowRaw.match(/^(?:--|-\.|==)\s*(.+?)\s*(?:-->|\.->|==>)$/);
+          if (midM) label = stripQuotes(midM[1]);
+        }
+
+        leftGroup.forEach(u => {
+          rightGroup.forEach(v => {
+            edges.push({ from: u, to: v, label, lineStyle, isBackEdge: false });
+          });
+        });
+      }
+    } else {
+      stmt.split('&').forEach(s => ensureNode(parseNodeToken(s)));
+    }
+  }
+
+  Object.keys(nodes).forEach(id => {
+    const clsName = nodeClassMap[id];
+    const fromClass = (clsName && classDefs[clsName]) ? classDefs[clsName] : {};
+    const fromInline = nodeInlineStyles[id] || {};
+    nodes[id].customStyle = { ...fromClass, ...fromInline };
+  });
+
+  return { direction, nodes, edges, subgraphs };
+}
+
+// ==================== 3. Dagre 分层布局 + 笔直外侧走廊引擎 ====================
+function computeLayout(parsed, factor) {
+  const { direction, nodes, edges, subgraphs } = parsed;
+  const realIds = Object.keys(nodes);
+  if (realIds.length === 0) return null;
+
+  const isHorizontal = (direction === 'LR' || direction === 'RL');
+  const isReverse = (direction === 'BT' || direction === 'RL');
+
+  // 1. DFS 环路检测，剥离回边
+  const adj = {};
+  const inDeg = {};
+  realIds.forEach(id => { adj[id] = []; inDeg[id] = 0; });
+  edges.forEach((e, idx) => {
+    e.isBackEdge = false;
+    if (e.from === e.to) {
+      e.isBackEdge = true;
+    } else if (adj[e.from]) {
+      adj[e.from].push({ to: e.to, idx });
+      inDeg[e.to] = (inDeg[e.to] || 0) + 1;
+    }
+  });
+
+  const visitState = {};
+  realIds.forEach(id => visitState[id] = 0);
+  function dfsCycle(u) {
+    visitState[u] = 1;
+    for (const item of adj[u]) {
+      const v = item.to;
+      if (visitState[v] === 1) edges[item.idx].isBackEdge = true;
+      else if (visitState[v] === 0) dfsCycle(v);
+    }
+    visitState[u] = 2;
+  }
+  realIds.filter(id => inDeg[id] === 0).forEach(r => { if (visitState[r] === 0) dfsCycle(r); });
+  realIds.forEach(id => { if (visitState[id] === 0) dfsCycle(id); });
+
+  const forwardEdges = edges.filter(e => !e.isBackEdge);
+
+  // 2. 第一阶段分层：最长路径
+  const ranks = {};
+  realIds.forEach(id => ranks[id] = 0);
+  for (let iter = 0; iter < realIds.length; iter++) {
+    let updated = false;
+    forwardEdges.forEach(e => {
+      if (ranks[e.to] <= ranks[e.from]) {
+        ranks[e.to] = ranks[e.from] + 1;
+        updated = true;
+      }
+    });
+    if (!updated) break;
+  }
+
+  // 3. 第二阶段沉底对齐（将直连深层汇合节点的短分支下沉至目标节点前一层）
+  const outF = {}, inF = {};
+  realIds.forEach(id => { outF[id] = []; inF[id] = []; });
+  forwardEdges.forEach(e => { outF[e.from].push(e.to); inF[e.to].push(e.from); });
+
+  for (let iter = 0; iter < realIds.length; iter++) {
+    let moved = false;
+    const sortedByRankDesc = [...realIds].sort((a, b) => ranks[b] - ranks[a]);
+    for (const u of sortedByRankDesc) {
+      if (outF[u].length === 0) continue;
+      const minChildRank = Math.min(...outF[u].map(v => ranks[v]));
+      if (minChildRank - 1 > ranks[u] && inF[u].length <= outF[u].length) {
+        ranks[u] = minChildRank - 1;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  let maxRank = Math.max(...Object.values(ranks));
+  if (isReverse) {
+    realIds.forEach(id => { ranks[id] = maxRank - ranks[id]; });
+  }
+
+  // 4. 测量真实节点尺寸
+  const realNodes = {};
+  realIds.forEach(id => {
+    const n = nodes[id];
+    const isDiamondOrHex = (n.shape === 'rhombus' || n.shape === 'hexagon');
+    const maxUnits = isDiamondOrHex ? 15 : 18;
+    const lines = wrapTextLines(n.label, maxUnits);
+    const maxLineUnits = Math.max(...lines.map(l => measureTextUnits(l)), 4);
+
+    let w = Math.max(138, Math.round(maxLineUnits * 13 + (isDiamondOrHex ? 74 : 42)));
+    let h = Math.max(44, lines.length * 18 + (isDiamondOrHex ? 28 : 22));
+
+    if (n.shape === 'circle' || n.shape === 'doublecircle' || n.shape === 'small-circle' || n.shape === 'framed-circle') {
+      const d = n.shape === 'small-circle' ? 36 : Math.max(70, Math.round(maxLineUnits * 12 + 28));
+      w = d; h = d;
+    } else if (n.shape === 'cylinder') {
+      h = Math.max(54, lines.length * 18 + 26);
+    } else if (n.shape === 'fork') {
+      w = isHorizontal ? 14 : 180;
+      h = isHorizontal ? 140 : 12;
+    }
+
+    realNodes[id] = { ...n, rank: ranks[id], w, h, lines };
+  });
+
+  // 5. 区分单层短边与跨多层长边（长边剥离出主层排版，走笔直外侧走廊，彻底杜绝十八弯）
+  const shortEdges = [];
+  const longEdges = [];
+  forwardEdges.forEach(e => {
+    const span = Math.abs(ranks[e.to] - ranks[e.from]);
+    if (span <= 1) shortEdges.push(e);
+    else longEdges.push(e);
+  });
+
+  // 6. 构建层级表并进行双向重心排序（仅排真实节点，层宽干净紧致）
+  const layers = {};
+  realIds.forEach(id => {
+    const r = ranks[id];
+    if (!layers[r]) layers[r] = [];
+    layers[r].push(id);
+  });
+
+  const rankKeys = Object.keys(layers).map(Number).sort((a, b) => a - b);
+  const sgOrder = {};
+  subgraphs.forEach((sg, idx) => sgOrder[sg.id] = idx + 1);
+
+  rankKeys.forEach(r => {
+    layers[r].sort((a, b) => {
+      const sa = realNodes[a].subgraphId ? (sgOrder[realNodes[a].subgraphId] || 50) : 0;
+      const sb = realNodes[b].subgraphId ? (sgOrder[realNodes[b].subgraphId] || 50) : 0;
+      if (sa !== sb) return sa - sb;
+      return realIds.indexOf(a) - realIds.indexOf(b);
+    });
+  });
+
+  const posInLayer = {};
+  const updatePosIndex = () => {
+    rankKeys.forEach(r => {
+      layers[r].forEach((id, idx) => { posInLayer[id] = idx; });
+    });
+  };
+  updatePosIndex();
+
+  for (let sweep = 0; sweep < 6; sweep++) {
+    for (let i = 1; i < rankKeys.length; i++) {
+      const r = rankKeys[i];
+      const bary = {};
+      layers[r].forEach(id => {
+        const preds = forwardEdges.filter(e => e.to === id && posInLayer[e.from] !== undefined).map(e => posInLayer[e.from]);
+        bary[id] = preds.length > 0 ? preds.reduce((a, b) => a + b, 0) / preds.length : posInLayer[id];
+      });
+      layers[r].sort((a, b) => {
+        const sa = realNodes[a].subgraphId ? (sgOrder[realNodes[a].subgraphId] || 50) : 0;
+        const sb = realNodes[b].subgraphId ? (sgOrder[realNodes[b].subgraphId] || 50) : 0;
+        if (sa !== sb && sa > 0 && sb > 0) return sa - sb;
+        return bary[a] - bary[b];
+      });
+      updatePosIndex();
+    }
+    for (let i = rankKeys.length - 2; i >= 0; i--) {
+      const r = rankKeys[i];
+      const bary = {};
+      layers[r].forEach(id => {
+        const succs = forwardEdges.filter(e => e.from === id && posInLayer[e.to] !== undefined).map(e => posInLayer[e.to]);
+        bary[id] = succs.length > 0 ? succs.reduce((a, b) => a + b, 0) / succs.length : posInLayer[id];
+      });
+      layers[r].sort((a, b) => {
+        const sa = realNodes[a].subgraphId ? (sgOrder[realNodes[a].subgraphId] || 50) : 0;
+        const sb = realNodes[b].subgraphId ? (sgOrder[realNodes[b].subgraphId] || 50) : 0;
+        if (sa !== sb && sa > 0 && sb > 0) return sa - sb;
+        return bary[a] - bary[b];
+      });
+      updatePosIndex();
+    }
+  }
+
+  // 7. 应用松紧度系数 (0.5x ~ 3.0x) 计算物理坐标
+  const baseCrossGap = isHorizontal ? 40 : 48;
+  const baseMainGap = isHorizontal ? 86 : 64;
+  const crossGap = Math.round(baseCrossGap * factor);
+  const sgCrossGap = Math.round(78 * factor);
+  const mainGap = Math.round(baseMainGap * factor);
+  const padOuter = Math.round(90 + 18 * factor);
+
+  const rankMaxCross = {};
+  const rankMaxMain = {};
+
+  rankKeys.forEach(r => {
+    const list = layers[r];
+    let crossSum = 0;
+    let mainMax = 0;
+    list.forEach((id, idx) => {
+      const item = realNodes[id];
+      const crossSize = isHorizontal ? item.h : item.w;
+      const mainSize = isHorizontal ? item.w : item.h;
+      if (idx > 0) {
+        const prev = realNodes[list[idx - 1]];
+        crossSum += (prev.subgraphId !== item.subgraphId) ? sgCrossGap : crossGap;
+      }
+      crossSum += crossSize;
+      if (mainSize > mainMax) mainMax = mainSize;
+    });
+    rankMaxCross[r] = crossSum;
+    rankMaxMain[r] = mainMax;
+  });
+
+  const maxCrossTotal = Math.max(...Object.values(rankMaxCross), 380);
+  // 为右侧/下侧跨层长走廊预留画布边缘宽度
+  const corridorReserve = longEdges.length > 0 ? Math.max(120, longEdges.length * Math.round(62 * Math.max(0.8, factor))) : 0;
+
+  const rankMainPos = {};
+  let currMain = padOuter;
+  rankKeys.forEach((r, idx) => {
+    if (idx > 0) {
+      const prevSgs = new Set(layers[rankKeys[idx - 1]].map(id => realNodes[id].subgraphId).filter(Boolean));
+      const currSgs = new Set(layers[r].map(id => realNodes[id].subgraphId).filter(Boolean));
+      let hasNewSg = false;
+      currSgs.forEach(s => { if (!prevSgs.has(s)) hasNewSg = true; });
+      currMain += mainGap + (hasNewSg ? Math.round(36 * factor) : 0);
+    }
+    rankMainPos[r] = currMain + rankMaxMain[r] / 2;
+    currMain += rankMaxMain[r];
+  });
+
+  const totalMainSize = currMain + padOuter;
+  const totalCrossSize = maxCrossTotal + padOuter * 2 + corridorReserve;
+
+  const canvasWidth = isHorizontal ? totalMainSize : totalCrossSize;
+  const canvasHeight = isHorizontal ? totalCrossSize : totalMainSize;
+
+  // 分配真实节点中心坐标（主体向左侧/上方微偏，把预留走廊让给右侧/下方长线）
+  const mainBodyCrossSpan = maxCrossTotal + padOuter * 2;
+  rankKeys.forEach(r => {
+    const list = layers[r];
+    let currCross = (mainBodyCrossSpan - rankMaxCross[r]) / 2;
+    const mainCenter = rankMainPos[r];
+
+    list.forEach((id, idx) => {
+      const item = realNodes[id];
+      const crossSize = isHorizontal ? item.h : item.w;
+      if (idx > 0) {
+        const prev = realNodes[list[idx - 1]];
+        currCross += (prev.subgraphId !== item.subgraphId) ? sgCrossGap : crossGap;
+      }
+      const crossCenter = currCross + crossSize / 2;
+      currCross += crossSize;
+
+      item.cx = isHorizontal ? mainCenter : crossCenter;
+      item.cy = isHorizontal ? crossCenter : mainCenter;
+      item.left = item.cx - item.w / 2;
+      item.right = item.cx + item.w / 2;
+      item.top = item.cy - item.h / 2;
+      item.bottom = item.cy + item.h / 2;
+    });
+  });
+
+  // 8. Subgraph 包围盒
+  const sgBoxes = [];
+  for (let i = subgraphs.length - 1; i >= 0; i--) {
+    const sg = subgraphs[i];
+    const childBoxes = [];
+    sg.nodeIds.forEach(nid => { if (realNodes[nid]) childBoxes.push(realNodes[nid]); });
+    sgBoxes.forEach(b => { if (b.parentId === sg.id) childBoxes.push(b); });
+
+    if (childBoxes.length > 0) {
+      const padX = Math.round(22 * Math.min(1.5, Math.max(0.8, factor)));
+      const minX = Math.min(...childBoxes.map(b => b.left)) - padX;
+      const maxX = Math.max(...childBoxes.map(b => b.right)) + padX;
+      const minY = Math.min(...childBoxes.map(b => b.top)) - 38;
+      const maxY = Math.max(...childBoxes.map(b => b.bottom)) + 20;
+      sgBoxes.unshift({
+        ...sg,
+        left: minX, top: minY, right: maxX, bottom: maxY,
+        w: maxX - minX, h: maxY - minY
+      });
+    }
+  }
+
+  return { direction, isHorizontal, isReverse, realNodes, realIds, edges, shortEdges, longEdges, sgBoxes, canvasWidth, canvasHeight, factor };
+}
+
+// ==================== 4. 路径平滑与纯矢量 SVG 渲染 ====================
+function renderPureSVGText(n, textCol) {
+  const { cx, cy, bottom, shape, lines } = n;
+  const fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+  if (shape === 'small-circle') {
+    return `<text x="${cx}" y="${bottom + 16}" font-family="${fontFamily}" font-size="11.5" fill="${textCol}" font-weight="600" text-anchor="middle">${escapeXML(n.label)}</text>`;
+  }
+
+  const lineHeight = 17;
+  const totalTextHeight = (lines.length - 1) * lineHeight;
+  const firstY = cy - totalTextHeight / 2 + 4.5;
+
+  let tspans = '';
+  lines.forEach((line, i) => {
+    const dy = i === 0 ? 0 : lineHeight;
+    tspans += `<tspan x="${cx}" dy="${dy}">${escapeXML(line)}</tspan>`;
+  });
+
+  return `<text x="${cx}" y="${firstY}" font-family="${fontFamily}" font-size="12.5" font-weight="500" fill="${textCol}" text-anchor="middle">${tspans}</text>`;
+}
+
+function renderShapeSVG(n) {
+  const { cx, cy, left, right, top, bottom, w, h, shape, customStyle } = n;
+
+  let fill = '#ffffff', stroke = '#94a3b8', textCol = '#1e293b';
+  if (['stadium', 'circle', 'doublecircle', 'small-circle'].includes(shape) || n.label.startsWith('开始') || n.label === '结束') {
+    fill = '#eff6ff'; stroke = '#3b82f6'; textCol = '#1e40af';
+  } else if (shape === 'rhombus' || shape === 'hexagon') {
+    fill = '#fffbeb'; stroke = '#f59e0b'; textCol = '#92400e';
+  } else if (shape === 'cylinder') {
+    fill = '#f0fdf4'; stroke = '#16a34a'; textCol = '#166534';
+  } else if (shape === 'bang' || n.label.includes('拒绝') || n.label.includes('告警') || n.label.includes('驳回')) {
+    fill = '#fef2f2'; stroke = '#ef4444'; textCol = '#991b1b';
+  } else if (shape === 'cloud') {
+    fill = '#f5f3ff'; stroke = '#8b5cf6'; textCol = '#5b21b6';
+  }
+
+  if (customStyle) {
+    if (customStyle.fill) fill = customStyle.fill;
+    if (customStyle.stroke) stroke = customStyle.stroke;
+    if (customStyle.color) textCol = customStyle.color;
+  }
+
+  const sw = (customStyle && customStyle['stroke-width']) ? customStyle['stroke-width'].replace('px', '') : '1.6';
+  const dashAttr = (customStyle && customStyle['stroke-dasharray']) ? `stroke-dasharray="${customStyle['stroke-dasharray']}"` : '';
+
+  let shapeEl = '';
+  switch (shape) {
+    case 'rounded':
+      shapeEl = `<rect x="${left}" y="${top}" width="${w}" height="${h}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'stadium':
+      shapeEl = `<rect x="${left}" y="${top}" width="${w}" height="${h}" rx="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'subroutine':
+      shapeEl = `
+        <rect x="${left}" y="${top}" width="${w}" height="${h}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>
+        <line x1="${left + 10}" y1="${top}" x2="${left + 10}" y2="${bottom}" stroke="${stroke}" stroke-width="${sw}"/>
+        <line x1="${right - 10}" y1="${top}" x2="${right - 10}" y2="${bottom}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      break;
+    case 'cylinder': {
+      const ry = 7;
+      shapeEl = `
+        <path d="M ${left} ${top + ry} L ${left} ${bottom - ry} A ${w/2} ${ry} 0 0 0 ${right} ${bottom - ry} L ${right} ${top + ry} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>
+        <ellipse cx="${cx}" cy="${top + ry}" rx="${w/2}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      break;
+    }
+    case 'circle':
+    case 'small-circle':
+      shapeEl = `<circle cx="${cx}" cy="${cy}" r="${w / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'doublecircle':
+    case 'framed-circle':
+      shapeEl = `
+        <circle cx="${cx}" cy="${cy}" r="${w / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>
+        <circle cx="${cx}" cy="${cy}" r="${w / 2 - 4.5}" fill="none" stroke="${stroke}" stroke-width="1.2"/>`;
+      break;
+    case 'rhombus':
+      shapeEl = `<polygon points="${cx},${top} ${right},${cy} ${cx},${bottom} ${left},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'hexagon': {
+      const dx = 16;
+      shapeEl = `<polygon points="${left + dx},${top} ${right - dx},${top} ${right},${cy} ${right - dx},${bottom} ${left + dx},${bottom} ${left},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'parallelogram': {
+      const dx = 14;
+      shapeEl = `<polygon points="${left + dx},${top} ${right},${top} ${right - dx},${bottom} ${left},${bottom}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'parallelogram-alt': {
+      const dx = 14;
+      shapeEl = `<polygon points="${left},${top} ${right - dx},${top} ${right},${bottom} ${left + dx},${bottom}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'trapezoid': {
+      const dx = 14;
+      shapeEl = `<polygon points="${left + dx},${top} ${right - dx},${top} ${right},${bottom} ${left},${bottom}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'trapezoid-alt': {
+      const dx = 14;
+      shapeEl = `<polygon points="${left},${top} ${right},${top} ${right - dx},${bottom} ${left + dx},${bottom}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'asymmetric': {
+      const dx = 14;
+      shapeEl = `<polygon points="${left},${top} ${right},${top} ${right},${bottom} ${left},${bottom} ${left + dx},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'doc':
+      shapeEl = `<path d="M ${left} ${top} L ${right} ${top} L ${right} ${bottom - 6} Q ${cx + w/4} ${bottom - 14}, ${cx} ${bottom - 6} T ${left} ${bottom - 6} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'docs':
+      shapeEl = `
+        <rect x="${left + 6}" y="${top - 5}" width="${w - 6}" height="${h - 4}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
+        <rect x="${left}" y="${top + 2}" width="${w - 6}" height="${h - 4}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'delay':
+      shapeEl = `<path d="M ${left} ${top} L ${right - h/2} ${top} A ${h/2} ${h/2} 0 0 1 ${right - h/2} ${bottom} L ${left} ${bottom} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'display':
+      shapeEl = `<path d="M ${left + 14} ${top} L ${right - 12} ${top} Q ${right} ${cy}, ${right - 12} ${bottom} L ${left + 14} ${bottom} L ${left} ${cy} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'manual-input':
+      shapeEl = `<polygon points="${left},${top + 10} ${right},${top} ${right},${bottom} ${left},${bottom}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'card': {
+      const cut = 12;
+      shapeEl = `<polygon points="${left + cut},${top} ${right},${top} ${right},${bottom} ${left},${bottom} ${left},${top + cut}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    }
+    case 'cloud':
+      shapeEl = `<path d="M ${left + 22} ${bottom - 4} Q ${left} ${bottom - 4}, ${left + 6} ${cy + 2} Q ${left + 2} ${top + 6}, ${left + 28} ${top + 6} Q ${cx} ${top - 6}, ${right - 28} ${top + 6} Q ${right - 2} ${top + 6}, ${right - 6} ${cy + 2} Q ${right} ${bottom - 4}, ${right - 22} ${bottom - 4} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'bang':
+      shapeEl = `<polygon points="${left},${top + 4} ${left + 18},${top} ${cx},${top + 5} ${right - 18},${top} ${right},${top + 4} ${right - 6},${cy} ${right},${bottom - 4} ${right - 18},${bottom} ${cx},${bottom - 5} ${left + 18},${bottom} ${left},${bottom - 4} ${left + 6},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+      break;
+    case 'fork':
+      return `<rect x="${left}" y="${top}" width="${w}" height="${h}" rx="4" fill="#334155" stroke="#0f172a" stroke-width="1"/>`;
+    default:
+      shapeEl = `<rect x="${left}" y="${top}" width="${w}" height="${h}" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dashAttr}/>`;
+  }
+
+  return `<g>${shapeEl}${renderPureSVGText(n, textCol)}</g>`;
+}
+
+// 生成路径字符串：支持 'ortho' (大横折线) 与 'curve' (平滑曲线)
+function buildPathD(pts, mode, isHorizontal) {
+  if (pts.length < 2) return '';
+  if (mode === 'ortho' || pts.length === 2) {
+    // 若为 2 点且在曲线模式下有横向/纵向偏移，生成自然 S 曲线
+    if (mode === 'curve' && pts.length === 2) {
+      const [p0, p1] = pts;
+      if (!isHorizontal && Math.abs(p0[0] - p1[0]) > 4) {
+        const midY = (p0[1] + p1[1]) / 2;
+        return `M ${p0[0]} ${p0[1]} C ${p0[0]} ${midY}, ${p1[0]} ${midY}, ${p1[0]} ${p1[1]}`;
+      }
+      if (isHorizontal && Math.abs(p0[1] - p1[1]) > 4) {
+        const midX = (p0[0] + p1[0]) / 2;
+        return `M ${p0[0]} ${p0[1]} C ${midX} ${p0[1]}, ${midX} ${p1[1]}, ${p1[0]} ${p1[1]}`;
+      }
+    }
+    return pts.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`, '');
+  }
+
+  // 平滑曲线模式：对折线拐点进行圆角二次/三次贝塞尔平滑插值
+  const radius = 28;
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const prev = pts[i - 1];
+    const curr = pts[i];
+    const next = pts[i + 1];
+
+    const v1x = curr[0] - prev[0], v1y = curr[1] - prev[1];
+    const v2x = next[0] - curr[0], v2y = next[1] - curr[1];
+    const len1 = Math.hypot(v1x, v1y);
+    const len2 = Math.hypot(v2x, v2y);
+
+    if (len1 === 0 || len2 === 0) continue;
+    const r = Math.min(radius, len1 * 0.45, len2 * 0.45);
+    const pStart = [curr[0] - (v1x / len1) * r, curr[1] - (v1y / len1) * r];
+    const pEnd = [curr[0] + (v2x / len2) * r, curr[1] + (v2y / len2) * r];
+
+    d += ` L ${pStart[0]} ${pStart[1]} Q ${curr[0]} ${curr[1]}, ${pEnd[0]} ${pEnd[1]}`;
+  }
+  const last = pts[pts.length - 1];
+  d += ` L ${last[0]} ${last[1]}`;
+  return d;
+}
+
+function getMidpointOnPolyline(pts) {
+  let totalLen = 0;
+  const segLens = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const len = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+    segLens.push(len);
+    totalLen += len;
+  }
+  let target = totalLen * 0.5;
+  for (let i = 0; i < segLens.length; i++) {
+    if (target <= segLens[i] || i === segLens.length - 1) {
+      const r = segLens[i] === 0 ? 0 : target / segLens[i];
+      return [
+        pts[i][0] + (pts[i + 1][0] - pts[i][0]) * r,
+        pts[i][1] + (pts[i + 1][1] - pts[i][1]) * r
+      ];
+    }
+    target -= segLens[i];
+  }
+  return pts[0];
+}
+
+function renderSVG(layout) {
+  if (!layout) return '<div style="color:#94a3b8;padding:40px;">请输入有效的 Flowchart 语法</div>';
+  const { isHorizontal, isReverse, realNodes, realIds, edges, shortEdges, longEdges, sgBoxes, canvasWidth: W, canvasHeight: H, factor } = layout;
+  const fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+  let svg = `<svg id="rendered-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#64748b"/>
+      </marker>
+    </defs>`;
+
+  // 1. Subgraph 分组容器
+  sgBoxes.forEach(sg => {
+    const isNested = !!sg.parentId;
+    const bg = isNested ? '#f1f5f9' : '#f8fafc';
+    const stroke = isNested ? '#cbd5e1' : '#94a3b8';
+    svg += `
+      <rect x="${sg.left}" y="${sg.top}" width="${sg.w}" height="${sg.h}" rx="10" fill="${bg}" fill-opacity="0.75" stroke="${stroke}" stroke-width="1.4" stroke-dasharray="5 3"/>
+      <text x="${sg.left + 14}" y="${sg.top + 22}" font-family="${fontFamily}" font-size="12.5" font-weight="700" fill="#334155">${escapeXML(sg.title)}</text>
+    `;
+  });
+
+  // 2. 绘制相邻短边（Short Edges）
+  const fanOutGroups = {};
+  shortEdges.forEach((e, idx) => {
+    if (!fanOutGroups[e.from]) fanOutGroups[e.from] = [];
+    fanOutGroups[e.from].push(idx);
+  });
+  Object.values(fanOutGroups).forEach(list => {
+    list.sort((a, b) => {
+      const ta = realNodes[shortEdges[a].to], tb = realNodes[shortEdges[b].to];
+      if (!ta || !tb) return 0;
+      return isHorizontal ? (ta.cy - tb.cy) : (ta.cx - tb.cx);
+    });
+  });
+
+  shortEdges.forEach((e, idx) => {
+    const f = realNodes[e.from];
+    const t = realNodes[e.to];
+    if (!f || !t) return;
+
+    const siblings = fanOutGroups[e.from] || [idx];
+    const fanIdx = siblings.indexOf(idx);
+    const fanTotal = siblings.length;
+    const fanRatio = fanTotal > 1 ? (fanIdx - (fanTotal - 1) / 2) : 0;
+
+    let pts = [];
+    if (!isHorizontal) {
+      const goingDown = !isReverse ? (t.rank >= f.rank) : (t.rank <= f.rank);
+      let startP;
+      if ((f.shape === 'rhombus' || f.shape === 'hexagon') && fanTotal > 1 && t.cx < f.cx - 24) {
+        startP = [f.left, f.cy];
+      } else if ((f.shape === 'rhombus' || f.shape === 'hexagon') && fanTotal > 1 && t.cx > f.cx + 24) {
+        startP = [f.right, f.cy];
+      } else {
+        const shift = Math.max(-f.w * 0.25, Math.min(f.w * 0.25, fanRatio * 18));
+        startP = goingDown ? [f.cx + shift, f.bottom] : [f.cx + shift, f.top];
+      }
+      const endP = goingDown ? [t.cx, t.top] : [t.cx, t.bottom];
+
+      if (Math.abs(startP[0] - endP[0]) < 4) {
+        pts = [startP, endP];
+      } else if (startP[1] === f.cy) {
+        pts = [startP, [endP[0], f.cy], endP];
+      } else {
+        const spanY = endP[1] - startP[1];
+        const stagger = fanTotal > 1 ? (0.38 + (fanIdx % 2) * 0.08) : 0.48;
+        const midY = startP[1] + spanY * stagger;
+        pts = [startP, [startP[0], midY], [endP[0], midY], endP];
+      }
+    } else {
+      const goingRight = !isReverse ? (t.rank >= f.rank) : (t.rank <= f.rank);
+      let startP;
+      if ((f.shape === 'rhombus' || f.shape === 'hexagon') && fanTotal > 1 && t.cy < f.cy - 20) {
+        startP = [f.cx, f.top];
+      } else if ((f.shape === 'rhombus' || f.shape === 'hexagon') && fanTotal > 1 && t.cy > f.cy + 20) {
+        startP = [f.cx, f.bottom];
+      } else {
+        const shift = Math.max(-f.h * 0.25, Math.min(f.h * 0.25, fanRatio * 14));
+        startP = goingRight ? [f.right, f.cy + shift] : [f.left, f.cy + shift];
+      }
+      const endP = goingRight ? [t.left, t.cy] : [t.right, t.cy];
+
+      if (Math.abs(startP[1] - endP[1]) < 4) {
+        pts = [startP, endP];
+      } else if (startP[0] === f.cx) {
+        pts = [startP, [f.cx, endP[1]], endP];
+      } else {
+        const spanX = endP[0] - startP[0];
+        const stagger = fanTotal > 1 ? (0.38 + (fanIdx % 2) * 0.08) : 0.48;
+        const midX = startP[0] + spanX * stagger;
+        pts = [startP, [midX, startP[1]], [midX, endP[1]], endP];
+      }
+    }
+
+    const d = buildPathD(pts, curveMode, isHorizontal);
+    const dash = e.lineStyle === 'dotted' ? 'stroke-dasharray="5 4"' : '';
+    const sw = e.lineStyle === 'thick' ? '2.8' : '1.6';
+    svg += `<path d="${d}" fill="none" stroke="#94a3b8" stroke-width="${sw}" ${dash} stroke-linejoin="round" marker-end="url(#arrow)"/>`;
+
+    if (e.label) {
+      const [lx, ly] = getMidpointOnPolyline(pts);
+      const lw = Math.round(measureTextUnits(e.label) * 11 + 16);
+      svg += `
+        <rect x="${lx - lw/2}" y="${ly - 10}" width="${lw}" height="20" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="${lx}" y="${ly + 4}" font-family="${fontFamily}" font-size="11" fill="#475569" text-anchor="middle" font-weight="600">${escapeXML(e.label)}</text>`;
+    }
+  });
+
+  // 3. 绘制跨多层长边（笔直外侧大横折线，告别十八弯）
+  const corridorGap = Math.round(74 * Math.max(0.85, factor));
+  const globalMaxRight = Math.max(...realIds.map(id => realNodes[id].right));
+  const globalMaxBottom = Math.max(...realIds.map(id => realNodes[id].bottom));
+
+  longEdges.forEach((e, idx) => {
+    const f = realNodes[e.from];
+    const t = realNodes[e.to];
+    if (!f || !t) return;
+
+    let pts = [];
+    let lx = 0, ly = 0;
+
+    if (!isHorizontal) {
+      const corridorX = globalMaxRight + 54 + idx * corridorGap;
+      const exitY = f.cy + (idx - (longEdges.length - 1) / 2) * 10;
+      const enterY = t.cy;
+      pts = [
+        [f.right, exitY],
+        [corridorX, exitY],
+        [corridorX, enterY],
+        [t.right, enterY]
+      ];
+      lx = corridorX;
+      ly = (exitY + enterY) / 2;
+    } else {
+      const corridorY = globalMaxBottom + 48 + idx * Math.round(44 * Math.max(0.85, factor));
+      const exitX = f.cx + (idx - (longEdges.length - 1) / 2) * 12;
+      const enterX = t.cx;
+      pts = [
+        [exitX, f.bottom],
+        [exitX, corridorY],
+        [enterX, corridorY],
+        [enterX, t.bottom]
+      ];
+      lx = (exitX + enterX) / 2;
+      ly = corridorY;
+    }
+
+    const d = buildPathD(pts, curveMode, isHorizontal);
+    const dash = e.lineStyle === 'dotted' ? 'stroke-dasharray="5 4"' : '';
+    const sw = e.lineStyle === 'thick' ? '2.8' : '1.6';
+    svg += `<path d="${d}" fill="none" stroke="#94a3b8" stroke-width="${sw}" ${dash} stroke-linejoin="round" marker-end="url(#arrow)"/>`;
+
+    if (e.label) {
+      const lw = Math.round(measureTextUnits(e.label) * 11 + 16);
+      svg += `
+        <rect x="${lx - lw/2}" y="${ly - 10}" width="${lw}" height="20" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="${lx}" y="${ly + 4}" font-family="${fontFamily}" font-size="11" fill="#475569" text-anchor="middle" font-weight="600">${escapeXML(e.label)}</text>`;
+    }
+  });
+
+  // 4. 绘制循环回退边（Back-Edges，如 H -- 是 --> B）
+  let backRightCount = 0;
+  let backLeftCount = 0;
+  edges.filter(e => e.isBackEdge).forEach(e => {
+    const f = realNodes[e.from];
+    const t = realNodes[e.to];
+    if (!f || !t) return;
+
+    let pts = [];
+    let lx = 0, ly = 0;
+    if (!isHorizontal) {
+      const goRight = f.cx >= W / 2;
+      const slot = goRight ? backRightCount++ : backLeftCount++;
+      const baseEdge = goRight
+        ? Math.max(globalMaxRight + (longEdges.length > 0 ? longEdges.length * corridorGap : 0), Math.max(f.right, t.right))
+        : Math.min(...realIds.map(id => realNodes[id].left));
+      const loopX = goRight
+        ? baseEdge + 48 + slot * 40
+        : Math.max(24, baseEdge - 48 - slot * 40);
+      const fPort = goRight ? [f.right, f.cy] : [f.left, f.cy];
+      const tPort = goRight ? [t.right, t.cy] : [t.left, t.cy];
+      pts = [fPort, [loopX, f.cy], [loopX, t.cy], tPort];
+      lx = loopX;
+      ly = (f.cy + t.cy) / 2;
+    } else {
+      const goTop = f.cy <= H / 2;
+      const slot = goTop ? backLeftCount++ : backRightCount++;
+      const baseEdge = goTop
+        ? Math.min(...realIds.map(id => realNodes[id].top))
+        : Math.max(globalMaxBottom + (longEdges.length > 0 ? longEdges.length * 44 : 0), Math.max(f.bottom, t.bottom));
+      const loopY = goTop
+        ? Math.max(22, baseEdge - 42 - slot * 32)
+        : baseEdge + 42 + slot * 32;
+      const fPort = goTop ? [f.cx, f.top] : [f.cx, f.bottom];
+      const tPort = goTop ? [t.cx, t.top] : [t.cx, t.bottom];
+      pts = [fPort, [f.cx, loopY], [t.cx, loopY], tPort];
+      lx = (f.cx + t.cx) / 2;
+      ly = loopY;
+    }
+
+    const d = buildPathD(pts, curveMode, isHorizontal);
+    svg += `<path d="${d}" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#arrow)"/>`;
+    if (e.label) {
+      const lw = Math.round(measureTextUnits(e.label) * 11 + 16);
+      svg += `
+        <rect x="${lx - lw/2}" y="${ly - 10}" width="${lw}" height="20" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="${lx}" y="${ly + 4}" font-family="${fontFamily}" font-size="11" fill="#475569" text-anchor="middle" font-weight="600">${escapeXML(e.label)}</text>`;
+    }
+  });
+
+  // 5. 绘制所有真实节点形状
+  realIds.forEach(id => {
+    svg += renderShapeSVG(realNodes[id]);
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ==================== 5. 交互控制、线型与松紧度调节 ====================
+const editor = document.getElementById('code');
+const viewport = document.getElementById('viewport');
+const canvasWrap = document.getElementById('canvas-wrap');
+
+let scale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
+
+function applyTransform() {
+  viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  document.getElementById('zoom-text').innerText = Math.round(scale * 100) + '%';
+}
+
+function adjustZoom(delta) {
+  scale = Math.min(2.5, Math.max(0.2, scale + delta));
+  applyTransform();
+}
+
+function fitCanvas() {
+  const svg = document.getElementById('rendered-svg');
+  if (!svg) return;
+  const wrapRect = canvasWrap.getBoundingClientRect();
+  const svgW = parseFloat(svg.getAttribute('width'));
+  const svgH = parseFloat(svg.getAttribute('height'));
+  const scaleX = (wrapRect.width - 60) / svgW;
+  const scaleY = (wrapRect.height - 60) / svgH;
+  scale = Math.min(1, Math.max(0.25, Math.min(scaleX, scaleY)));
+  panX = (wrapRect.width - svgW * scale) / 2;
+  panY = Math.max(20, (wrapRect.height - svgH * scale) / 2);
+  applyTransform();
+}
+
+canvasWrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  adjustZoom(e.deltaY < 0 ? 0.1 : -0.1);
+}, { passive: false });
+
+canvasWrap.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.zoom-bar')) return;
+  isDragging = true;
+  startX = e.clientX - panX;
+  startY = e.clientY - panY;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  panX = e.clientX - startX;
+  panY = e.clientY - startY;
+  applyTransform();
+});
+window.addEventListener('mouseup', () => { isDragging = false; });
+
+function onSpacingChange(val) {
+  spacingFactor = parseFloat(val);
+  document.getElementById('spacing-val').innerText = spacingFactor.toFixed(1) + 'x';
+  renderAll(false);
+}
+
+function setCurveMode(mode, btn) {
+  curveMode = mode;
+  btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll(false);
+}
+
+function renderAll(autoFit = false) {
+  const parsed = parseMermaidFull(editor.value);
+  document.getElementById('dir-badge').innerText = `方向: ${parsed.direction}`;
+  const layout = computeLayout(parsed, spacingFactor);
+  viewport.innerHTML = renderSVG(layout);
+
+  const nCount = Object.keys(parsed.nodes).length;
+  const eCount = parsed.edges.length;
+  const modeName = curveMode === 'ortho' ? '大横折线' : '平滑曲线';
+  document.getElementById('stat-info').innerText = `已解析：${nCount} 个节点 · ${eCount} 条连线 · 线型：${modeName} · 松紧度 ${spacingFactor.toFixed(1)}x`;
+
+  if (autoFit) setTimeout(fitCanvas, 20);
+}
+
+function loadPreset(idx, btn) {
+  document.querySelectorAll('.s-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  editor.value = PRESETS[idx];
+  renderAll(true);
+}
+
+function setMode(cls, btn) {
+  document.body.className = cls;
+  btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (cls !== 'v-code') setTimeout(fitCanvas, 50);
+}
+
+function exportSVG() {
+  const svg = document.getElementById('rendered-svg');
+  if (!svg) return;
+  const serializer = new XMLSerializer();
+  const source = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\r\n' + serializer.serializeToString(svg);
+  const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `flowchart-${curveMode}-${spacingFactor.toFixed(1)}x-${Date.now()}.svg`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+let debounce = null;
+editor.addEventListener('input', () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => renderAll(false), 200);
+});
+
+loadPreset(0, document.querySelector('.s-btn'));
+</script>
+
+</body>
+</html>
