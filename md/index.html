@@ -156,7 +156,7 @@
     .history-empty { color: var(--text-secondary); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
     .code-block-wrapper { position: relative; margin-bottom: 1rem; }
     .copy-button { position: absolute; top: 8px; right: 8px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); z-index: 10; }
-    .mermaid-wrapper { position: relative; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary); overflow-x: auto; word-break: normal; text-align: center; }
+    .mermaid-wrapper {  max-width: calc(min(990px, 98%)); position: relative; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary); overflow-x: auto; word-break: normal; text-align: center; }
     .mermaid-diagram { display: flex; justify-content: center; align-items: center; min-height: 40px; }
     .mermaid-diagram svg { max-width: 100%; height: auto; }
     .mermaid-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10; opacity: 0.75; transition: all 0.2s ease; }
