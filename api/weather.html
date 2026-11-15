@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>天气接口怎么用 · 城市搜索 + 天气查询</title>
+<style>
+  /* ---- 白天模式（默认） ---- */
+  :root {
+    color-scheme: light;
+    --bg: #f5f8fc;
+    --glow: #dbe9fb;
+    --card: #ffffff;
+    --card2: #f3f6fa;
+    --line: #dde5ef;
+    --fg: #1b2432;
+    --dim: #64748b;
+    --accent: #1f6feb;
+    --ok: #12855c;
+    --warn: #a86800;
+    --err: #d13b32;
+    --code-bg: #eff4fb;
+    --code-fg: #1c4f8a;
+    --pre-fg: #24303f;
+    --json-k: #2f6fbb;   /* JSON key / 请求 URL */
+    --json-s: #2f7d32;   /* string */
+    --json-n: #a8630f;   /* number */
+    --json-c: #8895a8;   /* comment */
+    --demo-line: #cddef2;
+    --demo-grad: linear-gradient(180deg, #ffffff, #f1f6fd);
+    --input-bg: #ffffff;
+    --input-line-focus: #8fb4dd;
+    --btn-bg: #e9f1fc;
+    --btn-fg: #1b4a80;
+    --btn-line: #c5d9f0;
+    --btn-hover-bg: #dae9fa;
+    --btn-hover-line: #9bc0e6;
+    --btn-active-bg: #cde1f8;
+    --item-bg: #f7fafd;
+    --item-hover-bg: #eaf2fc;
+    --req-fg: #9a5300; --req-line: #f0d5a8; --req-bg: #fdf4e4;
+    --opt-fg: #12805a; --opt-line: #b7e3cd; --opt-bg: #eaf8f1;
+    --note-bg: #fdf7ea;
+    --bad-bg: #fdeeed;
+    --good-bg: #edf8f2;
+    --mono: ui-monospace, "Cascadia Code", Consolas, "SF Mono", Menlo, monospace;
+  }
+  /* ---- 夜间模式 ---- */
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #080b12;
+    --glow: #12233c;
+    --card: #101724;
+    --card2: #0c121d;
+    --line: #1e2a3d;
+    --fg: #dce6f5;
+    --dim: #7d8ca3;
+    --accent: #5fb0ff;
+    --ok: #4fd39a;
+    --warn: #ffb454;
+    --err: #ff6b6b;
+    --code-bg: #16202f;
+    --code-fg: #a8d0ff;
+    --pre-fg: #c7d6ea;
+    --json-k: #8ab4f8;
+    --json-s: #9adf9a;
+    --json-n: #f0b072;
+    --json-c: #5f7086;
+    --demo-line: #24405f;
+    --demo-grad: linear-gradient(180deg, #0d1725, #0a1119);
+    --input-bg: #0a1220;
+    --input-line-focus: #2f5c8a;
+    --btn-bg: #17304a;
+    --btn-fg: #cfe4ff;
+    --btn-line: #2b4c6e;
+    --btn-hover-bg: #1d3d5e;
+    --btn-hover-line: #3a6a99;
+    --btn-active-bg: #14293f;
+    --item-bg: #0b1523;
+    --item-hover-bg: #122236;
+    --req-fg: #ffb454; --req-line: #4a3a1d; --req-bg: #241c0e;
+    --opt-fg: #4fd39a; --opt-line: #1d4a37; --opt-bg: #0e241b;
+    --note-bg: #1a1509;
+    --bad-bg: #1d0f0f;
+    --good-bg: #0d1a15;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(1200px 700px at 15% -10%, var(--glow) 0%, var(--bg) 60%) no-repeat, var(--bg);
+    color: var(--fg);
+    font: 15px/1.7 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 22px 90px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: .01em; font-weight: 600; }
+  h2 {
+    font-size: 20px; margin: 46px 0 14px; font-weight: 600;
+    padding-bottom: 8px; border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 15px; margin: 26px 0 8px; color: var(--accent); font-weight: 600; }
+  p { margin: 10px 0; }
+  .lead { color: var(--dim); margin: 0 0 26px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: var(--mono); font-size: .88em;
+    background: var(--code-bg); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: 4px; color: var(--code-fg);
+  }
+  pre {
+    background: var(--card2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; margin: 12px 0;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+  }
+  pre code { background: none; border: 0; padding: 0; color: var(--pre-fg); }
+  .k { color: var(--json-k); }   /* JSON key */
+  .s { color: var(--json-s); }   /* string */
+  .n { color: var(--json-n); }   /* number */
+  .c { color: var(--json-c); font-style: italic; } /* comment */
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px 20px; margin: 14px 0;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 500; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; }
+  td code { font-size: 12px; }
+  .tag {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 20px;
+    border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: 2px;
+  }
+  .tag.req { color: var(--req-fg); border-color: var(--req-line); background: var(--req-bg); }
+  .tag.opt { color: var(--opt-fg); border-color: var(--opt-line); background: var(--opt-bg); }
+  .note {
+    border-left: 3px solid var(--warn); background: var(--note-bg);
+    padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px;
+  }
+  .note.bad { border-color: var(--err); background: var(--bad-bg); }
+  .note.good { border-color: var(--ok); background: var(--good-bg); }
+  .note b { color: var(--fg); }
+
+  /* ---- 主题切换 ---- */
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    background: var(--card); color: var(--dim); border-color: var(--line);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px;
+    box-shadow: 0 1px 3px rgba(16, 32, 56, .08);
+  }
+  .theme-toggle:hover { background: var(--card); color: var(--fg); border-color: var(--btn-hover-line); }
+
+  /* ---- 交互区 ---- */
+  .demo { border: 1px solid var(--demo-line); background: var(--demo-grad); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input[type=text] {
+    flex: 1 1 200px; min-width: 0; background: var(--input-bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 7px; padding: 9px 12px;
+    font: inherit; font-size: 14px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--input-line-focus); }
+  button {
+    background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-line);
+    border-radius: 7px; padding: 9px 15px; font: inherit; font-size: 14px;
+    cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  }
+  button:hover { background: var(--btn-hover-bg); border-color: var(--btn-hover-line); }
+  button:active { background: var(--btn-active-bg); }
+  button.ghost { background: transparent; color: var(--dim); border-color: var(--line); }
+  button.ghost:hover { color: var(--fg); border-color: var(--btn-line); }
+  button:disabled { opacity: .45; cursor: default; }
+  .results { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .results button {
+    text-align: left; background: var(--item-bg); border-color: var(--line);
+    font-size: 13.5px; padding: 8px 12px;
+  }
+  .results button:hover { background: var(--item-hover-bg); }
+  .results .meta { color: var(--dim); font-size: 12px; }
+  /* 一条结果 = 城市按钮 + 纬度/经度两个复制按钮：点名字查天气，点数字只拿那一个数 */
+  .hit { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .hit > .city { flex: 1 1 200px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .coords { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .coord {
+    display: inline-flex; align-items: center;
+    border: 1px solid var(--line); border-radius: 7px;
+    font-family: var(--mono); font-size: 11.5px; padding: 5px 10px;
+    white-space: nowrap; letter-spacing: -.01em;
+    cursor: pointer; user-select: text;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .coord:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .results .coord, .out .coord {
+    background: transparent; color: var(--dim); border-color: var(--line);
+  }
+  .results .coord:hover, .out .coord:hover {
+    color: var(--fg); background: var(--item-hover-bg); border-color: var(--btn-hover-line);
+  }
+  .results .coord.copied, .results .coord.copied:hover,
+  .out .coord.copied, .out .coord.copied:hover {
+    color: var(--ok); border-color: var(--opt-line); background: var(--opt-bg);
+  }
+  .out { margin-top: 16px; }
+  .place { font-size: 17px; font-weight: 600; }
+  .now { color: var(--dim); margin-top: 2px; }
+  .big { font-size: 34px; font-weight: 300; letter-spacing: -.02em; line-height: 1.2; }
+  .days { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .day {
+    flex: 1 1 100px; background: var(--item-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; font-size: 13px;
+  }
+  .day b { display: block; font-weight: 500; color: var(--dim); font-size: 12px; margin-bottom: 4px; }
+  .day span { display: block; color: var(--dim); font-size: 12px; }
+  .log {
+    margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--dim);
+    word-break: break-all; line-height: 1.8; max-height: 170px; overflow-y: auto;
+  }
+  .log .u { color: var(--json-k); }
+  .log .e { color: var(--err); }
+  .log .o { color: var(--ok); }
+  .status { font-size: 13px; color: var(--dim); min-height: 20px; }
+  .wmo { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 14px; font-size: 13px; }
+  .wmo div { display: flex; gap: 8px; }
+  .wmo i { font-style: normal; color: var(--accent); font-family: var(--mono); min-width: 22px; text-align: right; }
+  footer { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--dim); font-size: 13px; }
+</style>
+<script>
+  // 主题在 <head> 里就先落到 <html> 上：等 body 渲染完再切会闪一帧白/黑
+  try {
+    const saved = localStorage.getItem("weather-theme");
+    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+  } catch (e) { /* file:// 下 localStorage 可能被禁，忽略，用默认白天 */ }
+</script>
+</head>
+<body>
+<button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换白天/夜间模式" title="切换白天/夜间模式"></button>
+<div class="wrap">
+
+  <h1>天气接口怎么用</h1>
+  <p class="lead">
+    鱼戏莲叶间右上角那格天气，后端是 <b>Open-Meteo</b>——免费、不用注册、不用 API key、CORS 全开，
+    浏览器里直接 <code>fetch</code> 就能取。真正干活的只有两个接口：一个把「城市名」换成经纬度，一个拿经纬度换天气。
+    这个页面把两个接口拆开讲清楚，并且能直接点着玩。
+  </p>
+
+  <div class="note good">
+    <b>一句话版本：</b>城市搜索 → 拿到 <code>latitude/longitude</code> → 拿这两个数查天气。没有第三步，也不需要 token。
+  </div>
+
+  <h2>一、先动手：搜索 → 查天气</h2>
+
+  <div class="card demo">
+    <div class="row">
+      <input id="q" type="text" placeholder="输城市名，中文/拼音/英文都行：杭州、Tokyo、New York" value="杭州" />
+      <button id="btn-search">① 搜城市</button>
+      <button id="btn-geo" class="ghost">② 用我的位置</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="results" id="results"></div>
+    <div class="out" id="out"></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <p style="font-size:13.5px;color:var(--dim);margin-top:10px">
+    下面那条灰线是请求日志：每发一次请求，把完整 URL 和返回码打出来，方便你对着看参数长什么样。
+    搜索结果里<b>纬度、经度各自一个按钮，点哪个复制哪个</b>；查完天气，地名下面也留了同一对按钮。
+  </p>
+
+  <h2>二、接口 1：城市搜索（地名 → 经纬度）</h2>
+
+  <h3>地址</h3>
+  <pre><code>https://geocoding-api.open-meteo.com/v1/search</code></pre>
+
+  <p>它和查天气的不是同一个域名，别混：搜索在 <code>geocoding-api</code>，天气在 <code>api</code>。</p>
+
+  <h3>参数</h3>
+  <table>
+    <tr><th>参数</th><th>说明</th></tr>
+    <tr>
+      <td><code>name</code> <span class="tag req">必填</span></td>
+      <td>地名或邮编。可以带限定词消歧：<code>Paris, France</code>、<code>洛杉矶, California</code>。
+        <b>两个字才会走精确匹配，三个字以上走前缀匹配</b>；空串和单字一律返回空结果。</td>
+    </tr>
+    <tr>
+      <td><code>count</code> <span class="tag opt">可选</span></td>
+      <td>返回几条，默认 10，上限 100。池子里用 6。</td>
+    </tr>
+    <tr>
+      <td><code>language</code> <span class="tag opt">可选</span></td>
+      <td>语言，默认 <code>en</code>。写 <code>zh</code> 才回中文名（杭州而不是 Hangzhou）。小写。</td>
+    </tr>
+    <tr>
+      <td><code>format</code> <span class="tag opt">可选</span></td>
+      <td><code>json</code>（默认）或 <code>protobuf</code>。</td>
+    </tr>
+    <tr>
+      <td><code>countryCode</code> <span class="tag opt">可选</span></td>
+      <td>ISO 两位国家码，用来硬过滤。例：<code>CN</code>。</td>
+    </tr>
+  </table>
+
+  <h3>请求</h3>
+  <pre><code>https://geocoding-api.open-meteo.com/v1/search?name=%E6%9D%AD%E5%B7%9E&amp;count=6&amp;language=zh&amp;format=json</code></pre>
+  <p style="font-size:13.5px;color:var(--dim)">中文一定要 <code>encodeURIComponent</code>，别把原字符直接拼进 URL。</p>
+
+  <h3>返回（真实响应，截了两个结果里的一个）</h3>
+  <pre><code>{
+  <span class="k">"results"</span>: [
+    {
+      <span class="k">"id"</span>: <span class="n">1808926</span>,
+      <span class="k">"name"</span>: <span class="s">"杭州"</span>,              <span class="c">// 你要显示的城市名</span>
+      <span class="k">"latitude"</span>: <span class="n">30.29365</span>,        <span class="c">// ↓ 这两个是下一步的输入</span>
+      <span class="k">"longitude"</span>: <span class="n">120.16142</span>,
+      <span class="k">"elevation"</span>: <span class="n">12.0</span>,
+      <span class="k">"timezone"</span>: <span class="s">"Asia/Shanghai"</span>,  <span class="c">// 城市时区，做时钟很有用</span>
+      <span class="k">"feature_code"</span>: <span class="s">"PPLA"</span>,       <span class="c">// 地名类型：PPLC=首都 PPLA=省会 PPL=普通地名</span>
+      <span class="k">"country"</span>: <span class="s">"中国"</span>,
+      <span class="k">"country_code"</span>: <span class="s">"CN"</span>,
+      <span class="k">"admin1"</span>: <span class="s">"浙江"</span>,             <span class="c">// 省/州，重名时靠它区分</span>
+      <span class="k">"admin2"</span>: <span class="s">"杭州市"</span>,
+      <span class="k">"population"</span>: <span class="n">11936010</span>
+    }
+  ],
+  <span class="k">"generationtime_ms"</span>: <span class="n">0.14</span>
+}</code></pre>
+
+  <div class="note">
+    <b>有一堆坑要留意：</b><br>
+    ① <b>没有 <code>results</code> 键不代表失败</b>——搜不到就直接不返回这个键，只给一个 <code>generationtime_ms</code>。
+    所以代码里必须写 <code>data.results || []</code>，直接 <code>data.results.forEach</code> 会炸。<br>
+    ② <b>重名严重</b>。<code>杭州</code> 会回来两个：浙江的（省会）和四川甘孜的（海拔 2321 米）。所以结果里要显示 <code>admin1</code>，
+    让人自己挑，别默认取第一个还怪接口不准。<br>
+    ③ 返回的 <code>latitude/longitude</code> 已经有小数位了，别自己 <code>Math.round</code>——0.1 度大概 11 公里，一取整就换城市了。
+  </div>
+
+  <h2>三、接口 2：查天气（经纬度 → 天气）</h2>
+
+  <h3>地址与最简调用</h3>
+  <pre><code>https://api.open-meteo.com/v1/forecast?latitude=30.29&amp;longitude=120.16</code></pre>
+  <p>两个必填参数就 <code>latitude</code> / <code>longitude</code>，其余全可选——不写变量的话默认回一坨 hourly 全量数据，太大。所以要什么点什么。</p>
+
+  <h3>鱼塘里用的那一条</h3>
+  <pre><code>https://api.open-meteo.com/v1/forecast
+  ?latitude=30.29365
+  &amp;longitude=120.16142
+  &amp;current=temperature_2m,weather_code,wind_speed_10m      <span class="c">← 实时</span>
+  &amp;daily=weather_code,temperature_2m_max,temperature_2m_min <span class="c">← 每日</span>
+  &amp;timezone=auto                                          <span class="c">← 按当地时区切「今天」</span>
+  &amp;forecast_days=3                                        <span class="c">← 今天/明天/后天</span></code></pre>
+
+  <h3>这条 URL 里每个参数在干什么</h3>
+  <table>
+    <tr><th>参数</th><th>说明</th></tr>
+    <tr>
+      <td><code>current=</code></td>
+      <td>「此刻」的变量，逗号分隔。要什么点什么，多一个多一份体积。<br>
+        <code>temperature_2m</code> 2 米气温（°C）、<code>weather_code</code> 天气代码（数字，见下）、
+        <code>wind_speed_10m</code> 10 米风速（km/h）。</td>
+    </tr>
+    <tr>
+      <td><code>daily=</code></td>
+      <td>「每天」的变量，回的是数组，长度 = 天数。<code>temperature_2m_max/min</code> 当天最高/最低。</td>
+    </tr>
+    <tr>
+      <td><code>timezone=auto</code></td>
+      <td><b>不写会按 GMT 切天</b>，北京时间的「今天」可能变成昨天。写 <code>auto</code> 让它按经纬度自动定，
+        返回里带 <code>timezone</code> 和 <code>utc_offset_seconds</code>。也可以硬写 <code>Asia/Shanghai</code>。</td>
+    </tr>
+    <tr>
+      <td><code>forecast_days=</code></td>
+      <td>要几天，默认 7，最长 16。池子要 3 天。</td>
+    </tr>
+    <tr>
+      <td>单位</td>
+      <td>默认公制（°C、km/h、mm）。要华氏就加 <code>&amp;temperature_unit=fahrenheit</code>，
+        风速 <code>&amp;wind_speed_unit=ms</code>。返回里的 <code>*_units</code> 会告诉你实际单位，别硬编码。</td>
+    </tr>
+  </table>
+
+  <h3>返回（真实响应，2026-11-15 12:45 杭州）</h3>
+  <pre><code>{
+  <span class="k">"latitude"</span>: <span class="n">30.263618</span>,          <span class="c">// 注意：回来的坐标是网格点，跟你要的不完全一样，正常</span>
+  <span class="k">"longitude"</span>: <span class="n">120.14051</span>,
+  <span class="k">"timezone"</span>: <span class="s">"Asia/Shanghai"</span>,
+  <span class="k">"utc_offset_seconds"</span>: <span class="n">28800</span>,
+  <span class="k">"elevation"</span>: <span class="n">10.0</span>,
+
+  <span class="k">"current_units"</span>: { <span class="k">"temperature_2m"</span>: <span class="s">"°C"</span>, <span class="k">"weather_code"</span>: <span class="s">"wmo code"</span>, <span class="k">"wind_speed_10m"</span>: <span class="s">"km/h"</span> },
+  <span class="k">"current"</span>: {
+    <span class="k">"time"</span>: <span class="s">"2026-11-15T12:45"</span>,
+    <span class="k">"interval"</span>: <span class="n">900</span>,              <span class="c">// 这组值代表过去 15 分钟</span>
+    <span class="k">"temperature_2m"</span>: <span class="n">18.9</span>,
+    <span class="k">"weather_code"</span>: <span class="n">3</span>,              <span class="c">// 3 = 阴</span>
+    <span class="k">"wind_speed_10m"</span>: <span class="n">13.2</span>
+  },
+
+  <span class="k">"daily_units"</span>: { <span class="k">"weather_code"</span>: <span class="s">"wmo code"</span>, <span class="k">"temperature_2m_max"</span>: <span class="s">"°C"</span>, <span class="k">"temperature_2m_min"</span>: <span class="s">"°C"</span> },
+  <span class="k">"daily"</span>: {
+    <span class="k">"time"</span>: [<span class="s">"2026-11-15"</span>, <span class="s">"2026-11-16"</span>, <span class="s">"2026-11-17"</span>],
+    <span class="k">"weather_code"</span>: [<span class="n">51</span>, <span class="n">3</span>, <span class="n">80</span>],
+    <span class="k">"temperature_2m_max"</span>: [<span class="n">19.0</span>, <span class="n">19.3</span>, <span class="n">16.4</span>],
+    <span class="k">"temperature_2m_min"</span>: [<span class="n">14.5</span>, <span class="n">13.1</span>, <span class="n">12.6</span>]
+  }
+}</code></pre>
+
+  <div class="note">
+    <b>三个容易写错的地方：</b><br>
+    ① <b><code>daily</code> 里的每一列是「按 <code>daily.time</code> 这个顺序对齐的数组」</b>，不是一个对象数组。
+    想拿第 2 天的最高温是 <code>daily.temperature_2m_max[1]</code>，别去找 <code>daily[1]</code>。<br>
+    ② <b>天气代码是数字，接口不给你中文</b>。0~99 的 WMO 码，中间一堆空缺（比如 4~44 没有），
+    必须自己建映射表，而且要有兜底 <code>|| "多云"</code>，不然遇到没写的码页面上就是 <code>undefined</code>。<br>
+    ③ <b>报错也是 200 之外的正经 JSON</b>：参数错会返 <code>400</code> + <code>{"error":true,"reason":"..."}</code>。
+    <code>res.ok</code> 为假时别直接 <code>res.json()</code> 当成功数据用，先把 <code>reason</code> 打出来。
+  </div>
+
+  <h3>WMO 天气代码对照表（接口原始定义，全量）</h3>
+  <div class="card wmo" id="wmo"></div>
+  <p style="font-size:13px;color:var(--dim)">
+    鱼塘里的映射是它的一份中文简化版（<code>wallpaper/pond/ui.js</code> 的 <code>weatherName()</code>），并且
+    <code>weatherEffect()</code> 把这些码再归类成 晴/雨/毛毛雨/雪/雾 五种，用来驱动池塘里的天气特效。
+    96/99（雷暴带冰雹）只有 DWD ICON、UKMO 这类明确预报冰雹的模型会报，其他模型给的是 95/97。
+  </p>
+
+  <h2>四、接口 3：定位（可选，兜底用）</h2>
+
+  <p>要「自动定位」，其实叠了三层，一层失败往下一层：</p>
+
+  <table>
+    <tr><th>层</th><th>用什么</th><th>拿到什么</th></tr>
+    <tr>
+      <td>1</td>
+      <td><code>navigator.geolocation</code>（浏览器原生，不是接口）</td>
+      <td>精确坐标（约 10 公里）。要用户授权，WebView2 里还得外壳放行——见 <code>config.toml</code> 的 <code>allow_geolocation</code>。</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><code>https://ipwho.is/</code></td>
+      <td>按出口 IP 猜城市，误差能到省。不用参数、不用 key、CORS 全开，就是慢一点。</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>写死一个</td>
+      <td>杭州 <code>30.2741, 120.1551</code>。全失败时至少别让页面上是空的。</td>
+    </tr>
+  </table>
+
+  <pre><code><span class="c">// 第 2 层，够用了</span>
+const ip = await (await fetch("https://ipwho.is/")).json();
+<span class="c">// ip.success 为 false 就是失败（限流/内网），别只看有没有 city</span>
+const { city, latitude, longitude } = ip;</code></pre>
+
+  <pre><code>{
+  <span class="k">"ip"</span>: <span class="s">"175.178.127.92"</span>,
+  <span class="k">"success"</span>: <span class="n">true</span>,
+  <span class="k">"city"</span>: <span class="s">"Guangzhou"</span>,        <span class="c">// 注意：英文，要中文得再走一次城市搜索</span>
+  <span class="k">"latitude"</span>: <span class="n">23.1166691</span>,
+  <span class="k">"longitude"</span>: <span class="n">113.2529533</span>,
+  <span class="k">"country"</span>: <span class="s">"China"</span>,
+  <span class="k">"timezone"</span>: { <span class="k">"id"</span>: <span class="s">"Asia/Shanghai"</span> }
+}</code></pre>
+
+  <div class="note bad">
+    <b>一个真实的坑：逆地理编码接口已经没了。</b><br>
+    代码里原来还有一步 <code>https://geocoding-api.open-meteo.com/v1/reverse?latitude=..&amp;longitude=..</code>，
+    想「坐标 → 城市名」。但这个端点现在<b>恒返回 404</b>
+    （<code>{"error":true,"reason":"Not Found"}</code>，官方文档里也已不列它）。
+    所以那段 <code>try/catch</code> 每次都在走 catch，定位得到的名字永远落在 <code>"当前位置"</code> 或 IP 给的英文名上。
+    兜底写法：拿 IP 的 <code>city</code> 再走一次<b>城市搜索</b>换中文名和准确坐标——池子里已经在这么做了。
+  </div>
+
+  <h2>五、两个接口共通的规矩</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">不用 key，但有限流</h3>
+      <p style="font-size:13.5px">
+        免费版（非商用）限制：<b>每分钟 600 次 / 每小时 5000 次 / 每天 10000 次 / 每月 30 万次</b>。
+        个人壁纸随便用。限流信息在响应头 <code>x-ratelimit-remaining</code> 里，被拦了看 <code>retry-after</code>。
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">响应头 CORS 全开</h3>
+      <p style="font-size:13.5px">
+        <code>access-control-allow-origin: *</code>，所以纯静态页面（<code>file://</code> 也行）直接 fetch 不需要代理。
+        这也是为什么这个 HTML 能双击就打开用。
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">可以缓存</h3>
+      <p style="font-size:13.5px">
+        搜索接口 <code>cache-control: public, max-age=86400</code>（一天），城市名基本不变。
+        天气接口自己有分钟级缓存。池子里的做法：结果存 <code>localStorage</code>，默认 120 分钟刷一次，
+        时长写在 <code>data.json</code> 的 <code>weatherCacheMinutes</code>。
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">要署名</h3>
+      <p style="font-size:13.5px">
+        数据 CC BY 4.0，用了得给出处。池子右上角那行「天气数据 · Open-Meteo」就是干这个的，别删。
+        商用要买 plan，走 <code>customer-api.open-meteo.com</code> + <code>&amp;apikey=</code>。
+      </p>
+    </div>
+  </div>
+
+  <h2>六、把这段抄进你的代码</h2>
+
+  <p>最小可用版本，复制就走，不依赖任何库：</p>
+
+  <pre><code><span class="c">// 城市名 → { name, lat, lon, tz }</span>
+async function findCity(name) {
+  const url = "https://geocoding-api.open-meteo.com/v1/search?name="
+    + encodeURIComponent(name) + "&amp;count=6&amp;language=zh&amp;format=json";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("搜索失败 " + res.status);
+  const data = await res.json();
+  const list = data.results || [];          <span class="c">// 搜不到时这个键不存在</span>
+  if (!list.length) throw new Error("没有找到这个城市");
+  const hit = list[0];
+  return { name: hit.name, lat: hit.latitude, lon: hit.longitude, tz: hit.timezone };
+}
+
+<span class="c">// 经纬度 → 实时 + 3 天</span>
+async function getWeather(lat, lon) {
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat
+    + "&amp;longitude=" + lon
+    + "&amp;current=temperature_2m,weather_code,wind_speed_10m"
+    + "&amp;daily=weather_code,temperature_2m_max,temperature_2m_min"
+    + "&amp;timezone=auto&amp;forecast_days=3";
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() =&gt; ({}));
+    throw new Error(err.reason || ("天气查询失败 " + res.status));
+  }
+  return res.json();
+}
+
+<span class="c">// 用</span>
+const city = await findCity("杭州");
+const w = await getWeather(city.lat, city.lon);
+console.log(city.name, w.current.temperature_2m + "°C", WMO[w.current.weather_code]);</code></pre>
+
+  <h2>七、如果拿不到数据，按这个顺序查</h2>
+  <table>
+    <tr><th>现象</th><th>多半是</th></tr>
+    <tr>
+      <td>控制台 <code>Failed to fetch</code></td>
+      <td>断网，或被公司网络/代理拦了。先 <code>curl</code> 一下这两个域名。</td>
+    </tr>
+    <tr>
+      <td>搜城市有结果，查天气没有</td>
+      <td>经纬度写反了。参数名是 <code>latitude</code> 在前、<code>longitude</code> 在后，但很多人赋值时对调。</td>
+    </tr>
+    <tr>
+      <td><code>400</code> + <code>Latitude must be in range of -90 to 90</code></td>
+      <td>把经度当纬度传了，或者 <code>parseFloat</code> 得到 <code>NaN</code> 拼进了 URL。</td>
+    </tr>
+    <tr>
+      <td><code>400</code> + <code>Invalid value: ... from invalid String value foo</code></td>
+      <td>变量名拼错。是 <code>weather_code</code> 不是 <code>weathercode</code>，是 <code>temperature_2m</code> 不是 <code>temp</code>。</td>
+    </tr>
+    <tr>
+      <td><code>reason: "Not Found"</code>（<code>/v1/reverse</code>）</td>
+      <td>这个端点已经下线，别用了，改用 IP 猜城市 + 城市搜索兜底。</td>
+    </tr>
+    <tr>
+      <td>「今天」比实际早一天</td>
+      <td>漏了 <code>timezone=auto</code>，被当成 GMT 了。</td>
+    </tr>
+    <tr>
+      <td>天气代码显示不出中文</td>
+      <td>忘了建映射表。接口只给数字。</td>
+    </tr>
+  </table>
+
+  <footer>
+    数据来源 <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>
+    （CC BY 4.0）· 地名数据来自 GeoNames。
+    接口文档：<a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Weather Forecast API</a> ·
+    <a href="https://open-meteo.com/en/docs/geocoding-api" target="_blank" rel="noreferrer">Geocoding API</a>。
+    右上角可切白天 / 夜间，默认白天，选择记在 <code>localStorage</code> 里。
+    本页面单文件、无依赖，双击即可运行。
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // WMO 天气解释码，接口文档原始全量定义
+  const WMO = {
+    0: "晴", 1: "主要晴朗", 2: "局部多云", 3: "阴",
+    45: "雾", 48: "雾凇",
+    51: "小毛毛雨", 53: "中等毛毛雨", 55: "大毛毛雨", 56: "轻冻雨", 57: "强冻雨",
+    61: "小雨", 63: "中雨", 65: "大雨", 66: "轻冻雨", 67: "强冻雨",
+    71: "小雪", 73: "中雪", 75: "大雪", 77: "雪粒",
+    80: "小阵雨", 81: "中阵雨", 82: "强阵雨", 85: "小阵雪", 86: "大阵雪",
+    95: "雷阵雨", 96: "雷阵雨伴小冰雹", 97: "强雷阵雨", 99: "雷阵雨伴大冰雹"
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- 白天/夜间 ----------
+  const root = document.documentElement;
+  const themeBtn = $("theme-toggle");
+  const isDark = () => root.dataset.theme === "dark";
+
+  function paintTheme() {
+    themeBtn.textContent = isDark() ? "切到白天模式" : "切到夜间模式";
+  }
+
+  themeBtn.addEventListener("click", () => {
+    const next = isDark() ? "light" : "dark";
+    root.dataset.theme = next;
+    try { localStorage.setItem("weather-theme", next); } catch (e) { /* 存不了就算了，只影响记忆 */ }
+    paintTheme();
+  });
+
+  paintTheme();
+
+  const logBox = $("log");
+  const statusEl = $("status");
+  const resultsEl = $("results");
+  const outEl = $("out");
+  let current = null;
+
+  function log(kind, text) {
+    const line = document.createElement("div");
+    line.className = kind;
+    line.textContent = text;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function label(code) { return WMO[code] || "未知(" + code + ")"; }
+
+  // ---------- 复制 ----------
+  // file:// 下 navigator.clipboard 不一定给，退回 textarea + execCommand
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) { /* 落到下面的兜底 */ }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  // 坐标按钮：一个数一个按钮，点一下只复制这一个数
+  // 用 span 不用 button：button 里的文字浏览器不让选，复制失败时就没法手动拖了
+  function coordButton(kind, value, placeName) {
+    const text = String(value);
+    const chip = document.createElement("span");
+    chip.className = "coord";
+    chip.setAttribute("role", "button");
+    chip.setAttribute("tabindex", "0");
+    chip.title = "复制" + kind + "（" + placeName + "）";
+    chip.textContent = kind + " " + text;
+
+    const copy = async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const ok = await copyText(text);
+      log(ok ? "o" : "e", ok ? kind + " 已复制 " + text : kind + " 自动复制失败，已选中数字，按 Ctrl+C：" + text);
+      if (!ok) {
+        // 自动复制被拦（权限/浏览器策略）时，退到「选中 + 自己按 Ctrl+C」
+        const range = document.createRange();
+        range.selectNodeContents(chip);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return;
+      }
+      // 先把宽度钉住，「已复制」比原文短，不钉的话整行会抖一下
+      chip.style.minWidth = chip.offsetWidth + "px";
+      chip.textContent = "已复制";
+      chip.classList.add("copied");
+      setTimeout(() => {
+        chip.textContent = kind + " " + text;
+        chip.classList.remove("copied");
+        chip.style.minWidth = "";
+      }, 1200);
+    };
+
+    chip.addEventListener("click", copy);
+    chip.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") copy(e);
+    });
+    return chip;
+  }
+
+  // 一对坐标：纬度、经度各一个按钮，互不干扰
+  function coordPair(lat, lon, placeName) {
+    const box = document.createElement("div");
+    box.className = "coords";
+    box.appendChild(coordButton("纬度", lat, placeName));
+    box.appendChild(coordButton("经度", lon, placeName));
+    return box;
+  }
+
+  // 这个页面里所有请求都从这里过，方便把 URL 打出来给人看
+  async function get(url) {
+    log("u", "GET " + url);
+    const res = await fetch(url);
+    log(res.ok ? "o" : "e", "← " + res.status + " " + res.statusText);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.reason || ("HTTP " + res.status));
+    }
+    return res.json();
+  }
+
+  // ---------- 接口 1：城市搜索 ----------
+  async function searchCity(name) {
+    const url = "https://geocoding-api.open-meteo.com/v1/search?name="
+      + encodeURIComponent(name) + "&count=6&language=zh&format=json";
+    const data = await get(url);
+    return data.results || [];   // 搜不到时没有 results 键
+  }
+
+  // ---------- 接口 2：查天气 ----------
+  async function getWeather(lat, lon) {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat
+      + "&longitude=" + lon
+      + "&current=temperature_2m,weather_code,wind_speed_10m"
+      + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+      + "&timezone=auto&forecast_days=3";
+    return get(url);
+  }
+
+  function renderList(rows) {
+    resultsEl.textContent = "";
+    if (!rows.length) {
+      statusEl.textContent = "没有找到这个城市（空串和单个字接口一律返回空，试试多打几个字）";
+      return;
+    }
+    statusEl.textContent = "找到 " + rows.length + " 个：点名字查天气，点坐标只复制那个数。";
+    rows.forEach((row) => {
+      const hit = document.createElement("div");
+      hit.className = "hit";
+
+      const btn = document.createElement("button");
+      btn.className = "city";
+      const meta = [row.country, row.admin1, row.admin2]
+        .filter((x) => x && x !== row.name).join(" · ");
+      const nameEl = document.createElement("span");
+      nameEl.textContent = row.name;
+      btn.appendChild(nameEl);
+      if (meta) {
+        const span = document.createElement("span");
+        span.className = "meta";
+        span.textContent = meta;
+        btn.appendChild(span);
+      }
+      btn.addEventListener("click", () => {
+        showWeather({ name: row.name, lat: row.latitude, lon: row.longitude, tz: row.timezone });
+      });
+
+      hit.appendChild(btn);
+      hit.appendChild(coordPair(row.latitude, row.longitude, row.name));
+      resultsEl.appendChild(hit);
+    });
+  }
+
+  async function showWeather(place) {
+    current = place;
+    statusEl.textContent = "正在查 " + place.name + " 的天气…";
+    try {
+      const w = await getWeather(place.lat, place.lon);
+      renderWeather(place, w);
+      statusEl.textContent = "点上面的城市换一个，或直接改输入框再搜。";
+    } catch (err) {
+      statusEl.textContent = "查天气失败：" + err.message;
+    }
+  }
+
+  function renderWeather(place, w) {
+    const cur = w.current || {};
+    const daily = w.daily || { time: [] };
+    outEl.textContent = "";
+
+    const placeEl = document.createElement("div");
+    placeEl.className = "place";
+    placeEl.textContent = place.name + (w.timezone ? "  ·  " + w.timezone : "");
+
+    const nowEl = document.createElement("div");
+    nowEl.className = "now";
+    nowEl.textContent = label(cur.weather_code) + " · 数据时间 " + (cur.time || "-");
+
+    const bigEl = document.createElement("div");
+    bigEl.className = "big";
+    bigEl.textContent = Math.round(cur.temperature_2m) + "°C";
+
+    const windEl = document.createElement("div");
+    windEl.className = "now";
+    windEl.textContent = "风速 " + cur.wind_speed_10m + " km/h · WMO 码 " + cur.weather_code;
+
+    outEl.appendChild(placeEl);
+    // 查询用的就是这对坐标，跟下面返回里的网格点不是一回事，所以放在地名旁边
+    outEl.appendChild(coordPair(place.lat, place.lon, place.name));
+    outEl.appendChild(nowEl);
+    outEl.appendChild(bigEl);
+    outEl.appendChild(windEl);
+
+    const days = document.createElement("div");
+    days.className = "days";
+    (daily.time || []).forEach((date, i) => {
+      const box = document.createElement("div");
+      box.className = "day";
+      const b = document.createElement("b");
+      b.textContent = ["今天", "明天", "后天"][i] || date;
+      const cond = document.createElement("div");
+      cond.textContent = label(daily.weather_code[i]);
+      const temp = document.createElement("span");
+      temp.textContent = Math.round(daily.temperature_2m_min[i]) + " / "
+        + Math.round(daily.temperature_2m_max[i]) + "°";
+      box.appendChild(b);
+      box.appendChild(cond);
+      box.appendChild(temp);
+      days.appendChild(box);
+    });
+    outEl.appendChild(days);
+  }
+
+  // ---------- 接口 3：定位 ----------
+  async function useHere() {
+    statusEl.textContent = "正在定位…";
+    resultsEl.textContent = "";
+    // 第一层：浏览器定位
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) { reject(new Error("浏览器不支持定位")); return; }
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000, maximumAge: 600000 });
+      });
+      log("o", "geolocation 成功 " + pos.coords.latitude.toFixed(4) + ", " + pos.coords.longitude.toFixed(4));
+      // 原来的 /v1/reverse 逆地理已经 404，这里直接用坐标，名字留空
+      await showWeather({
+        name: "当前位置", lat: pos.coords.latitude, lon: pos.coords.longitude
+      });
+      return;
+    } catch (err) {
+      log("e", "geolocation 失败：" + (err.message || err.code));
+    }
+    // 第二层：IP 猜位置
+    try {
+      const ip = await get("https://ipwho.is/");
+      if (!ip.success) throw new Error("ipwho.is 返回 success=false");
+      let name = ip.city || "当前位置";
+      let lat = ip.latitude;
+      let lon = ip.longitude;
+      // ipwho.is 给的是英文名，再走一次城市搜索换中文名和更准的坐标
+      try {
+        const rows = await searchCity(name);
+        if (rows[0]) { name = rows[0].name; lat = rows[0].latitude; lon = rows[0].longitude; }
+      } catch (err) { log("e", "城市搜索兜底失败：" + err.message); }
+      await showWeather({ name: name, lat: lat, lon: lon, tz: ip.timezone && ip.timezone.id });
+      return;
+    } catch (err) {
+      log("e", "ipwho.is 失败：" + err.message);
+    }
+    statusEl.textContent = "没拿到位置，输入框里手动搜一个吧。";
+  }
+
+  // ---------- 绑定 ----------
+  $("btn-search").addEventListener("click", async () => {
+    const q = $("q").value.trim();
+    resultsEl.textContent = "";
+    outEl.textContent = "";
+    if (!q) { statusEl.textContent = "先输个城市名"; return; }
+    statusEl.textContent = "搜索中…";
+    try {
+      renderList(await searchCity(q));
+    } catch (err) {
+      statusEl.textContent = "搜索失败：" + err.message;
+    }
+  });
+
+  $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-search").click(); });
+  $("btn-geo").addEventListener("click", useHere);
+
+  // WMO 码表一次铺满
+  const wmoBox = $("wmo");
+  Object.keys(WMO).map(Number).sort((a, b) => a - b).forEach((code) => {
+    const row = document.createElement("div");
+    const num = document.createElement("i");
+    num.textContent = code;
+    const txt = document.createElement("span");
+    txt.textContent = label(code);
+    row.appendChild(num);
+    row.appendChild(txt);
+    wmoBox.appendChild(row);
+  });
+})();
+</script>
+</body>
+</html>
