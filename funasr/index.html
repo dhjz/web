@@ -57,6 +57,7 @@
             padding: 24px;
             transition: background .3s, color .3s;
         }
+        a { text-decoration: none; }
         .container { max-width: 1280px; margin: 0 auto; }
 
         /* header */
@@ -407,6 +408,7 @@
                 <div class="sub">FunASR 2pass 流式语音识别 · WebSocket + PCM  <a target="_blank" href="tts.html">tts.html</a></div>
             </div>
             <div class="status-wrap">
+                <a class="badge" href="https://home.199311.xyz:40097/file" target="_blank">文件识别</a>
                 <button class="theme-btn" @click="onFileBtn"
                         :title="fileAsr.recognizing.value ? ('文件识别中 ' + fileAsr.fileProgress.value + '% · 点击取消') : '上传音频文件识别'">
                     {{ fileAsr.recognizing.value ? '⏳' : '📁' }}
