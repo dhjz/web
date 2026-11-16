@@ -76,6 +76,7 @@ window.config = {
         { name: '在线拍照', short: '拍照', url: './camera/index.html', color: '#6420bd' },
         { name: '音频编辑', short: '音频', url: './audio/index.html', color: '#82142a' },
         { name: '音频转换', short: '音频转', url: './audioc/index.html', color: '#DC143C' },
+        { name: '音频提取', short: '提音频', url: './audio/get.html', color: '#2563eb' },
         { name: 'ICON转换', short: 'ICO', url: './ico/index.html', color: '#9370DB' },
         { name: '图片压缩', short: '压缩', url: 'https://tiny.199311.xyz/', color: '#ff3385' },
         { name: 'SVG编辑', short: 'SVG', url: './svg/index.html', color: '#D4237A' },
