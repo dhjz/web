@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DFont - 字体转换与压缩工具</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="index.css">
+  <script src="vue.global.prod.js"></script>
+  <script src="localforage.min.js"></script>
+  <script src="data.js"></script>
+  <script src="pako.bundle.js"></script>
+  <script src="fonteditor-core.bundle.js"></script>
+  <script src="woff2-codec.bundle.js"></script>
+</head>
+<body id="app" v-cloak >
+  <div  @dragover.prevent="onDragOver" @dragleave="onDragLeave" @drop.prevent="onDrop">
+    <div class="header">
+      <div class="logo">🎨 DFont <div class="subtitle">字体转换与压缩工具</div></div>
+      
+    </div>
+    
+    <div class="tabs">
+      <div class="tab" :class="{ active: activeTab === 'convert' }" @click="activeTab = 'convert'">
+        <span class="tab-icon">🔄</span> 字体转换
+      </div>
+      <div class="tab" :class="{ active: activeTab === 'compress' }" @click="activeTab = 'compress'">
+        <span class="tab-icon">📦</span> 字体压缩子集
+      </div>
+    </div>
+    
+    <div class="main-container">
+      <div class="upload-area" 
+           :class="{ 'drag-over': isDragging, 'has-file': currentFile }"
+           @click="triggerUpload">
+        <input type="file" ref="fileInput" :accept="acceptFormats" @change="handleFileSelect" hidden>
+        <div v-if="!currentFile" class="upload-placeholder">
+          <div class="upload-icon">📁</div>
+          <div class="upload-text">点击、拖拽字体文件，或按 Ctrl+V 粘贴字体文件</div>
+          <div class="upload-hint">支持 TTF、OTF、WOFF、WOFF2、EOT、SVG 格式，也可从剪切板粘贴</div>
+        </div>
+        <div v-else class="file-info">
+          <div class="file-icon">📄</div>
+          <div class="file-details">
+            <div class="file-name">{{ currentFile.name }}</div>
+            <div class="file-meta">
+              <span class="file-size">{{ formatSize(currentFile.size) }}</span>
+              <span class="file-format">{{ getFileFormat(currentFile.name) }}</span>
+            </div>
+          </div>
+          <button class="btn-remove" @click.stop="removeFile">✕</button>
+        </div>
+      </div>
+      
+      <div class="tab-content" v-show="activeTab === 'convert'">
+        <div class="options-panel">
+          <div class="option-group">
+            <label>目标格式</label>
+            <div class="format-options">
+              <label
+                v-for="fmt in targetFormats"
+                :key="fmt"
+                class="format-option"
+                :class="{ disabled: isSameFormatDisabled(fmt) }"
+              >
+                <input type="radio" v-model="convertFormat" :value="fmt" :disabled="isSameFormatDisabled(fmt)">
+                <span class="format-label">{{ fmt.toUpperCase() }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="option-group" v-if="(activeTab === 'convert' && convertFormat === 'woff2') || (activeTab === 'compress' && compressFormat === 'woff2')">
+            <label>WOFF2 压缩质量</label>
+            <div class="encoder-hint">
+              质量 0～11，数值越大体积通常更小但更慢。默认 8：兼顾速度和体积；10～11 适合追求更小体积；0～4 更快但体积更大。
+            </div>
+            <div class="quality-row">
+              <input type="range" min="0" max="11" step="1" v-model.number="woff2Quality">
+              <span class="quality-value">quality {{ woff2Quality }}</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-large" @click="convertFont" :disabled="!currentFile || loading">
+          <span v-if="loading" class="loading-spinner"></span>
+          {{ loading ? '转换中...' : '开始转换' }}
+        </button>
+      </div>
+      
+      <div class="tab-content" v-show="activeTab === 'compress'">
+        <div class="options-panel">
+          <div class="option-group">
+            <label>需要保留的文字</label>
+            <textarea v-model="compressText" placeholder="请输入需要保留的文字，工具将只提取包含这些文字的字体子集..." rows="4"></textarea>
+            <div class="preset-buttons">
+              <button v-for="preset in hanziPresets" :key="preset.name" class="btn-preset" @click="applyPreset(preset.text)">
+                {{ preset.name }}
+              </button>
+            </div>
+            <div class="char-count">已输入 {{ compressText.length }} 个字符，{{ uniqueCharCount }} 个不重复字符</div>
+          </div>
+          <div class="option-group">
+            <label>目标格式</label>
+            <div class="format-options">
+              <label v-for="fmt in compressFormats" :key="fmt" class="format-option">
+                <input type="radio" v-model="compressFormat" :value="fmt">
+                <span class="format-label">{{ fmt.toUpperCase() }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-large" @click="compressFont" :disabled="!currentFile || !compressText.trim() || loading">
+          <span v-if="loading" class="loading-spinner"></span>
+          {{ loading ? '压缩中...' : '开始压缩' }}
+        </button>
+      </div>
+      
+      <div v-if="result" class="result-panel">
+        <div class="result-header">
+          <span class="result-icon">✅</span>
+          <span>{{ activeTab === 'convert' ? '转换完成' : '压缩完成' }}</span>
+        </div>
+        <div class="result-stats">
+          <div class="stat-item">
+            <div class="stat-label">原始大小</div>
+            <div class="stat-value">{{ formatSize(result.input_size) }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">输出大小</div>
+            <div class="stat-value">{{ formatSize(result.output_size) }}</div>
+          </div>
+          <div v-if="result.compression_ratio" class="stat-item">
+            <div class="stat-label">压缩比例</div>
+            <div class="stat-value highlight">{{ result.compression_ratio }}%</div>
+          </div>
+          <div v-if="result.char_count" class="stat-item">
+            <div class="stat-label">保留字符</div>
+            <div class="stat-value">{{ result.char_count }} 个</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">耗时</div>
+            <div class="stat-value">{{ result.elapsed_time }}s</div>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-success" @click="downloadResult">⬇️ 下载字体</button>
+          <button class="btn btn-secondary" @click="previewFont">👁️ 预览字体</button>
+        </div>
+        <div class="css-example">
+          <div class="css-example-header">
+            <span class="css-example-title">📝 CSS 引用示例（当前字体）</span>
+            <button class="btn-copy" @click="copyCSS">📋 复制</button>
+          </div>
+          <pre class="css-code"><code>@font-face {
+  font-family: 'MyFont';
+  src: url('{{ result.url }}') format('{{ cssFormat(result.target_format) }}');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.my-font {
+  font-family: 'MyFont', sans-serif;
+}</code></pre>
+        </div>
+      </div>
+    </div>
+    
+    <div class="preview-modal" v-if="showPreview" @click="showPreview = false">
+      <div class="preview-content" @click.stop>
+        <div class="preview-header">
+          <h3>字体预览</h3>
+          <button class="btn-close" @click="showPreview = false">✕</button>
+        </div>
+        <div v-if="previewFormat === 'svg'" class="preview-body preview-svg-text-body">
+          <div class="preview-tag">SVG 字体文字预览</div>
+          <div class="preview-svg-text" v-html="previewSvg"></div>
+        </div>
+        <div v-else class="preview-body" :style="{ fontFamily: 'PreviewFont, sans-serif' }">
+          <div class="preview-text" v-for="size in previewSizes" :key="size" :style="{ fontSize: size + 'px' }">
+            {{ previewText }}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="toast" :class="toast.type" v-if="toast.show">{{ toast.message }}</div>
+    
+    <div class="history-panel" :class="{ 'collapsed': historyCollapsed }">
+      <div class="history-header">
+        <span class="history-title" @click="historyCollapsed = !historyCollapsed">📜 历史记录</span>
+        <div class="history-actions">
+          <button v-if="history.length > 0" class="history-clear" @click.stop="clearAllHistory">全部清除</button>
+          <span class="history-toggle" @click.stop="historyCollapsed = !historyCollapsed">{{ historyCollapsed ? '◀' : '▶' }}</span>
+        </div>
+      </div>
+      <div class="history-list" v-if="!historyCollapsed">
+        <div v-if="history.length === 0" class="history-empty">暂无历史记录</div>
+        <div v-for="item in history" :key="item.output_id" class="history-item" @click="loadHistoryItem(item)">
+          <button class="history-delete" title="删除这条记录" @click.stop="deleteHistoryItem(item)">✕</button>
+          <!-- <div class="history-item-header">
+            <span class="history-time">{{ formatTime(item.timestamp) }}</span>
+          </div> -->
+          <div class="history-item-body">
+            <div class="history-filename">{{ item.output_filename }}</div>
+            <div class="history-info">
+              <span v-if="item.type === 'convert'">{{ item.source_format?.toUpperCase() }} → {{ item.target_format?.toUpperCase() }}</span>
+              <span v-else>{{ item.target_format?.toUpperCase() }}</span>
+              <span>{{ formatSize(item.output_size) }}</span>
+              <span class="history-type">{{ item.type === 'convert' ? '🔄 转换' : '📦 压缩' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="font.js"></script>
+  <script>
+    function startApp() {
+      const app = Vue.createApp({
+      data() {
+        return {
+          activeTab: 'convert',
+          currentFile: null,
+          isDragging: false,
+          loading: false,
+          result: null,
+          convertFormat: 'woff2',
+          woff2Quality: 8,
+          compressFormat: 'woff2',
+          compressText: '',
+          targetFormats: ['ttf', 'otf', 'woff', 'woff2', 'eot', 'svg'],
+          compressFormats: ['ttf', 'otf', 'woff', 'woff2', 'eot', 'svg'],
+          showPreview: false,
+          previewFormat: '',
+          previewSvg: '',
+          previewSizes: [16, 24, 32, 48],
+          previewText: '永字八法 点横竖撇捺折钩提 The quick brown fox jumps over the lazy dog 1234567890',
+          toast: { show: false, message: '', type: 'info' },
+          history: [],
+          historyCollapsed: false,
+          historyStore: null
+        }
+      },
+      computed: {
+        acceptFormats() {
+          return this.targetFormats.map(f => '.' + f).join(',');
+        },
+        uniqueCharCount() {
+          return new Set(this.compressText).size;
+        },
+        hanziPresets() {
+          if (typeof window.hanziList === 'undefined') return [];
+          return window.hanziList.map(item => ({ name: item.name, text: item.text }));
+        }
+      },
+      methods: {
+        isSameFormatDisabled(fmt) {
+          return this.getFileFormat(this.currentFile?.name) === fmt && fmt !== 'ttf';
+        },
+        formatSize(bytes) {
+          return window.DFontFont.formatSize(bytes);
+        },
+        cssFormat(format) {
+          const keyword = {
+            ttf: 'opentype',
+            otf: 'opentype'
+          };
+          return keyword[format] || format;
+        },
+        getFileFormat(filename) {
+          if (!filename) return '';
+          return filename.split('.').pop().toLowerCase();
+        },
+        showToast(message, type = 'info') {
+          this.toast = { show: true, message, type };
+          setTimeout(() => { this.toast.show = false; }, 3000);
+        },
+        applyPreset(text) {
+          this.compressText = text;
+          this.showToast('已应用预设文本', 'success');
+        },
+        triggerUpload() {
+          this.$refs.fileInput.click();
+        },
+        onDragOver() {
+          this.isDragging = true;
+        },
+        onDragLeave() {
+          this.isDragging = false;
+        },
+        onDrop(e) {
+          this.isDragging = false;
+          const files = e.dataTransfer.files;
+          if (files.length > 0) {
+            this.processFiles(files);
+          }
+        },
+        async onPaste(e) {
+          const files = Array.from(e.clipboardData?.files || []);
+          const fontFiles = files.filter(file => this.targetFormats.includes(this.getFileFormat(file.name)));
+          if (fontFiles.length > 0) {
+            e.preventDefault();
+            await this.processFiles(fontFiles);
+            return;
+          }
+          if (files.length === 0 && e.clipboardData?.items?.length) {
+            e.preventDefault();
+            try {
+              const items = await window.DFontFont.readClipboardFonts();
+              const normalized = items.map(item => this.normalizeClipboardFile(item));
+              await this.processFiles(normalized);
+            } catch (err) {
+              this.showToast('粘贴字体失败: ' + err.message, 'error');
+            }
+          }
+        },
+        guessExt(type) {
+          if (/woff2/i.test(type)) return '.woff2';
+          if (/woff/i.test(type)) return '.woff';
+          if (/otf/i.test(type)) return '.otf';
+          if (/ttf|truetype/i.test(type)) return '.ttf';
+          return '';
+        },
+        normalizeClipboardFile(item) {
+          if (item.blob) {
+            const ext = (item.name.match(/\.[^.]+$/) || [''])[0];
+            const name = ext ? item.name : item.name + (this.guessExt(item.blob.type) || '');
+            return new File([item.blob], name, { type: item.blob.type });
+          }
+          return item;
+        },
+        handleFileSelect(e) {
+          const files = e.target.files;
+          if (files.length > 0) {
+            this.processFiles(files);
+          }
+          e.target.value = '';
+        },
+        async processFiles(files) {
+          for (const file of files) {
+            await this.processFile(file);
+          }
+          if (files.length > 1) {
+            this.showToast(`已导入 ${files.length} 个字体文件，当前使用最后一个`, 'info');
+          }
+        },
+        async processFile(file) {
+          const ext = this.getFileFormat(file.name);
+          if (!this.targetFormats.includes(ext)) {
+            this.showToast('不支持的文件格式', 'error');
+            return;
+          }
+          this.currentFile = file;
+          this.result = null;
+          try {
+            await window.DFontFont.ensure();
+            this.showToast('字体处理模块已就绪', 'success');
+          } catch (err) {
+            this.showToast('字体处理模块加载失败: ' + err.message, 'error');
+            this.currentFile = null;
+          }
+        },
+        removeFile() {
+          this.currentFile = null;
+          this.filePath = null;
+          this.result = null;
+        },
+        async convertFont() {
+          if (!this.currentFile) {
+            this.showToast('请先上传字体文件', 'error');
+            return;
+          }
+          this.loading = true;
+          this.result = null;
+          try {
+            const result = await window.DFontFont.convert(this.currentFile, this.convertFormat, {
+              woff2Quality: this.woff2Quality
+            });
+            this.result = result;
+            this.addHistory('convert', result);
+            this.showToast('转换成功', 'success');
+          } catch (err) {
+            this.showToast('转换失败: ' + err.message, 'error');
+          } finally {
+            this.loading = false;
+          }
+        },
+        async compressFont() {
+          if (!this.currentFile) {
+            this.showToast('请先上传字体文件', 'error');
+            return;
+          }
+          if (!this.compressText.trim()) {
+            this.showToast('请输入需要保留的文字', 'error');
+            return;
+          }
+          this.loading = true;
+          this.result = null;
+          try {
+            const result = await window.DFontFont.compress(this.currentFile, this.compressText, this.compressFormat, { woff2Quality: this.woff2Quality });
+            this.result = result;
+            this.addHistory('compress', result);
+            this.showToast('压缩成功', 'success');
+          } catch (err) {
+            this.showToast('压缩失败: ' + err.message, 'error');
+          } finally {
+            this.loading = false;
+          }
+        },
+        downloadResult() {
+          if (!this.result || !this.result.url) return;
+          const link = document.createElement('a');
+          link.href = this.result.url;
+          link.download = this.result.output_filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        },
+        clearLoadedPreviewFonts() {
+          for (const font of Array.from(document.fonts)) {
+            if (font.family === 'PreviewFont') document.fonts.delete(font);
+          }
+        },
+        getPreviewSource() {
+          if (this.result && this.result.bytes) return this.result;
+          if (this.currentFile) return { bytes: null, blob: this.currentFile.blob };
+          return null;
+        },
+        async loadPreviewFont(result) {
+          const source = result || this.getPreviewSource();
+          if (!source) return false;
+          this.clearLoadedPreviewFonts();
+          this.previewFormat = '';
+          this.previewSvg = '';
+          try {
+            const bytes = source.bytes
+              ? (source.bytes instanceof Uint8Array ? source.bytes : new Uint8Array(source.bytes))
+              : new Uint8Array(await source.blob.arrayBuffer());
+            const format = window.DFontFont.detectFormat(bytes, source.output_filename || (this.currentFile && this.currentFile.name));
+            if (format === 'svg') {
+              this.previewSvg = window.DFontFont.svgTextPreview(bytes, this.previewText);
+              this.previewFormat = 'svg';
+              return true;
+            }
+            var faceBytes = bytes;
+            await window.DFontFont.ensure();
+            if (format === 'eot') {
+              faceBytes = await window.DFontFont.convert(new Blob([bytes], { type: 'application/octet-stream' }), 'ttf').then(function (result) { return result.bytes; });
+            }
+            const previewBytes = faceBytes instanceof Uint8Array ? faceBytes.slice() : new Uint8Array(faceBytes);
+            const fontFace = new FontFace('PreviewFont', previewBytes.buffer);
+            const loadedFont = await fontFace.load();
+            document.fonts.add(loadedFont);
+            return true;
+          } catch (err) {
+            console.error('字体预览加载失败:', err);
+            return false;
+          }
+        },
+        async previewFont() {
+          if (!this.currentFile) {
+            this.showToast('请先上传字体文件', 'error');
+            return;
+          }
+          this.showPreview = true;
+          const previewSource = this.getPreviewSource();
+          if (!(await this.loadPreviewFont(previewSource))) {
+            this.showToast('字体预览加载失败', 'error');
+          }
+        },
+        formatTime(timestamp) {
+          if (!timestamp) return '';
+          const date = new Date(timestamp);
+          const now = new Date();
+          const diff = now - date;
+          
+          if (diff < 60000) return '刚刚';
+          if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+          if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+          
+          return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        },
+        copyCSS() {
+          if (!this.result || !this.result.url) return;
+          const cssCode = `@font-face {
+  font-family: 'MyFont';
+  src: url('${this.result.url}') format('${this.cssFormat(this.result.target_format)}');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.my-font {
+  font-family: 'MyFont', sans-serif;
+}`;
+          navigator.clipboard.writeText(cssCode).then(() => {
+            this.showToast('CSS代码已复制', 'success');
+          }).catch(() => {
+            this.showToast('复制失败', 'error');
+          });
+        },
+        async initHistory() {
+          try {
+            this.historyStore = window.localforage.createInstance({ name: 'dfont', storeName: 'history' });
+            await this.loadHistory();
+          } catch (err) {
+            console.error('初始化历史记录失败:', err);
+          }
+        },
+        async loadHistory() {
+          if (!this.historyStore) return;
+          try {
+            const keys = await this.historyStore.keys();
+            const items = [];
+            for (const key of keys) {
+              const item = await this.historyStore.getItem(key);
+              if (item) items.push(item);
+            }
+            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+            this.history = items
+              .filter(item => new Date(item.timestamp).getTime() > cutoff)
+              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+              .slice(0, 50);
+            for (const item of items) {
+              if (new Date(item.timestamp).getTime() <= cutoff) await this.historyStore.removeItem(item.output_id);
+            }
+          } catch (err) {
+            console.error('加载历史记录失败:', err);
+          }
+        },
+        async addHistory(type, result) {
+          if (!this.historyStore) return;
+          if ((result.output_size || 0) > 8 * 1024 * 1024) return;
+          const item = {
+            type: type,
+            output_id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+            output_filename: result.output_filename,
+            source_format: result.source_format,
+            target_format: result.target_format,
+            input_size: result.input_size,
+            output_size: result.output_size,
+            elapsed_time: result.elapsed_time,
+            char_count: result.char_count,
+            compression_ratio: result.compression_ratio,
+            bytes: result.bytes,
+            url: result.url,
+            timestamp: new Date().toISOString()
+          };
+          try {
+            await this.historyStore.setItem(item.output_id, item);
+            await this.loadHistory();
+          } catch (err) {
+            console.error('保存历史记录失败:', err);
+          }
+        },
+        async deleteHistoryItem(item) {
+          if (!this.historyStore || !item.output_id) return;
+          try {
+            await this.historyStore.removeItem(item.output_id);
+            this.history = this.history.filter(h => h.output_id !== item.output_id);
+            this.showToast('已删除历史记录', 'success');
+          } catch (err) {
+            console.error('删除历史记录失败:', err);
+            this.showToast('删除失败', 'error');
+          }
+        },
+        async clearAllHistory() {
+          if (!this.historyStore || !window.confirm('确定要清除全部历史记录吗？')) return;
+          try {
+            await this.historyStore.clear();
+            this.history = [];
+            this.showToast('已清除全部历史记录', 'success');
+          } catch (err) {
+            console.error('清除历史记录失败:', err);
+            this.showToast('清除失败', 'error');
+          }
+        },
+        loadHistoryItem(item) {
+          this.activeTab = item.type === 'compress' ? 'compress' : 'convert';
+          this.result = {
+            bytes: item.bytes ? new Uint8Array(item.bytes) : null,
+            url: item.url,
+            output_filename: item.output_filename,
+            target_format: item.target_format,
+            input_size: item.input_size || 0,
+            output_size: item.output_size || 0,
+            elapsed_time: item.elapsed_time,
+            char_count: item.char_count,
+            compression_ratio: item.compression_ratio
+          };
+          this.showToast('已加载历史记录', 'info');
+        },
+      },
+      mounted() {
+        this.initHistory();
+        window.addEventListener('paste', this.onPaste.bind(this));
+      }
+      });
+      app.mount('#app');
+    }
+    startApp();
+  </script>
+</body>
+</html>

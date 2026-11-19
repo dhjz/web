@@ -1,216 +1,219 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文本转PDF工具</title>
-    <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style id="page-style">@page { margin: 20mm; }</style>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { height: 100%; font-family: 'Segoe UI', "Microsoft YaHei", sans-serif; background-color: #f4f7f6; overflow: hidden; }
-        .container { display: flex; flex-direction: column; height: 100vh; padding: 20px; position: relative; }
-        textarea { flex-grow: 1; width: 100%; resize: none; padding: 20px; font-size: 16px; line-height: 1.6; border: 2px dashed #ccc; border-radius: 8px; outline: none; background-color: #fff; transition: border-color 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        textarea:focus { border-color: #4CAF50; }
-        .controls-container { margin-top: 20px; background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 15px 25px; display: flex; flex-direction: column; gap: 15px; }
-        .main-controls { display: flex; justify-content: space-between; align-items: center; }
-        .settings-group { display: flex; gap: 30px; align-items: center; }
-        .radio-group { display: flex; gap: 15px; }
-        .checkbox-group { display: flex; align-items: center; gap: 5px; color: #d84315; font-weight: bold; cursor: pointer; }
-        .settings-group label { cursor: pointer; font-size: 15px; display: flex; align-items: center; gap: 5px; }
-        .custom-params { display: none; align-items: center; gap: 25px; background-color: #fff3e0; padding: 12px 20px; border-radius: 6px; border: 1px dashed #ffb74d; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-        .custom-params label { font-size: 14px; color: #333; display: flex; align-items: center; gap: 8px; font-weight: 500; }
-        .custom-params input { width: 70px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; outline: none; font-family: inherit; }
-        .custom-params input:focus { border-color: #ff9800; }
-        .btn-group { display: flex; gap: 12px; }
-        button { color: white; border: none; padding: 10px 20px; font-size: 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s, transform 0.1s; }
-        .btn-primary { background-color: #2196F3; }
-        .btn-primary:hover { background-color: #1976D2; }
-        .btn-secondary { background-color: #4CAF50; }
-        .btn-secondary:hover { background-color: #45a049; }
-        .btn-clear { background-color: #f44336; }
-        .btn-clear:hover { background-color: #da190b; }
-        button:active { transform: scale(0.98); }
-        #drop-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(33, 150, 243, 0.9); color: white; font-size: 32px; font-weight: bold; display: none; justify-content: center; align-items: center; z-index: 9999; pointer-events: none; }
-        #print-container { display: none; }
-        @media print { body * { visibility: hidden; } body, html { background-color: #fff; margin: 0; padding: 0; height: auto; overflow: visible; } #print-container, #print-container * { visibility: visible; } #print-container { display: block; position: absolute; left: 0; top: 0; width: 100%; white-space: pre-wrap; word-wrap: break-word; font-family: 'Segoe UI', "Microsoft YaHei", sans-serif; color: #000; } }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>PDF 工作台 · 本地离线</title>
+  <link rel="stylesheet" href="static/app.css" />
 </head>
 <body>
-
-    <div class="container" id="drop-zone">
-        <div id="drop-overlay">松开鼠标，将文件导入到文本框</div>
-        <textarea id="text-input" placeholder="请在此输入文本，或者将 .txt 文件拖拽到页面任意位置..."></textarea>
-        
-        <div class="controls-container">
-            <div class="main-controls">
-                <div class="settings-group">
-                    <div class="radio-group">
-                        <label><input type="radio" name="insert-mode" value="overwrite" checked> 覆盖原内容</label>
-                        <label><input type="radio" name="insert-mode" value="append"> 追加到末尾</label>
-                    </div>
-                    <label class="checkbox-group">
-                        <input type="checkbox" id="custom-mode"> 开启自定义排版 (减少页数)
-                    </label>
-                </div>
-                <div class="btn-group">
-                    <button id="clear-btn" class="btn-clear">清空</button>
-                    <button id="convert-img-btn" class="btn-secondary">生成图片版 PDF</button>
-                    <button id="convert-text-btn" class="btn-primary">生成文本版 PDF (可复制)</button>
-                </div>
-            </div>
-
-            <div class="custom-params" id="custom-params-panel">
-                <label>字号 (pt): <input type="number" id="param-fontsize" value="10.5" step="0.5" min="5"></label>
-                <label>行高 (倍数): <input type="number" id="param-lineheight" value="1.4" step="0.1" min="1"></label>
-                <label>页边距 (mm): <input type="number" id="param-margin" value="10" step="1" min="0"></label>
-            </div>
+  <div id="app" v-cloak>
+    <div class="workbench">
+      <header class="titlebar">
+        <div class="titlebar-left"><span class="app-icon">📄</span><strong>PDF 工作台</strong><span class="title-sep"></span><span class="muted">本地离线 · 文件不上传</span></div>
+        <div class="titlebar-right">
+          <button class="tiny-btn" @click="openHttpLoad" title="从 HTTP 地址加载 PDF 二进制数据">🌐 从 HTTP 加载 PDF（二进制）</button>
+          <span class="badge" :class="badgeClass">{{ statsText }}</span>
+          <button class="icon-btn" @click="toggleTheme" :title="dark?'切换浅色':'切换深色'">{{ dark ? '☀️' : '🌙' }}</button>
         </div>
+      </header>
+      <main class="workspace">
+        <section class="left-pane">
+          <div class="pane file-pane">
+            <div class="pane-head">
+              <span class="pane-title">📁 文件列表</span>
+              <span class="muted small" v-if="files.length">按列表顺序处理 · {{ files.length }} 个文件</span>
+              <span class="flex1"></span>
+              <button class="tiny-btn" @click="pickFiles" title="上传文件">＋ 添加</button>
+              <button class="tiny-btn" @click="clearFiles" :disabled="!files.length" title="清空文件列表">🗑</button>
+            </div>
+            <div class="dropzone" :class="{over:dragOver}"
+                 @click="pickFiles" @dragover.prevent="dragOver=true" @dragleave.prevent="dragOver=false" @drop.prevent="onDrop">
+              <div class="dz-icon">📂</div>
+              <div>上传 / 拖拽文件到这里，或 <span class="link-btn">浏览</span></div>
+              <div class="muted small">仅支持 PDF 和图片 · 支持整个窗口粘贴（Ctrl+V） · 可多选</div>
+            </div>
+            <div class="file-tools">
+              <select v-model="category" class="mini-select" @change="sortKey='name'">
+                <option value="all">全部分类</option>
+                <option value="pdf">PDF</option>
+                <option value="image">图片</option>
+                <option value="text">文本</option>
+                <option value="other">其他</option>
+              </select>
+              <input v-model="keyword" class="mini-input" placeholder="搜索文件名…" />
+              <button class="tiny-btn" @click="resetFilters" :disabled="!keyword && category==='all'" title="重置筛选">↺</button>
+            </div>
+            <div class="file-sort">
+              <span class="muted small">排序：</span>
+              <button v-for="s in sorts" :key="s.key" class="sort-btn" :class="{on:sortKey===s.key}" @click="sortKey=s.key">{{s.label}}</button>
+              <span class="flex1"></span>
+              <form class="manual-order-form" v-if="sortKey==='manual'" @submit.prevent="moveFileByOrder">
+                <input v-model="manualOrder" class="manual-order-input" type="number" min="1" :max="visibleFiles.length" :disabled="!visibleFiles.length" placeholder="序号" title="输入目标序号后回车移动选中文件" />
+                <button class="tiny-btn" type="submit" :disabled="!selected.size || !visibleFiles.length">移动</button>
+              </form>
+              <button class="tiny-btn" :class="{on:selected.size===visibleFiles.length && visibleFiles.length}" @click="toggleSelectAll">{{ selected.size===visibleFiles.length ? '取消全选' : '全选' }}</button>
+            </div>
+            <div class="file-list">
+              <div v-for="f in visibleFiles" :key="f.id" :data-file-id="f.id" class="file-row" :class="{selected:selected.has(f.id), dragging:dragFileId===f.id}" draggable="true" @mousedown="onFileDragArm($event,f.id)" @dragstart="onFileDragStart($event,f.id)" @dragenter="onFileDragOver($event)" @dragover="onFileDragOver($event)" @dragleave="onFileDragLeave($event)" @drop="onFileDrop($event,f.id)" @dragend="onFileDragEnd" @click="toggleSelect(f.id)">
+                <span class="check" :class="{on:selected.has(f.id)}">{{ selected.has(f.id) ? '✓' : '' }}</span>
+                <span class="file-ext" :class="extClass(f.name)">{{ extLabel(f.name) }}</span>
+                <span class="file-meta"><span class="file-name" :title="f.name">{{f.name}}</span><span class="muted small">{{ fmtSize(f.size) }} · {{ fmtTime(f.time) }}<span v-if="f.pages"> · {{ f.pages }} 页</span></span></span>
+                <button class="row-x" @click.stop="removeFile(f.id)" title="移除">✕</button>
+              </div>
+              <div v-if="!visibleFiles.length" class="hint-empty">暂无文件<br><span class="muted small">通过上方上传、拖拽或粘贴添加</span></div>
+            </div>
+          </div>
+          <div class="pane tool-pane">
+            <div class="pane-head"><span class="pane-title">🧰 工具列表</span><span class="flex1"></span><span class="muted small" v-if="!selected.size">请先选择文件</span></div>
+            <div class="tool-grid">
+              <button v-for="t in tools" :key="t.name" class="tool-tile" :class="{disabled:!canUse(t)}" :disabled="!canUse(t)" @click="openTool(t)" :title="canUse(t)?t.desc:'请先选择文件'">
+                <span class="tool-ico">{{t.icon}}</span><span class="tool-txt"><b>{{t.title}}</b><small>{{t.desc}}</small></span>
+              </button>
+            </div>
+          </div>
+        </section>
+        <section class="right-pane">
+          <div class="pane-head">
+            <span class="pane-title">📋 任务列表</span>
+            <span class="badge subtle">{{ tasks.length }} 个任务</span>
+            <span class="flex1"></span>
+            <button class="tiny-btn" :disabled="!runnable.length" @click="startAll">▶ 全部开始</button>
+          </div>
+          <div class="task-list">
+            <div v-for="t in tasks" :key="t.id" class="task-card" :class="'st-'+t.status">
+              <div class="task-top">
+                <span class="task-ico">{{toolOf(t).icon}}</span>
+                <div class="task-title"><b>{{toolOf(t).title}}</b><small class="muted">{{ t.fileNames.join('、') }}</small></div>
+                <span class="status-pill" :class="'s-'+t.status">{{ statusText(t.status) }}</span>
+                <div class="task-actions">
+                  <button class="tiny-btn" @click="startTask(t)" :disabled="t.status==='running'" title="开始">▶</button>
+                  <button class="tiny-btn" @click="editTask(t)" :disabled="t.status==='running'" title="编辑">✎</button>
+                  <button class="tiny-btn" @click="removeTask(t.id)" :disabled="t.status==='running'" title="删除">✕</button>
+                </div>
+              </div>
+              <div class="task-progress"><div class="bar"><i :style="{width:t.progress+'%'}"></i></div><span class="muted small">{{ t.progress }}%</span></div>
+              <div v-if="t.error" class="task-error">{{t.error}}</div>
+              <div class="task-bottom">
+                <span class="muted small">{{ t.time }}</span>
+                <span class="flex1"></span>
+                <button v-if="t.status==='done'" class="btn-sm primary" @click="openDetail(t)">📄 详情</button>
+              </div>
+            </div>
+            <div v-if="!tasks.length" class="task-empty"><div style="font-size:40px">🗂️</div><h3>还没有任务</h3><p class="muted">在左侧选择文件 → 点击工具 → 设置参数 → 添加任务</p></div>
+          </div>
+        </section>
+      </main>
+      <footer class="statusbar">
+        <span>文件 {{files.length}}</span><span class="dot">·</span><span>已选 {{selected.size}}</span><span class="dot">·</span><span>任务 {{tasks.length}}</span>
+        <span class="flex1"></span><span class="muted">{{ runningCount ? runningCount+' 个任务运行中…' : '就绪' }}</span>
+      </footer>
     </div>
 
-    <div id="print-container"></div>
-
-    <script>
-        // DOM 获取
-        const dropOverlay = document.getElementById('drop-overlay');
-        const textarea = document.getElementById('text-input');
-        const clearBtn = document.getElementById('clear-btn');
-        const convertImgBtn = document.getElementById('convert-img-btn');
-        const convertTextBtn = document.getElementById('convert-text-btn');
-        const printContainer = document.getElementById('print-container');
-        const pageStyle = document.getElementById('page-style');
-        
-        const customModeCheckbox = document.getElementById('custom-mode');
-        const customParamsPanel = document.getElementById('custom-params-panel');
-        const inputFontSize = document.getElementById('param-fontsize');
-        const inputLineHeight = document.getElementById('param-lineheight');
-        const inputMargin = document.getElementById('param-margin');
-
-        // ====== LocalStorage 缓存逻辑 ======
-        function loadSettings() {
-            if(localStorage.getItem('pdf_customMode') === 'true') {
-                customModeCheckbox.checked = true;
-                customParamsPanel.style.display = 'flex';
-            }
-            if(localStorage.getItem('pdf_fontSize')) inputFontSize.value = localStorage.getItem('pdf_fontSize');
-            if(localStorage.getItem('pdf_lineHeight')) inputLineHeight.value = localStorage.getItem('pdf_lineHeight');
-            if(localStorage.getItem('pdf_margin')) inputMargin.value = localStorage.getItem('pdf_margin');
-        }
-
-        function saveSettings() {
-            localStorage.setItem('pdf_customMode', customModeCheckbox.checked);
-            localStorage.setItem('pdf_fontSize', inputFontSize.value);
-            localStorage.setItem('pdf_lineHeight', inputLineHeight.value);
-            localStorage.setItem('pdf_margin', inputMargin.value);
-        }
-
-        // 监听参数变化并缓存
-        customModeCheckbox.addEventListener('change', (e) => {
-            customParamsPanel.style.display = e.target.checked ? 'flex' : 'none';
-            saveSettings();
-        });
-        inputFontSize.addEventListener('input', saveSettings);
-        inputLineHeight.addEventListener('input', saveSettings);
-        inputMargin.addEventListener('input', saveSettings);
-
-        // 页面加载时恢复设置
-        loadSettings();
-
-        // ====== 基础控制与拖拽逻辑 ======
-        clearBtn.addEventListener('click', () => {
-            if (textarea.value.trim() !== '' && confirm('确定要清空文本框中的所有内容吗？')) textarea.value = '';
-        });
-
-        window.addEventListener('dragenter', (e) => { e.preventDefault(); dropOverlay.style.display = 'flex'; });
-        window.addEventListener('dragover', (e) => { e.preventDefault(); dropOverlay.style.display = 'flex'; });
-        window.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            if (e.clientX === 0 || e.clientY === 0) dropOverlay.style.display = 'none';
-        });
-
-        window.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropOverlay.style.display = 'none';
-            const files = e.dataTransfer.files;
-            if (files.length === 0) return;
-            const file = files[0];
-            if (!file.type.includes('text') && !file.name.endsWith('.txt') && !file.name.endsWith('.md')) return alert('请上传文本文件 (.txt, .md 等)');
-            
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const textContent = event.target.result;
-                const mode = document.querySelector('input[name="insert-mode"]:checked').value;
-                if (mode === 'overwrite') {
-                    textarea.value = textContent;
-                } else if (mode === 'append') {
-                    const appendText = `文件名: ${file.name}\n文件内容:\n${textContent}\n`;
-                    if (textarea.value && !textarea.value.endsWith('\n')) textarea.value += '\n\n'; 
-                    else if (textarea.value) textarea.value += '\n';
-                    textarea.value += appendText;
-                }
-            };
-            reader.readAsText(file, 'UTF-8');
-        });
-
-        // ====== 生成可复制的文本版 PDF ======
-        convertTextBtn.addEventListener('click', () => {
-            if (!textarea.value.trim()) return alert('没有可转换的内容！');
-            printContainer.innerText = textarea.value.trim();
-
-            if (customModeCheckbox.checked) {
-                printContainer.style.fontSize = (parseFloat(inputFontSize.value) || 10.5) + 'pt';
-                printContainer.style.lineHeight = parseFloat(inputLineHeight.value) || 1.4;
-                pageStyle.innerHTML = `@page { margin: ${parseFloat(inputMargin.value) || 10}mm; }`; 
-            } else {
-                printContainer.style.fontSize = '12pt';   
-                printContainer.style.lineHeight = '1.8';  
-                pageStyle.innerHTML = '@page { margin: 20mm; }'; 
-            }
-            window.print();
-        });
-
-        // ====== 生成不可复制的图片版 PDF ======
-        convertImgBtn.addEventListener('click', () => {
-            if (!textarea.value.trim()) return alert('没有可转换的内容！');
-            
-            const originalBtnText = convertImgBtn.innerText;
-            convertImgBtn.innerText = '正在生成...';
-            convertImgBtn.disabled = true;
-
-            let pdfFontSize = '12pt', pdfLineHeight = '1.8', pdfMargin = 15;
-            if (customModeCheckbox.checked) {
-                pdfFontSize = (parseFloat(inputFontSize.value) || 10.5) + 'pt';
-                pdfLineHeight = (parseFloat(inputLineHeight.value) || 1.4).toString();
-                pdfMargin = parseFloat(inputMargin.value) || 10;
-            }
-
-            const tempDiv = document.createElement('div');
-            tempDiv.style.whiteSpace = 'pre-wrap';
-            tempDiv.style.wordWrap = 'break-word';
-            tempDiv.style.fontFamily = '"Microsoft YaHei", sans-serif';
-            tempDiv.style.fontSize = pdfFontSize;
-            tempDiv.style.lineHeight = pdfLineHeight;
-            tempDiv.innerText = textarea.value.trim();
-
-            const opt = {
-                margin: pdfMargin, 
-                filename: `文本转换_${new Date().getTime()}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(tempDiv).save().then(() => {
-                convertImgBtn.innerText = originalBtnText;
-                convertImgBtn.disabled = false;
-            }).catch(err => {
-                console.error(err);
-                alert('PDF生成失败');
-                convertImgBtn.innerText = originalBtnText;
-                convertImgBtn.disabled = false;
-            });
-        });
-    </script>
+    <div v-if="dialog.show" class="modal-mask">
+      <div class="modal" :class="{wide:dialog.wide && (!dialog.payload || dialog.payload.tool!=='watermark'), 'watermark-modal':!!(dialog.payload && dialog.payload.tool==='watermark')}">
+        <div class="modal-head"><b>{{dialog.title}}</b><button class="icon-btn small-btn" @click="closeDialog">✕</button></div>
+        <div class="modal-body">
+          <template v-if="dialog.type==='params'">
+            <div v-if="dialog.payload && dialog.payload.tool==='watermark'" class="watermark-params">
+              <div class="watermark-config">
+                <div class="param-file" v-if="dialog.payload.files.length"><b>已选文件：</b> {{ dialog.payload.files.map(f=>f.name).join('、') }}</div>
+                <div class="watermark-fields">
+                  <div v-for="p in dialog.params" :key="p.key" v-show="paramVisible(p)" class="field">
+                  <label>{{p.label}}</label>
+                  <select v-if="p.type==='select'" v-model="dialog.form[p.key]"><option v-for="o in p.options" :key="o.value" :value="o.value">{{o.label}}</option></select>
+                <input v-else-if="p.type==='number'" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                <div v-else-if="p.type==='numberRange'" class="number-range">
+                  <input class="nr-slider" type="range" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value)" :min="p.min" :max="p.max" :step="p.step||1" />
+                  <input class="nr-number" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                  <span v-if="p.unit" class="range-val">{{ p.unit }}</span>
+                </div>
+                <input v-else-if="p.type==='color'" type="color" v-model="dialog.form[p.key]" />
+                <input v-else-if="p.type==='password'" type="password" v-model="dialog.form[p.key]" :placeholder="p.placeholder" />
+                <div v-else-if="p.type==='range'" class="rangeline"><input type="range" v-model.number="dialog.form[p.key]" :min="p.min" :max="p.max" :step="p.step||1" /><span class="range-val">{{ dialog.form[p.key] }}{{ p.unit||'' }}</span></div>
+                <textarea v-else-if="p.type==='textarea'" v-model="dialog.form[p.key]" :placeholder="p.placeholder" rows="3"></textarea>
+                <input v-else-if="p.type==='text'" type="text" v-model="dialog.form[p.key]" :placeholder="p.placeholder" />
+                    <div v-else-if="p.type==='check'" class="checkline"><input type="checkbox" v-model="dialog.form[p.key]" /> {{p.hint||'启用'}}</div>
+                  </div>
+                  <div v-if="dialog.error" class="err">{{dialog.error}}</div>
+                </div>
+              </div>
+              <div class="watermark-preview">
+                <div class="wm-preview-head"><b>实时预览</b><span class="muted small">空白 A4（210 × 297 mm）· 固定插入 5 段、每段 80 个「你好」示例文字</span></div>
+                <div class="wm-preview-stage" :class="{loading:watermarkPreview.loading}">
+                  <img v-if="watermarkPreview.url" :src="watermarkPreview.url" alt="水印预览" />
+                  <div v-if="watermarkPreview.loading" class="wm-preview-loading">正在生成预览…</div>
+                  <div v-else-if="watermarkPreview.error" class="err">{{ watermarkPreview.error }}</div>
+                </div>
+              </div>
+            </div>
+            <template v-else>
+              <div class="param-file" v-if="dialog.payload.files.length"><b>已选文件：</b> {{ dialog.payload.files.map(f=>f.name).join('、') }}</div>
+              <div v-for="p in dialog.params" :key="p.key" v-show="paramVisible(p)" class="field">
+                <label>{{p.label}}</label>
+                <select v-if="p.type==='select'" v-model="dialog.form[p.key]"><option v-for="o in p.options" :key="o.value" :value="o.value">{{o.label}}</option></select>
+                <input v-else-if="p.type==='number'" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                <div v-else-if="p.type==='numberRange'" class="number-range">
+                  <input class="nr-slider" type="range" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value)" :min="p.min" :max="p.max" :step="p.step||1" />
+                  <input class="nr-number" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                  <span v-if="p.unit" class="range-val">{{ p.unit }}</span>
+                </div>
+                <input v-else-if="p.type==='color'" type="color" v-model="dialog.form[p.key]" />
+                <input v-else-if="p.type==='password'" type="password" v-model="dialog.form[p.key]" :placeholder="p.placeholder" />
+                <div v-else-if="p.type==='range'" class="rangeline"><input type="range" v-model.number="dialog.form[p.key]" :min="p.min" :max="p.max" :step="p.step||1" /><span class="range-val">{{ dialog.form[p.key] }}{{ p.unit||'' }}</span></div>
+                <textarea v-else-if="p.type==='textarea'" v-model="dialog.form[p.key]" :placeholder="p.placeholder" rows="3"></textarea>
+                <input v-else-if="p.type==='text'" type="text" v-model="dialog.form[p.key]" :placeholder="p.placeholder" />
+                <div v-else-if="p.type==='check'" class="checkline"><input type="checkbox" v-model="dialog.form[p.key]" /> {{p.hint||'启用'}}</div>
+              </div>
+              <div v-if="dialog.error" class="err">{{dialog.error}}</div>
+            </template>
+          </template>
+          <template v-else-if="dialog.type==='detail'">
+            <div v-if="dialog.outputs.length && hasImageOutputs(dialog.outputs)" class="result-gallery">
+              <div v-for="(o,i) in dialog.outputs.filter(isImageOut)" :key="i" class="gallery-card">
+                <img :src="outputUrl(o)" :alt="o.name" draggable="false" @click="previewOut(o)" />
+                <div class="gallery-meta"><span class="file-name" :title="o.name">{{o.name}}</span><small class="muted">{{fmtSize(o.bytes.length)}}<template v-if="imageDimension(o)"> · {{imageDimension(o).width}} × {{imageDimension(o).height}}</template><template v-if="compressionInfo(o)"> · 压缩 {{ratioText(compressionInfo(o).ratio)}}（省 {{fmtSize(compressionInfo(o).saved)}}）</template><template v-if="imageStats(o)"> · 图片 {{imageStats(o).compressed}}/{{imageStats(o).total}} 张</template></small><div class="out-actions"><button v-if="!isZipOut(o)" class="btn-sm" @click="previewOut(o)">👁 预览</button><button v-if="!isZipOut(o)" class="btn-sm" @click="outputToInput(o)">↳ 输入</button><button class="btn-sm primary" @click="downloadOut(o)">⬇ 下载</button></div></div>
+              </div>
+            </div>
+            <div v-if="dialog.outputs.length" class="result-list">
+              <div v-for="(o,i) in (hasImageOutputs(dialog.outputs) ? dialog.outputs.filter(o => !isImageOut(o)) : dialog.outputs)" :key="i" class="result-row"><span class="file-ext pdf">📄</span><span class="file-meta"><span class="file-name">{{o.name}}</span><small class="muted">{{fmtSize(o.bytes.length)}}<template v-if="compressionInfo(o)"> · 压缩 {{ratioText(compressionInfo(o).ratio)}}（省 {{fmtSize(compressionInfo(o).saved)}}）</template><template v-if="imageStats(o)"> · 图片 {{imageStats(o).compressed}}/{{imageStats(o).total}} 张</template></small></span><div class="out-actions"><button v-if="!isZipOut(o)" class="btn-sm" @click="previewOut(o)">👁 预览</button><button v-if="!isZipOut(o)" class="btn-sm" @click="outputToInput(o)">↳ 输入</button><button class="btn-sm primary" @click="downloadOut(o)">⬇ 下载</button></div></div>
+            </div>
+            <div v-if="!dialog.outputs.length" class="muted">任务没有产生输出文件。</div>
+          </template>
+          <template v-else-if="dialog.type==='http'">
+            <div class="field"><label>PDF 地址（HTTP/HTTPS，跨域需允许 CORS）</label><input type="text" v-model="dialog.form.url" placeholder="http://localhost:8080/artifacts/pdfs/http-sample-1.pdf" @keyup.enter="loadHttpPdf" /></div>
+            <div class="muted small">直接 fetch 二进制并转为 Uint8Array，不经过 Data URL。加载成功后自动加入左侧文件列表。</div>
+            <div v-if="dialog.error" class="err">{{ dialog.error }}</div>
+          </template>
+          <template v-else-if="dialog.type==='preview'">
+            <div v-if="dialog.preview.kind==='image'" class="preview-image"><img :src="dialog.preview.url" :alt="dialog.title" /></div>
+            <div v-else-if="dialog.preview.kind==='pdf'" class="preview-pdf">
+              <iframe class="pdf-frame" :src="dialog.preview.url" title="PDF 预览"></iframe>
+            </div>
+            <pre v-else-if="dialog.preview.kind==='text'" class="preview-text">{{dialog.preview.text}}</pre>
+          </template>
+        </div>
+        <div class="modal-foot">
+          <button class="btn" @click="closeDialog">{{dialog.type==='detail'?'关闭':dialog.type==='preview'?'返回':'取消'}}</button>
+          <button v-if="dialog.type==='params'" class="btn primary-btn" @click="confirmParams">确定添加任务</button>
+          <button v-if="dialog.type==='http'" class="btn primary-btn" @click="loadHttpPdf">加载 PDF</button>
+        </div>
+      </div>
+    </div>
+    <div id="toasts" class="toast-wrap"></div>
+  </div>
+  <script>
+    try { var t = localStorage.getItem('pdf:theme'); if (t === '"dark"' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); } catch (e) {}
+  </script>
+  <script src="static/vue3.prod.js"></script>
+  <script src="static/pdf-lib.min.js"></script>
+  <script src="static/fontkit.umd.min.js"></script>
+  <script src="static/pdf-encrypt.js"></script>
+  <script src="static/jszip.min.js"></script>
+  <script src="static/pako.min.js"></script>
+  <script src="static/upng.min.js"></script>
+  <script src="static/utils.js"></script>
+  <script src="static/workbench.js"></script>
 </body>
 </html>
