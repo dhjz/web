@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2563eb" />
   <title>PDF 工作台 · 本地离线</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="stylesheet" href="static/app.css" />
 </head>
 <body>
@@ -123,10 +124,10 @@
                   <div v-for="p in dialog.params" :key="p.key" v-show="paramVisible(p)" class="field">
                   <label>{{p.label}}</label>
                   <select v-if="p.type==='select'" v-model="dialog.form[p.key]"><option v-for="o in p.options" :key="o.value" :value="o.value">{{o.label}}</option></select>
-                <input v-else-if="p.type==='number'" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                <input v-else-if="p.type==='number'" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="commitParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
                 <div v-else-if="p.type==='numberRange'" class="number-range">
                   <input class="nr-slider" type="range" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value)" :min="p.min" :max="p.max" :step="p.step||1" />
-                  <input class="nr-number" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                  <input class="nr-number" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="commitParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
                   <span v-if="p.unit" class="range-val">{{ p.unit }}</span>
                 </div>
                 <input v-else-if="p.type==='color'" type="color" v-model="dialog.form[p.key]" />
@@ -135,6 +136,7 @@
                 <textarea v-else-if="p.type==='textarea'" v-model="dialog.form[p.key]" :placeholder="p.placeholder" rows="3"></textarea>
                 <input v-else-if="p.type==='text'" type="text" v-model="dialog.form[p.key]" :placeholder="p.placeholder" />
                     <div v-else-if="p.type==='check'" class="checkline"><input type="checkbox" v-model="dialog.form[p.key]" /> {{p.hint||'启用'}}</div>
+                    <div v-if="p.hint && p.type!=='check'" class="field-hint">{{p.hint}}</div>
                   </div>
                   <div v-if="dialog.error" class="err">{{dialog.error}}</div>
                 </div>
@@ -153,10 +155,10 @@
               <div v-for="p in dialog.params" :key="p.key" v-show="paramVisible(p)" class="field">
                 <label>{{p.label}}</label>
                 <select v-if="p.type==='select'" v-model="dialog.form[p.key]"><option v-for="o in p.options" :key="o.value" :value="o.value">{{o.label}}</option></select>
-                <input v-else-if="p.type==='number'" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                <input v-else-if="p.type==='number'" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="commitParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
                 <div v-else-if="p.type==='numberRange'" class="number-range">
                   <input class="nr-slider" type="range" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value)" :min="p.min" :max="p.max" :step="p.step||1" />
-                  <input class="nr-number" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="setParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
+                  <input class="nr-number" type="number" :value="dialog.form[p.key]" @input="setParam(p, $event.target.value, $event.target)" @change="commitParam(p, $event.target.value, $event.target)" :min="p.min" :max="p.max" :step="p.step||1" />
                   <span v-if="p.unit" class="range-val">{{ p.unit }}</span>
                 </div>
                 <input v-else-if="p.type==='color'" type="color" v-model="dialog.form[p.key]" />
@@ -165,6 +167,7 @@
                 <textarea v-else-if="p.type==='textarea'" v-model="dialog.form[p.key]" :placeholder="p.placeholder" rows="3"></textarea>
                 <input v-else-if="p.type==='text'" type="text" v-model="dialog.form[p.key]" :placeholder="p.placeholder" />
                 <div v-else-if="p.type==='check'" class="checkline"><input type="checkbox" v-model="dialog.form[p.key]" /> {{p.hint||'启用'}}</div>
+                <div v-if="p.hint && p.type!=='check'" class="field-hint">{{p.hint}}</div>
               </div>
               <div v-if="dialog.error" class="err">{{dialog.error}}</div>
             </template>

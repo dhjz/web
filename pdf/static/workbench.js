@@ -12,12 +12,16 @@
   const PARAMS = {
     merge: [],
     split: [ { key:'splitMode', label:'拆分模式', type:'select', def:'single', options:[{value:'single',label:'单个文档（所选页合并为一个 PDF）'},{value:'individual',label:'多个文件（每页单独 PDF，打包 ZIP）'}] },
-             { key:'pages', label:'页码范围（例：1, 3-5，留空由任务选择决定）', type:'text', def:'', placeholder:'1, 3-5' }, PASSWORD ],
-    compress: [ { key:'preset', label:'压缩预设', type:'select', def:'medium', options:[{value:'high',label:'高质量（2560 / 80%）'},{value:'medium',label:'标准（1920 / 65%）'},{value:'low',label:'最小体积（1920 / 30%）'},{value:'custom',label:'自定义'}] },
-                { key:'maxDim', label:'最大边长（像素）', type:'number', def:1920, min:640, max:4096 },
-                { key:'jpegQ', label:'JPEG 质量（%）', type:'range', def:65, min:1, max:100, unit:'%' },
+             { key:'pages', label:'页码范围（例：1, 3-5, odd, even）', type:'text', def:'', placeholder:'1, 3-5, odd' }, PASSWORD ],
+    'add-blank': [ { key:'position', label:'插入位置', type:'select', def:'end', options:[{value:'start',label:'文档开头'},{value:'end',label:'文档结尾'},{value:'after',label:'指定页之后'}] },
+                   { key:'afterPage', label:'指定页（插入到该页之后）', type:'number', def:1, min:1, max:9999, showIf:{key:'position',value:'after'} },
+                   { key:'count', label:'插入页数', type:'number', def:1, min:1, max:1000 },
+                   { key:'sizeSource', label:'空白页尺寸', type:'select', def:'document', options:[{value:'document',label:'跟随文档首页'},{value:'a4',label:'A4'},{value:'letter',label:'Letter'}] }, PASSWORD ],
+    'delete-pages': [ { key:'pages', label:'删除页码范围（例：2, 4-6, even）', type:'text', def:'', placeholder:'2, 4-6, even' }, PASSWORD ],
+    compress: [ { key:'targetDpi', label:'目标清晰度（DPI）', type:'numberRange', def:130, min:50, max:300, step:10, unit:'DPI', hint:'按页面物理尺寸决定图片像素：A4 约 96 DPI 等于 WPS 100% 屏幕显示，200 DPI 约等于原始扫描。只缩小超过目标的图片，不放大。' },
+                { key:'jpegQ', label:'JPEG 质量（%）', type:'range', def:80, min:1, max:100, unit:'%' },
                 { key:'rasterizeAll', label:'强制栅格化所有页面', type:'check', def:false },
-                { key:'jpegEncoder', label:'JPEG 编码器', type:'select', def:'auto', options:[{value:'auto',label:'自动'},{value:'canvas',label:'Canvas'},{value:'jsquash',label:'jSquash'}] },
+                { key:'jpegEncoder', label:'JPEG 编码器', type:'select', def:'jsquash', options:[{value:'auto',label:'自动'},{value:'canvas',label:'Canvas'},{value:'jsquash',label:'jSquash'}] },
                 { key:'pngEncoder', label:'PNG 编码器', type:'select', def:'auto', options:[{value:'auto',label:'自动'},{value:'upng',label:'UPNG.js'}] },
                 PASSWORD ],
     protect: [ { key:'password', label:'新密码', type:'password', def:'', placeholder:'••••••••' },
@@ -25,7 +29,7 @@
                PASSWORD ],
     unlock: [ { key:'password', label:'当前密码', type:'password', def:'', placeholder:'••••••••' } ],
     rotate: [ { key:'angle', label:'顺时针旋转角度', type:'select', def:'90', options:[{value:'90',label:'90°'},{value:'180',label:'180°'},{value:'270',label:'270°'}] }, PASSWORD ],
-    rearrange: [ { key:'order', label:'页面顺序（例：3,1,2，留空按原序）', type:'text', def:'', placeholder:'3,1,2' }, PASSWORD ],
+    rearrange: [ { key:'order', label:'页面顺序（例：3,1,2 局部重排；留空按原序）', type:'text', def:'', placeholder:'3,1,2' }, PASSWORD ],
     'page-numbers': [ { key:'format', label:'页码格式（{n} 当前页，{total} 总页数）', type:'text', def:'Page {n} of {total}', placeholder:'Page {n} of {total}' },
                       { key:'position', label:'位置', type:'select', def:'bottom-center', options:[{value:'top-left',label:'左上'},{value:'top-center',label:'上中'},{value:'top-right',label:'右上'},{value:'bottom-left',label:'左下'},{value:'bottom-center',label:'下中'},{value:'bottom-right',label:'右下'}] },
                       PASSWORD ],
@@ -44,18 +48,19 @@
     signature: [ { key:'text', label:'签名文字（图片签名请在 React 原版绘制后导入）', type:'text', def:'已签名' }, PASSWORD ],
     grayscale: [ PASSWORD ],
     'pdf-to-image': [ { key:'dpi', label:'质量（DPI 50-500）', type:'select', def:'150', options:[{value:'72',label:'72 · 草稿'},{value:'150',label:'150 · 标准'},{value:'300',label:'300 · 打印'},{value:'custom',label:'自定义'}] },
-                      { key:'dpiCustom', label:'自定义 DPI', type:'number', def:150, min:50, max:500 },
+                      { key:'dpiCustom', label:'自定义 DPI', type:'numberRange', def:150, min:50, max:500, step:1, unit:'DPI', showIf:{key:'dpi',value:'custom'} },
+                      { key:'outputWidth', label:'固定输出宽度（像素，0=按 DPI 自动）', type:'number', def:0, min:0, max:10000, step:1, hint:'0 表示按 DPI 自动；填写数值则在该 DPI 渲染后等比例缩放到指定宽度，可能放大。' },
                       { key:'format', label:'图片格式', type:'select', def:'jpg', options:[{value:'jpg',label:'JPG'},{value:'png',label:'PNG'}] },
-                      { key:'jpgQuality', label:'JPG 质量（%）', type:'range', def:80, min:1, max:100, unit:'%' },
-                      { key:'jpegQuality', label:'JPG jSquash 质量（%）', type:'range', def:80, min:1, max:100, unit:'%' },
-                      { key:'useUpng', label:'UPNG.js 压缩（无损，体积更小）', type:'check', def:false, hint:'使用 UPNG.js 压缩（无损，体积更小）', showIf:{key:'format',value:'png'} },
+                      { key:'jpgQuality', label:'JPG 质量（%）', type:'range', def:80, min:1, max:100, unit:'%', showIf:{key:'format',value:'jpg'} },
+                      { key:'useJsquash', label:'使用 jSquash 编码 JPG', type:'check', def:true, hint:'使用 jSquash 编码 JPG（体积更小）', showIf:{key:'format',value:'jpg'} },
+                      { key:'useUpng', label:'UPNG.js 压缩（无损，体积更小）', type:'check', def:true, hint:'使用 UPNG.js 压缩（无损，体积更小）', showIf:{key:'format',value:'png'} },
                       { key:'outputMode', label:'输出方式', type:'select', def:'zip', options:[{value:'zip',label:'单个 ZIP'},{value:'separate',label:'多个文件'}] },
                       PASSWORD ],
     'image-to-pdf': [],
     'extract-images': [ { key:'format', label:'图片格式', type:'select', def:'png', options:[{value:'png',label:'PNG'},{value:'jpg',label:'JPG'}] },
-                        { key:'jpgQuality', label:'JPG 质量（%）', type:'range', def:80, min:1, max:100, unit:'%' },
-                        { key:'jpegQuality', label:'JPG jSquash 质量（%）', type:'range', def:80, min:1, max:100, unit:'%' },
-                        { key:'useUpng', label:'UPNG.js 压缩（无损，体积更小）', type:'check', def:false, hint:'使用 UPNG.js 压缩（无损，体积更小）', showIf:{key:'format',value:'png'} },
+                        { key:'jpgQuality', label:'JPG 质量（%）', type:'range', def:80, min:1, max:100, unit:'%', showIf:{key:'format',value:'jpg'} },
+                        { key:'useJsquash', label:'使用 jSquash 编码 JPG', type:'check', def:true, hint:'使用 jSquash 编码 JPG（体积更小）', showIf:{key:'format',value:'jpg'} },
+                        { key:'useUpng', label:'UPNG.js 压缩（无损，体积更小）', type:'check', def:true, hint:'使用 UPNG.js 压缩（无损，体积更小）', showIf:{key:'format',value:'png'} },
                         { key:'maxWidth', label:'最大宽度（像素，0 表示不限制）', type:'number', def:0, min:0, max:10000, step:1 },
                         { key:'outputMode', label:'输出方式', type:'select', def:'zip', options:[{value:'zip',label:'单个 ZIP'},{value:'separate',label:'多个文件'}] },
                         PASSWORD ],
@@ -109,10 +114,22 @@
         }
         return n;
       }
-      function setParam(p, value, input) { const raw = String(value ?? '').trim(); if (raw !== '' && !Number.isFinite(Number(raw))) return; const next = raw === '' ? '' : clampParam(p, Number(raw)); dialog.value.form[p.key] = next; if (input && String(input.value) !== String(next)) input.value = next; }
+      function setParam(p, value) {
+        const raw = String(value ?? '').trim();
+        if (raw === '' || !Number.isFinite(Number(raw))) return;
+        dialog.value.form[p.key] = Number(raw);
+      }
+      function commitParam(p, value, input) {
+        const raw = String(value ?? '').trim();
+        const next = clampParam(p, raw === '' || !Number.isFinite(Number(raw)) ? Number(p.def ?? p.min ?? 0) : Number(raw));
+        dialog.value.form[p.key] = next;
+        if (input && String(input.value) !== String(next)) input.value = next;
+      }
       watch(() => dialog.value.form && dialog.value.form.format, () => {
-        const p = dialog.value.params.find(x => x.key === 'useUpng');
-        if (p && !paramVisible(p)) dialog.value.form.useUpng = false;
+        const upng = dialog.value.params.find(x => x.key === 'useUpng');
+        if (upng && !paramVisible(upng)) dialog.value.form[upng.key] = upng.def;
+        const jsquash = dialog.value.params.find(x => x.key === 'useJsquash');
+        if (jsquash && !paramVisible(jsquash)) dialog.value.form[jsquash.key] = jsquash.def;
       });
 
       const WM_PREVIEW_KEYS = ['text','color','opacity','fontSize','rotation','repeat','spacing'];
@@ -450,7 +467,7 @@
       async function execute(tool, fs, p, tick) {
         const bytes0=fs[0].bytes; const pwd=p.unlockPassword||undefined;
         const load = (bytes) => PDFLib.PDFDocument.load(bytes, pwd ? { password:pwd, ignoreEncryption:true } : { throwOnInvalidObject:false });
-        const toolTitles = { merge:'合并', split:'拆分', rotate:'旋转', rearrange:'重排', protect:'加密', unlock:'解密', metadata:'元数据', 'page-numbers':'页码', watermark:'水印', signature:'签名', grayscale:'灰度', 'pdf-to-image':'转图片', 'image-to-pdf':'转PDF', 'extract-images':'提取图片', 'pdf-to-text':'转文字', compress:'压缩', repair:'修复' };
+        const toolTitles = { merge:'合并', split:'拆分', rotate:'旋转', rearrange:'重排', 'add-blank':'插入空白页', 'delete-pages':'删除页面', protect:'加密', unlock:'解密', metadata:'元数据', 'page-numbers':'页码', watermark:'水印', signature:'签名', grayscale:'灰度', 'pdf-to-image':'转图片', 'image-to-pdf':'转PDF', 'extract-images':'提取图片', 'pdf-to-text':'转文字', compress:'压缩', repair:'修复' };
         const baseName = (f) => f.name.replace(/\.[^.]+$/, '') || f.name;
         const saveName = (ext, f=fs[0]) => tool==='merge' ? `合并.${ext}` : `${baseName(f)}_${toolTitles[tool]||tool}.${ext}`;
         const renamed = (o, f, suffix, total) => {
@@ -474,12 +491,41 @@
           if (p.splitMode==='individual') { const zip=new JSZip(); for (const i of idx) { const o=await PDFLib.PDFDocument.create(); o.addPage((await o.copyPages(doc,[i]))[0]); zip.file(`page-${i+1}.pdf`, await o.save()); tick(30+Math.round(60*(idx.indexOf(i)+1)/idx.length)); } return [{name:saveName('zip'),bytes:await zip.generateAsync({type:'uint8array'})}]; }
           const out=await PDFLib.PDFDocument.create(); (await out.copyPages(doc, idx)).forEach(pg=>out.addPage(pg)); tick(90); return [{name:saveName('pdf'),bytes:await out.save()}];
         }
+        if (tool==='add-blank') {
+          const doc=await load(bytes0); const n=doc.getPageCount(); let size;
+          const sizeMap={ a4:[595.28,841.89], letter:[612,792] };
+          if (p.sizeSource==='a4' || p.sizeSource==='letter') size=sizeMap[p.sizeSource];
+          else { const first=doc.getPage(0); const s=first.getSize(); size=[s.width,s.height]; }
+          const count=Math.max(1, Math.min(1000, Number(p.count)||1));
+          let at=0;
+          if (p.position==='end') at=n;
+          else if (p.position==='after') { const target=Math.floor(Number(p.afterPage)||1); if (target<1 || target>n) throw new Error('指定页需在 1 到 '+n+' 之间'); at=target; }
+          const final=await PDFLib.PDFDocument.create();
+          const copied=await final.copyPages(doc, doc.getPageIndices());
+          const addBlanks=()=>{ for (let i=0;i<count;i++) final.addPage(size); };
+          for (let i=0;i<n;i++) {
+            if (i===at) addBlanks();
+            final.addPage(copied[i]);
+          }
+          if (at===n) addBlanks();
+          tick(90); return [{name:saveName('pdf'),bytes:await final.save()}];
+        }
+        if (tool==='delete-pages') {
+          const doc=await load(bytes0); const n=doc.getPageCount();
+          if (!String(p.pages||'').trim()) throw new Error('请输入要删除的页码范围');
+          const del=C.parseRange(p.pages, n);
+          if (!del.length) throw new Error('没有匹配的页码');
+          const keep=Array.from({length:n},(_,i)=>i).filter(i=>!del.includes(i+1));
+          if (!keep.length) throw new Error('不能删除所有页面');
+          const out=await PDFLib.PDFDocument.create(); (await out.copyPages(doc, keep)).forEach(pg=>out.addPage(pg));
+          tick(90); return [{name:saveName('pdf'),bytes:await out.save()}];
+        }
         if (tool==='rotate') {
           const doc=await load(bytes0); doc.getPages().forEach(pg=>pg.setRotation(PDFLib.degrees((pg.getRotation().angle + Number(p.angle||90))%360))); tick(70); return [{name:saveName('pdf'),bytes:await doc.save()}]
         }
         if (tool==='rearrange') {
           const doc=await load(bytes0); const n=doc.getPageCount();
-          const order = p.order ? C.parseOrder(p.order, n) : doc.getPageIndices();
+          const order = p.order ? (C.parsePartialOrder(p.order, n) || C.parseOrder(p.order, n)) : doc.getPageIndices();
           const src=await load(bytes0); const out=await PDFLib.PDFDocument.create(); (await out.copyPages(src,order)).forEach(pg=>out.addPage(pg)); tick(80); return [{name:saveName('pdf'),bytes:await out.save()}];
         }
         if (tool==='protect') {
@@ -546,11 +592,14 @@
         }
         if (tool==='compress') {
           const compressForWorkbench = window.CompressCompat.compressForWorkbench;
-          const res = await compressForWorkbench(bytes0, {
-            preset:p.preset||'medium', maxDim:Number(p.maxDim)||1920, jpegQ:Number(p.jpegQ)||65,
-            rasterizeAll:!!p.rasterizeAll, jpegEncoder:p.jpegEncoder||'auto', pngEncoder:p.pngEncoder||'auto',
+          const compressParams = {
+            jpegQ:Number(p.jpegQ)||80,
+            rasterizeAll:!!p.rasterizeAll, jpegEncoder:p.jpegEncoder||'jsquash', pngEncoder:p.pngEncoder||'auto',
             password:pwd
-          }, v=>tick(10+Math.round(80*v)));
+          };
+          if (p.targetDpi !== undefined) compressParams.targetDpi = Number(p.targetDpi);
+          else if (p.maxDim !== undefined) compressParams.maxDim = Number(p.maxDim);
+          const res = await compressForWorkbench(bytes0, compressParams, v=>tick(10+Math.round(80*v)));
           return [{name:saveName('pdf'),bytes:res.bytes,compression:res.compression,stats:res.stats}];
         }
         if (tool==='repair') {
@@ -562,18 +611,21 @@
             const dpi=Math.max(50,Math.min(500,Number(p.dpi==='custom'?p.dpiCustom:p.dpi)||150));
             const fmt=p.format==='png'?'png':'jpg'; const ext=fmt==='png'?'png':'jpg';
             const quality=Math.max(1,Math.min(100,Number(p.jpgQuality)||80))/100;
-            const jpegQuality=Math.max(1,Math.min(100,Number(p.jpegQuality)||80))/100;
+            const useJsquash = fmt==='jpg' && !!p.useJsquash;
             const useUpng = fmt==='png' && !!p.useUpng;
+            const outputWidth=Math.max(0,Math.floor(Number(p.outputWidth)||0));
             const parsedPages=p.pages?C.parseRange(p.pages,0):[];
             const canvases=await C.renderPages(bytes0,dpi/72,pwd,{ pages:parsedPages });
             const zip=new JSZip(); const out=[];
             for (let i=0;i<canvases.length;i++) {
+              const target=outputWidth>0 ? C.resizeCanvasToWidth(canvases[i],outputWidth) : canvases[i];
               const bytes=useUpng
-                ? await C.canvasToBytes(canvases[i],fmt,{upng:true})
-                : await C.canvasToBytes(canvases[i],fmt,{quality,jpegQuality});
+                ? await C.canvasToBytes(target,fmt,{upng:true})
+                : await C.canvasToBytes(target,fmt,{quality,useJsquash});
               const pageNo=parsedPages[i]||i+1;
               const name=`${baseName(fs[0])}-${String(pageNo).padStart(2,'0')}.${ext}`;
-              zip.file(name,bytes); out.push({name,bytes,width:canvases[i].width,height:canvases[i].height});
+              zip.file(name,bytes); out.push({name,bytes,width:target.width,height:target.height});
+              if (target!==canvases[i]) { target.width=0; target.height=0; }
               tick(20+Math.round(70*(i+1)/canvases.length));
             }
             if (p.outputMode==='separate') return out;
@@ -582,11 +634,11 @@
           const extractImagesForWorkbench = window.ImageExtract.extractImagesForWorkbench;
           const fmt=p.format==='jpg'?'jpg':'png'; const ext=fmt==='png'?'png':'jpg';
           const quality=Math.max(1,Math.min(100,Number(p.jpgQuality)||80))/100;
-          const jpegQuality=Math.max(1,Math.min(100,Number(p.jpegQuality)||80))/100;
+          const useJsquash=fmt==='jpg' && !!p.useJsquash;
           const useUpng=fmt==='png' && !!p.useUpng;
           const maxWidth=Math.max(0,Math.floor(Number(p.maxWidth)||0));
           const res=await extractImagesForWorkbench(bytes0, pwd, {
-            format:fmt, quality, jpegQuality, useUpng, maxWidth,
+            format:fmt, quality, useJsquash, useUpng, maxWidth,
             tick:v=>tick(10+Math.round(80*v))
           });
           if (!res.length) throw new Error('未找到可提取的嵌入图片');
@@ -691,7 +743,7 @@
       return { dark, files, selected, keyword, category, sortKey, dragOver, tasks, dialog, sorts, tools:C.TOOLS, toolOf,
         visibleFiles, selectedFiles, orderedFiles, runnable, runningCount, statsText, badgeClass, fmtSize, fmtTime, extLabel, extClass, statusText,
         addFiles, pickFiles, openHttpLoad, loadHttpPdf, onDrop, onBodyDragOver, onBodyDragLeave, onBodyDrop, removeFile, clearFiles, toggleSelect, toggleSelectAll, resetFilters, dragFileId, manualOrder, onFileDragArm, onFileDragStart, onFileDragOver, onFileDragLeave, onFileDrop, onFileDragEnd, moveFileByOrder, canUse, openTool, editTask, closeDialog, confirmParams,
-        removeTask, startTask, startAll, runTask, openDetail, setParam, clampParam, watermarkTextMatrix, downloadOut, outputUrl, isZipOut, isPdfOut, isTextOut, previewOut, outputToInput, isImageOut, hasImageOutputs, paramVisible, toggleTheme, compressionInfo, imageStats, imageDimension, ratioText, watermarkPreview, refreshWatermarkPreview };
+        removeTask, startTask, startAll, runTask, openDetail, setParam, commitParam, clampParam, watermarkTextMatrix, downloadOut, outputUrl, isZipOut, isPdfOut, isTextOut, previewOut, outputToInput, isImageOut, hasImageOutputs, paramVisible, toggleTheme, compressionInfo, imageStats, imageDimension, ratioText, watermarkPreview, refreshWatermarkPreview };
     },
   };
   createApp(App).mount('#app');

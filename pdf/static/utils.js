@@ -73,12 +73,35 @@
   }
   function parseRange(input, n) {
     const out = [];
-    String(input || '').split(/[,，\s]+/).filter(Boolean).forEach((part) => {
+    String(input || '').split(/[,，\s]+/).filter(Boolean).forEach((rawPart) => {
+      const part = rawPart.toLowerCase();
+      if (!Number.isFinite(n) || n <= 0) return;
+      if (part === 'odd' || part === 'even' || part === '奇数页' || part === '偶数页') {
+        const wantOdd = part === 'odd' || part === '奇数页';
+        for (let i = 1; i <= n; i++) if ((i % 2 === 1) === wantOdd) out.push(i);
+        return;
+      }
       const m = part.match(/^(\d+)\s*[-~]\s*(\d+)$/);
       if (m) { for (let i = Math.max(1, +m[1]); i <= Math.min(n, +m[2]); i++) out.push(i); }
       else if (/^\d+$/.test(part)) { const p = +part; if (p >= 1 && p <= n) out.push(p); }
     });
     return [...new Set(out)].sort((a, b) => a - b);
+  }
+  function parsePartialOrder(input, n) {
+    const out = [];
+    const tokens = String(input || '').trim().split(/[,，\s]+/).filter(Boolean);
+    if (!tokens.length) return null;
+    for (const token of tokens) {
+      const num = Number(token);
+      if (!Number.isInteger(num) || num < 1 || num > n) throw new Error('页码必须是 1 到 ' + n + ' 之间的整数：' + token);
+      out.push(num - 1);
+    }
+    if (new Set(out).size !== out.length) throw new Error('重排页码不能重复');
+    const min = Math.min(...out), max = Math.max(...out);
+    if (max - min + 1 !== out.length) throw new Error('填写的页码必须连续，不能漏页：' + Array.from({length:n},(_,i)=>i+1).join(',') + ' 中 ' + (min+1) + '-' + (max+1) + ' 之间不能缺页');
+    const order = Array.from({ length:n }, (_, i) => i);
+    out.forEach((page, i) => { order[min + i] = page; });
+    return order;
   }
   function parseOrder(input, n) {
     const out = [];
@@ -114,28 +137,69 @@
   }
 
   async function renderPages(bytes, scale, password, opts) {
-    const pdfjs = await import('./pdfjs.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.mjs';
+    const pdfjs = await import('./pdfjs.js');
+    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
     const pdf = await pdfjs.getDocument({ data: bytes.slice(), cMapUrl: await getPdfCMapUrl(), cMapPacked: true, useSystemFonts: true, disableFontFace: true, isEvalSupported: false, password: password || undefined }).promise;
     const out = [];
     const list = (opts && opts.pages && opts.pages.length) ? opts.pages : Array.from({length:pdf.numPages},(_,i)=>i+1);
     for (const i of list) {
-      const page = await pdf.getPage(i); const vp = page.getViewport({ scale: scale || 1.5 });
+      const page = await pdf.getPage(i);
+      const baseVp = page.getViewport({ scale: 1 });
+      const targetDpi = opts && Number(opts.targetDpi);
+      const targetMax = opts && Number(opts.maxDim);
+      const baseScale = scale || 1.5;
+      let renderScale = baseScale;
+      if (Number.isFinite(targetDpi) && targetDpi > 0) {
+        renderScale = targetDpi / 72;
+        log('栅格化页面尺寸', {
+          page: i,
+          originalPt: Math.round(baseVp.width) + 'x' + Math.round(baseVp.height),
+          targetDpi: targetDpi,
+          renderScale: Number(renderScale.toFixed(4)),
+          outputPx: Math.round(baseVp.width * renderScale) + 'x' + Math.round(baseVp.height * renderScale)
+        });
+      } else if (Number.isFinite(targetMax) && targetMax > 0) {
+        const longest = Math.max(baseVp.width, baseVp.height);
+        renderScale = Math.min(baseScale, targetMax / longest);
+        log('栅格化页面尺寸', {
+          page: i,
+          originalPt: Math.round(baseVp.width) + 'x' + Math.round(baseVp.height),
+          maxDim: targetMax,
+          baseScale: baseScale,
+          renderScale: Number(renderScale.toFixed(4)),
+          outputPx: Math.round(baseVp.width * renderScale) + 'x' + Math.round(baseVp.height * renderScale),
+          capped: targetMax < longest
+        });
+      }
+      const vp = page.getViewport({ scale: renderScale });
       const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
-      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise; out.push(c);
+      c._pdfWidth = baseVp.width; c._pdfHeight = baseVp.height;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      await page.render({ canvasContext: ctx, viewport: vp }).promise; out.push(c);
     }
     return out;
+  }
+  function resizeCanvasToWidth(canvas, targetWidth) {
+    const width = Math.floor(Number(targetWidth));
+    if (!Number.isFinite(width) || width <= 0 || !canvas || !canvas.width || width === canvas.width) return canvas;
+    const height = Math.max(1, Math.round(canvas.height * width / canvas.width));
+    const scaled = document.createElement('canvas');
+    scaled.width = width; scaled.height = height;
+    const ctx = scaled.getContext('2d');
+    if (!ctx) return canvas;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(canvas, 0, 0, width, height);
+    return scaled;
   }
   async function canvasToBytes(canvas, format, opts) {
     const mime = format==='png' ? 'image/png' : 'image/jpeg';
     const quality = Math.max(0.01, Math.min(1, Number(opts && opts.quality) || 0.8));
-    if (format!=='png' && opts && opts.jpegQuality) {
-      try {
-        const ctx=canvas.getContext('2d');
-        const img=ctx.getImageData(0,0,canvas.width,canvas.height);
-        const bytes=await window.ImageEncode.encodeJpegWithJsquash(img,opts.jpegQuality);
-        if (bytes) return bytes;
-      } catch (e) { /* jSquash 不可用时退回 Canvas */ }
+    if (format!=='png' && opts && opts.useJsquash) {
+      try { return await encodeJpeg(canvas, quality, 'jsquash'); }
+      catch (e) { /* encodeJpeg 内部已回退到 Canvas */ }
     }
     if (format==='png' && opts && opts.upng) {
       try {
@@ -154,8 +218,8 @@
     return Uint8Array.from(bin, ch => ch.charCodeAt(0));
   }
   async function extractText(bytes, password) {
-    const pdfjs = await import('./pdfjs.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.mjs';
+    const pdfjs = await import('./pdfjs.js');
+    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
     const pdf = await pdfjs.getDocument({ data: bytes.slice(), cMapUrl: await getPdfCMapUrl(), cMapPacked: true, useSystemFonts: true, password: password || undefined }).promise;
     const parts = [];
     for (let i = 1; i <= pdf.numPages; i++) { const p = await pdf.getPage(i); const c = await p.getTextContent(); parts.push('--- 第 ' + i + ' 页 ---\n' + c.items.map((x) => x.str).join(' ')); }
@@ -169,7 +233,9 @@
     { name: 'protect', title: '加密 PDF', desc: '使用密码保护文档', icon: '🔒', cat: 'Secure' },
     { name: 'unlock', title: '解除密码', desc: '移除 PDF 密码', icon: '🔓', cat: 'Secure' },
     { name: 'rotate', title: '旋转 PDF', desc: '永久修正页面方向', icon: '🔄', cat: 'Edit' },
-    { name: 'rearrange', title: '重排 PDF', desc: '调整页面顺序', icon: '↔️', cat: 'Edit' },
+    { name: 'rearrange', title: '重排 PDF', desc: '调整页面顺序，可只重排连续区间', icon: '↔️', cat: 'Edit' },
+    { name: 'add-blank', title: '插入空白页', desc: '在开头、结尾或指定页后插入空白页', icon: '➕', cat: 'Edit' },
+    { name: 'delete-pages', title: '删除页面', desc: '按页码范围删除指定页面', icon: '🗑️', cat: 'Edit' },
     { name: 'page-numbers', title: '添加页码', desc: '自动添加页码', icon: '#️⃣', cat: 'Edit' },
     { name: 'watermark', title: '水印', desc: '添加文字水印', icon: '💧', cat: 'Edit' },
     { name: 'metadata', title: '元数据', desc: '编辑文档属性', icon: '🏷️', cat: 'Secure' },
@@ -181,7 +247,7 @@
     { name: 'pdf-to-text', title: 'PDF 转文字', desc: '提取文档纯文本', icon: '📄', cat: 'Convert' },
     { name: 'repair', title: '修复 PDF', desc: '尝试修复损坏文档', icon: '🔧', cat: 'Optimize' },
   ];
-  window.PdfCore = { store, toast, errMsg, readFile, readHttpPdf, fileToDataUrl, download, loadPdf, cjkFont, textFont, getPageCount, parseRange, parseOrder, renderPages, canvasToBytes, extractText, TOOLS, PDFLib };
+  window.PdfCore = { store, toast, errMsg, readFile, readHttpPdf, fileToDataUrl, download, loadPdf, cjkFont, textFont, getPageCount, parseRange, parseOrder, parsePartialOrder, renderPages, resizeCanvasToWidth, canvasToBytes, extractText, TOOLS, PDFLib };
 
   // UPNG needs pako.deflate; without it the encoder would silently fall back to Canvas.
   function upngReady() { return !!(window.UPNG && window.UPNG.encode && window.pako && window.pako.deflate); }
@@ -192,15 +258,7 @@
       return new Uint8Array(window.UPNG.encode([copy.buffer], width, height, 0));
     } catch (e) { return null; }
   }
-  async function encodeJpegWithJsquash(img, quality) {
-    if (!window.MozJPEG || !img) return null;
-    try {
-      const q = clamp(quality, 0.01, 1, 0.65);
-      const encoded = await window.MozJPEG(img, { quality: Math.round(q * 100), progressive: true, optimize_coding: true });
-      return encoded instanceof Uint8Array ? encoded : new Uint8Array(encoded);
-    } catch (e) { return null; }
-  }
-  window.ImageEncode = { encodePngWithUPNG, encodeJpegWithJsquash };
+  window.ImageEncode = { encodePngWithUPNG };
 
 
   const C = window.PdfCore;
@@ -249,23 +307,139 @@
     return canvasBytes;
   }
 
-  async function rasterize(bytes, quality, encoder, tick) {
-    const canvases = await C.renderPages(bytes, 1.5);
+  async function rasterize(bytes, quality, encoder, tick, targetDpi) {
+    const t0 = performance.now();
+    log('栅格化开始', { targetDpi, quality, encoder });
+    const canvases = await C.renderPages(bytes, 1, undefined, { targetDpi });
+    log('栅格化渲染完成', { pages: canvases.length, firstPage: canvases[0] ? canvases[0].width + 'x' + canvases[0].height : '-' });
     const stats = { photos: canvases.length, shrunk: 0, totalImages: canvases.length, compressedImages: 0, reducedBytes: 0 };
     const out = await PDFLib.PDFDocument.create();
     for (let i = 0; i < canvases.length; i++) {
       const canvas = canvases[i];
       const jpg = await encodeJpeg(canvas, quality, encoder, () => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height));
+      log('栅格化第' + (i + 1) + '页', {
+        rendered: canvas.width + 'x' + canvas.height,
+        encoded: canvas.width + 'x' + canvas.height,
+        jpegBytes: jpg ? jpg.byteLength : 0
+      });
       if (jpg && jpg.byteLength) { stats.shrunk++; stats.compressedImages++; stats.reducedBytes += Math.max(0, canvas.width * canvas.height * 3 - jpg.byteLength); }
       const img = await out.embedJpg(jpg);
-      const page = out.addPage([canvas.width, canvas.height]);
-      page.drawImage(img, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+      const pageW = Number(canvas._pdfWidth) || canvas.width;
+      const pageH = Number(canvas._pdfHeight) || canvas.height;
+      const page = out.addPage([pageW, pageH]);
+      page.drawImage(img, { x: 0, y: 0, width: pageW, height: pageH });
       tick((i + 1) / canvases.length * 0.8);
     }
+    log('栅格化完成', { pages: canvases.length, ms: Math.round(performance.now() - t0), stats });
     return { bytes: await out.save({ useObjectStreams: true }), stats };
   }
 
   const log = (...args) => console.log('[PDF压缩]', ...args);
+
+  function ascii85Decode(bytes) {
+    const out = [];
+    let tuple = 0, count = 0;
+    for (let i = 0; i < bytes.length; i++) {
+      const c = bytes[i];
+      if (c === 0x7e) break;
+      if (c <= 0x20) continue;
+      if (c === 0x7a) { out.push(0, 0, 0, 0); continue; }
+      if (c < 0x21 || c > 0x75) continue;
+      tuple = tuple * 85 + (c - 0x21);
+      if (++count === 5) {
+        out.push((tuple >>> 24) & 255, (tuple >>> 16) & 255, (tuple >>> 8) & 255, tuple & 255);
+        tuple = 0; count = 0;
+      }
+    }
+    if (count > 1) {
+      for (let i = count; i < 5; i++) tuple = tuple * 85 + 84;
+      const tail = [(tuple >>> 24) & 255, (tuple >>> 16) & 255, (tuple >>> 8) & 255, tuple & 255];
+      for (let i = 0; i < count - 1; i++) out.push(tail[i]);
+    }
+    return Uint8Array.from(out);
+  }
+
+  function paethPredictor(a, b, c) {
+    const p = a + b - c;
+    const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+    return pa <= pb && pa <= pc ? a : (pb <= pc ? b : c);
+  }
+
+  function undoPngPredictor(data, width, height, colors, bpc, predictor) {
+    const rowBytes = Math.ceil(width * colors * bpc / 8);
+    const stride = rowBytes + 1;
+    if (data.byteLength < stride * height) return null;
+    const out = new Uint8Array(rowBytes * height);
+    let pos = 0;
+    for (let y = 0; y < height; y++) {
+      const ft = data[pos++];
+      for (let x = 0; x < rowBytes; x++) {
+        const raw = data[pos + x];
+        const left = x >= colors ? out[y * rowBytes + x - colors] : 0;
+        const above = y > 0 ? out[(y - 1) * rowBytes + x] : 0;
+        const upperLeft = (y > 0 && x >= colors) ? out[(y - 1) * rowBytes + x - colors] : 0;
+        let v = raw;
+        if (ft === 1) v = raw + left;
+        else if (ft === 2) v = raw + above;
+        else if (ft === 3) v = raw + ((left + above) >> 1);
+        else if (ft === 4) v = raw + paethPredictor(left, above, upperLeft);
+        out[y * rowBytes + x] = v & 255;
+      }
+      pos += rowBytes;
+    }
+    return out;
+  }
+
+  function decodeRawFlatePixels(obj, dict, width, height) {
+    const contents = obj.getContents();
+    const filter = dict.lookup(PDFLib.PDFName.of('Filter'));
+    const filterStr = filter ? filter.toString() : '';
+    if (!contents || !window.pako || !window.pako.inflate || !filterStr.includes('FlateDecode')) return null;
+    let bytes = contents;
+    if (filterStr.includes('ASCII85Decode')) bytes = ascii85Decode(bytes);
+    let inflated;
+    try { inflated = window.pako.inflate(bytes); } catch (e) { log('Flate 解压失败', e); return null; }
+    const bpcObj = dict.lookup(PDFLib.PDFName.of('BitsPerComponent'));
+    const bpc = bpcObj ? Number(bpcObj.toString()) : 8;
+    if (bpc !== 8) return null;
+    const csObj = dict.lookup(PDFLib.PDFName.of('ColorSpace'));
+    const cs = csObj ? csObj.toString() : '/DeviceRGB';
+    const colors = cs.includes('Gray') ? 1 : (cs.includes('CMYK') ? 4 : 3);
+    const dp = dict.lookup(PDFLib.PDFName.of('DecodeParms'));
+    let predictor = 0;
+    if (dp instanceof PDFLib.PDFDict) predictor = Number(dp.lookup(PDFLib.PDFName.of('Predictor')) || 0);
+    else if (dp instanceof PDFLib.PDFArray && dp.size()) {
+      const first = dp.lookup(0);
+      if (first instanceof PDFLib.PDFDict) predictor = Number(first.lookup(PDFLib.PDFName.of('Predictor')) || 0);
+    }
+    let pixels = inflated;
+    if (predictor >= 10 && predictor <= 15) {
+      pixels = undoPngPredictor(inflated, width, height, colors, bpc, predictor);
+    } else if (predictor === 2) {
+      const rowBytes = width * colors;
+      if (inflated.byteLength < rowBytes * height) return null;
+      pixels = inflated.slice();
+      for (let y = 0; y < height; y++) {
+        const base = y * rowBytes;
+        for (let x = colors; x < rowBytes; x++) pixels[base + x] = (pixels[base + x] + pixels[base + x - colors]) & 255;
+      }
+    }
+    const needed = width * height * colors;
+    if (!pixels || pixels.byteLength < needed) { log('原始像素长度不足', pixels && pixels.byteLength, '需要', needed); return null; }
+    const rgba = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0, p = 0, d = 0; i < width * height; i++, p += colors, d += 4) {
+      if (colors === 1) { const v = pixels[p]; rgba[d] = v; rgba[d + 1] = v; rgba[d + 2] = v; }
+      else if (colors === 3) { rgba[d] = pixels[p]; rgba[d + 1] = pixels[p + 1]; rgba[d + 2] = pixels[p + 2]; }
+      else {
+        const c = pixels[p], m = pixels[p + 1], y2 = pixels[p + 2], k = pixels[p + 3];
+        rgba[d] = ((255 - c) * (255 - k) / 255) | 0;
+        rgba[d + 1] = ((255 - m) * (255 - k) / 255) | 0;
+        rgba[d + 2] = ((255 - y2) * (255 - k) / 255) | 0;
+      }
+      rgba[d + 3] = 255;
+    }
+    return { rgba, width, height };
+  }
 
   async function tryDecodeImage(bytes, filterName) {
     if (typeof createImageBitmap === 'function') {
@@ -314,7 +488,18 @@
       if (!isJpeg && !isPng) { stats.skippedFormat++; log('跳过-格式', info); continue; }
       if (!width || !height || originalSize < 10 * 1024) { stats.skippedSmall++; log('跳过-尺寸或过小', info); continue; }
       let bitmap = null;
+      let rawFlate = false;
       try { bitmap = await tryDecodeImage(contents, isJpeg ? '/DCTDecode' : '/FlateDecode'); } catch (e) { /* 解码失败 */ }
+      if (!bitmap && !isJpeg) {
+        const raw = decodeRawFlatePixels(obj, dict, width, height);
+        if (raw) {
+          const c = document.createElement('canvas');
+          c.width = width; c.height = height;
+          c.getContext('2d').putImageData(new ImageData(raw.rgba, width, height), 0, 0);
+          bitmap = c; rawFlate = true;
+          log('原始 Flate 像素解码成功', info);
+        }
+      }
       if (!bitmap) { stats.decodeFail++; log('跳过-解码失败', info); continue; }
       const dim = imageSize(bitmap);
       if (!dim.width || !dim.height) { stats.decodeFail++; log('跳过-解码尺寸无效', info); continue; }
@@ -326,23 +511,34 @@
         canvas.width = targetW; canvas.height = targetH;
         const ctx = canvas.getContext('2d');
         if (!ctx) { stats.failed++; continue; }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         let imageData = null;
         if (isJpeg) ctx.fillStyle = '#fff', ctx.fillRect(0, 0, targetW, targetH);
         ctx.drawImage(bitmap, 0, 0, targetW, targetH);
         bitmap.close && bitmap.close();
-        if (isJpeg || pngEncoder === 'upng' || pngEncoder === 'auto') imageData = ctx.getImageData(0, 0, targetW, targetH);
+        if (isJpeg || rawFlate || pngEncoder === 'upng' || pngEncoder === 'auto') imageData = ctx.getImageData(0, 0, targetW, targetH);
         let data;
-        if (isJpeg) data = await encodeJpeg(canvas, quality, jpegEncoder, () => imageData);
+        if (isJpeg || rawFlate) data = await encodeJpeg(canvas, quality, jpegEncoder, () => imageData);
         else {
           if (window.ImageEncode) {
             data = await window.ImageEncode.encodePngWithUPNG(imageData.data, targetW, targetH);
           }
           if (!data) data = dataUrlToBytes(canvas.toDataURL('image/png'));
         }
-        // 保留原字典和对象引用，只替换压缩后的图像数据。
+        if (rawFlate) {
+          dict.set(PDFLib.PDFName.of('Filter'), PDFLib.PDFName.of('DCTDecode'));
+          dict.delete(PDFLib.PDFName.of('DecodeParms'));
+          dict.delete(PDFLib.PDFName.of('SMask'));
+          dict.set(PDFLib.PDFName.of('ColorSpace'), PDFLib.PDFName.of('DeviceRGB'));
+          dict.set(PDFLib.PDFName.of('BitsPerComponent'), PDFLib.PDFNumber.of(8));
+        }
+        dict.set(PDFLib.PDFName.of('Width'), PDFLib.PDFNumber.of(targetW));
+        dict.set(PDFLib.PDFName.of('Height'), PDFLib.PDFNumber.of(targetH));
+        // 保留原字典和对象引用，只替换压缩后的图像数据；Width/Height 与编码后像素一致。
         doc.context.assign(ref, PDFLib.PDFRawStream.of(dict, data));
         stats.shrunk++; stats.compressedImages++;
-        if (isJpeg) stats.jpegOptimized = (stats.jpegOptimized || 0) + 1;
+        if (isJpeg || rawFlate) stats.jpegOptimized = (stats.jpegOptimized || 0) + 1;
         else stats.pngOptimized++;
         stats.reducedBytes += originalSize - data.byteLength;
         log('压缩成功', info, targetW + 'x' + targetH, originalSize + 'B -> ' + data.byteLength + 'B');
@@ -359,30 +555,43 @@
     return { bytes: out, stats };
   }
 
+  async function longestPageSidePt(bytes) {
+    try {
+      const doc = await PDFLib.PDFDocument.load(bytes, { throwOnInvalidObject: false });
+      let longest = 0;
+      for (const page of doc.getPages()) {
+        const box = page.getMediaBox();
+        longest = Math.max(longest, Math.abs(box.width), Math.abs(box.height));
+      }
+      return longest || 842;
+    } catch (e) {
+      log('读取页面尺寸失败，按 A4 高度估算', e);
+      return 842;
+    }
+  }
+
   window.CompressCompat = {
     async compressForWorkbench(bytes, params, tick) {
       const p = params || {};
       tick = tick || function () {};
-      const preset = p.preset || 'medium';
-      const presetMap = {
-        high: { maxDim: 2560, jpegQ: 0.8 },
-        medium: { maxDim: 1920, jpegQ: 0.65 },
-        low: { maxDim: 1920, jpegQ: 0.3 }
-      };
-      const cfg = presetMap[preset] || presetMap.medium;
-      const maxDim = preset === 'custom' ? clamp(p.maxDim, 640, 4096, 1920) : cfg.maxDim;
-      const qPercent = clamp(p.jpegQ, 1, 100, Math.round(cfg.jpegQ * 100));
+      const hasLegacyMaxDim = p.maxDim !== undefined && p.maxDim !== null && p.maxDim !== '';
+      const hasTargetDpi = p.targetDpi !== undefined && p.targetDpi !== null && p.targetDpi !== '';
+      const targetDpi = hasLegacyMaxDim && !hasTargetDpi ? undefined : clamp(p.targetDpi, 50, 300, 130);
+      const maxDim = targetDpi === undefined ? clamp(p.maxDim, 640, 4096, 1920) : undefined;
+      const qPercent = clamp(p.jpegQ, 1, 100, 80);
       const quality = qPercent / 100;
-      log('开始压缩', { preset, maxDim, jpegQ: qPercent + '%', rasterizeAll: p.rasterizeAll, jpegEncoder: p.jpegEncoder || 'auto', pngEncoder: p.pngEncoder || 'auto', inputBytes: bytes.byteLength });
+      const jpegEncoder = p.jpegEncoder || 'jsquash';
+      log('开始压缩', { targetDpi, maxDim, jpegQ: qPercent + '%', rasterizeAll: p.rasterizeAll, jpegEncoder, pngEncoder: p.pngEncoder || 'auto', inputBytes: bytes.byteLength });
       let input = bytes.slice();
       if (p.password && window.PdfEncrypt && window.PdfEncrypt.decryptPDF) {
         input = await window.PdfEncrypt.decryptPDF(input, p.password);
       }
       let out, stats = null;
       if (p.rasterizeAll) {
-        const r = await rasterize(input, quality, p.jpegEncoder || 'auto', tick); out = r.bytes; stats = r.stats;
+        const r = await rasterize(input, quality, jpegEncoder, tick, targetDpi); out = r.bytes; stats = r.stats;
       } else {
-        try { const r = await optimizeImages(input, maxDim, quality, p.jpegEncoder || 'auto', p.pngEncoder || 'auto', tick); out = r.bytes; stats = r.stats; }
+        const effectiveMaxDim = targetDpi === undefined ? maxDim : Math.round((await longestPageSidePt(input) || 842) / 72 * targetDpi);
+        try { const r = await optimizeImages(input, effectiveMaxDim, quality, jpegEncoder, p.pngEncoder || 'auto', tick); out = r.bytes; stats = r.stats; }
         catch (e) {
           log('内嵌图片压缩失败，保留原文件（未开启栅格化，不回退）', e);
           out = input;
@@ -403,11 +612,11 @@ async function extractImagesForWorkbench(bytes, password, options) {
     const tick = opts.tick;
     const fmt = opts.format === 'jpg' ? 'jpg' : 'png';
     const ext = fmt === 'png' ? 'png' : 'jpg';
-    const encodeOpts = fmt === 'png' ? { upng: !!opts.useUpng } : { quality: opts.quality, jpegQuality: opts.jpegQuality };
+    const encodeOpts = fmt === 'png' ? { upng: !!opts.useUpng } : { quality: opts.quality, useJsquash: !!opts.useJsquash };
     const rawMaxWidth = Number(opts.maxWidth);
     const maxWidth = Number.isFinite(rawMaxWidth) && rawMaxWidth > 0 ? Math.floor(rawMaxWidth) : 0;
-    const pdfjs = await import('./pdfjs.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.mjs';
+    const pdfjs = await import('./pdfjs.js');
+    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
     const pdf = await pdfjs.getDocument({
       data: bytes.slice(), cMapUrl: await getPdfCMapUrl(), cMapPacked: true,
       password: password || undefined, disableFontFace: true, isEvalSupported: false
