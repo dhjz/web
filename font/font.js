@@ -75,7 +75,7 @@
 
   function ensureFontForge() {
     if (state.fontforge) return Promise.resolve(state.fontforge);
-    state.fontforge = import('./fontforge-bridge.mjs').then(function (module) {
+    state.fontforge = import('./fontforge-bridge.js').then(function (module) {
       if (!module || typeof module.convert !== 'function') throw new Error('FontForge WASM 加载失败');
       return module;
     }).catch(function (err) {

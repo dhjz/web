@@ -141,9 +141,9 @@ const font = fe.createFont(arrayBuffer, {
 
 当前使用 [fontforge-wasm](https://github.com/premex-ab/fontforge-wasm) 的 `0.3.0-alpha.1` 版本补齐 OTF 输出：
 
-- `fontforge-core.mjs` / `fontforge-core.wasm`：FontForge 编译出的浏览器端转换引擎。
-- `fontforge-bridge.mjs`：页面侧的薄封装，只在需要 OTF 输出时按需加载。
-- `fontforge-core.wasm` 加载策略：先请求同目录本地文件；404、网络失败或返回 HTML 时回退到 `fontforge-bridge.mjs` 中的 `FONTFORGE_CDN_URL`。GitHub Release 下载不提供跨域响应头，浏览器直接 fetch 会被 CORS 拦截，所以不再用它当浏览器 CDN。本地部署时保留仓库内 wasm 即可完全离线。
+- `fontforge-core.js` / `fontforge-core.wasm`：FontForge 编译出的浏览器端转换引擎。
+- `fontforge-bridge.js`：页面侧的薄封装，只在需要 OTF 输出时按需加载。
+- `fontforge-core.wasm` 加载策略：先请求同目录本地文件；404、网络失败或返回 HTML 时回退到 `fontforge-bridge.js` 中的 `FONTFORGE_CDN_URL`。GitHub Release 下载不提供跨域响应头，浏览器直接 fetch 会被 CORS 拦截，所以不再用它当浏览器 CDN。本地部署时保留仓库内 wasm 即可完全离线。
 - 适用路径：`TTF/OTF/WOFF/WOFF2/EOT/SVG → OTF`，以及 `OTF → TTF/WOFF/WOFF2/EOT/SVG`。
 - 输入限制：字体解码后不超过 16MB；轮廓转换不是无损的，提示信息或自定义表可能变化。
 

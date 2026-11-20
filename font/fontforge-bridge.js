@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Thin browser bridge around the FontForge WebAssembly conversion engine.
-import createModule from './fontforge-core.mjs';
+import createModule from './fontforge-core.js';
 
 let modulePromise;
 const INPUT_EXTENSIONS = new Set([
