@@ -60,7 +60,7 @@
 #topdf-print-area th, #topdf-print-area td { border: 1px solid #dddddd; padding: 4px 6px; text-align: left; }
 #topdf-print-area th { background: #f6f8fa; font-weight: 600; }
 #topdf-print-area code { background: #f6f8fa; padding: 1px 3px; border-radius: 3px; font-family: Consolas, Monaco, monospace; font-size: 0.9em; }
-#topdf-print-area pre { background: #f6f8fa; padding: 8px 10px; margin-bottom: 0.8em; border: 1px solid #eeeeee; border-radius: 4px; white-space: pre-wrap; overflow: visible; }
+#topdf-print-area pre { background: #f6f8fa; padding: 8px 10px; margin-bottom: 0.8em; border: 1px solid #eeeeee; border-radius: 4px; white-space: pre-wrap; height: auto !important; max-height: none !important; overflow: visible !important; }
 #topdf-print-area pre code { background: none; padding: 0; }
 #topdf-print-area img { max-width: 100%; height: auto; }
 #topdf-print-area img.local-image-missing { border: 0; padding: 0; min-width: 0; min-height: 0; background-image: none; }
