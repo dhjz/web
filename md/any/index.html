@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>any2md · 离线文档转 Markdown</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%233b6cf6%22/><text x=%2250%22 y=%2250%22 font-size=%2248%22 text-anchor=%22middle%22 dominant-baseline=%22central%22 fill=%22white%22>a2m</text></svg>">
+<link rel="stylesheet" href="./static/app.css">
+</head>
+<body>
+<div id="app" v-cloak @dragover="onDragOver">
+  <div v-if="dragDepth" class="drop-overlay">
+    <div class="drop-card">
+      <div class="drop-icon">⇩</div>
+      <div class="drop-title">松开以添加文件</div>
+      <div class="drop-hint">支持批量 · 全程本地处理，文件不会上传</div>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">a<span>2</span>m</div>
+      <div>
+        <h1>any2md <span class="badge">OFFLINE</span></h1>
+        <p>基于 anydoc-wasm · 纯本地文档转 Markdown</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="engine" :title="engineInfo">引擎：{{ engineInfo }}</span>
+      <input ref="fileInput" type="file" multiple class="hidden-file" @change="onFileInput">
+      <button class="btn primary" @click="addFiles" :disabled="engineState === 'loading'">+ 选择文件</button>
+      <button class="btn" @click="startQueue" :disabled="!canStart">▶ 开始转换</button>
+      <button class="btn" @click="pauseQueue" :disabled="!running">⏸ 暂停</button>
+      <button class="btn" @click="clearAll" :disabled="!items.length">🗑 清空</button>
+      <button class="btn icon" @click="toggleTheme" :title="theme === 'light' ? '切换暗色' : '切换亮色'">{{ theme === 'light' ? '🌙' : '☀️' }}</button>
+    </div>
+  </header>
+
+  <div v-if="engineState !== 'ready'" class="engine-bar" :class="engineState">
+    <div v-if="engineState === 'loading'" class="engine-loading">
+      <div class="engine-line">
+        <span class="engine-label">⏳ {{ engineProgressText || '正在加载离线转换引擎（wasm）…' }}</span>
+        <span class="engine-pct" v-if="enginePercent !== null">{{ enginePercent }}%</span>
+      </div>
+      <div class="engine-track">
+        <i :class="{ indeterminate: enginePercent === null }" :style="enginePercent !== null ? { width: enginePercent + '%' } : {}"></i>
+      </div>
+    </div>
+    <span v-else-if="engineState === 'error'">❌ 引擎加载失败：{{ engineError }}。请确认通过本地服务器打开（不能直接双击 file:// 打开）。</span>
+  </div>
+
+  <div class="toolbar">
+    <label class="field">
+      <span>导出图片</span>
+      <select v-model="exportImages">
+        <option :value="true">包含图片（打包 media/）</option>
+        <option :value="false">不包含图片（仅 .md）</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>转换格式</span>
+      <select v-model="formatHint">
+        <option value="">自动识别（推荐）</option>
+        <option v-for="f in formats" :key="f.value" :value="f.value">{{ f.label }}</option>
+      </select>
+    </label>
+    <label class="field switch">
+      <input type="checkbox" v-model="previewHtml">
+      <span>预览渲染 HTML</span>
+    </label>
+    <div class="toolbar-right">
+      <span class="hint">拖到页面任意位置 / Ctrl+V 粘贴 / 点击选择</span>
+      <button class="btn primary" @click="exportZip" :disabled="!doneItems.length">⬇ 导出 ZIP（{{ doneItems.length }}）</button>
+    </div>
+  </div>
+
+  <main class="workspace">
+    <section class="panel files-panel">
+      <div class="panel-head">
+        <h2>文件列表 <span class="count">{{ items.length }}</span></h2>
+        <div class="mini-actions">
+          <button class="link" @click="selectAll" :disabled="!items.length">全选</button>
+          <button class="link" @click="removeSelected" :disabled="!selectedIds.size">移除选中</button>
+        </div>
+      </div>
+      <div class="file-list">
+        <div v-if="!items.length" class="empty">
+          <div class="empty-icon">📄</div>
+          <p>还没有文件</p>
+          <p class="muted">拖入文档、粘贴文件，或点击左上角「选择文件」</p>
+          <p class="muted tiny">支持 docx / doc / odt / rtf / epub / pdf / pptx / xlsx / csv 等</p>
+        </div>
+        <div v-for="item in items" :key="item.id" class="file-card" :class="{ active: item.id === activeId, selected: selectedIds.has(item.id) }" @click="selectItem(item.id)">
+          <div class="file-row">
+            <input type="checkbox" class="pick" :checked="selectedIds.has(item.id)" @click.stop="toggleSelected(item.id)">
+            <div class="file-ext" :class="extClass(item.file)">{{ formatLabel(item) }}</div>
+            <div class="file-main">
+              <div class="file-name" :title="item.file.name">{{ item.file.name }}</div>
+              <div class="file-meta">
+                <span :title="item.typeLabel">{{ item.typeLabel }}</span>
+                <span>{{ formatSize(item.file.size) }}</span>
+                <span>{{ formatDate(item.file.lastModified) }}</span>
+              </div>
+            </div>
+            <span class="status" :class="item.status">{{ statusText(item) }}</span>
+            <button class="btn-start" :class="{ busy: itemBusy(item) }" :disabled="!canStartItem(item)" @click.stop="startItem(item)" :title="itemStartLabel(item) + '该文件'">{{ itemBusy(item) ? '…' : (item.status === 'done' ? '↻' : (item.status === 'error' ? '↻' : '▶')) }}</button>
+          </div>
+          <div class="progress" v-if="item.status === 'converting'"><i></i></div>
+          <div class="file-error" v-if="item.status === 'error'">{{ item.errorMessage }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel result-panel">
+      <div class="panel-head">
+        <h2>转换结果 <span class="count" v-if="activeItem">/ {{ activeItem.file.name }}</span></h2>
+        <div class="mini-actions" v-if="activeItem && activeItem.status === 'done'">
+          <button class="link" @click="copyMarkdown">复制 MD</button>
+          <button class="link" @click="downloadOne(activeItem)">下载单个</button>
+          <button class="link" @click="downloadOneZip(activeItem)">下载单个 ZIP</button>
+          <button class="link" v-if="hasCleanHtml" @click="downloadHtml(activeItem)">下载 HTML</button>
+        </div>
+      </div>
+
+      <div v-if="!activeItem" class="empty result-empty">
+        <div class="empty-icon">🪄</div>
+        <p>选择一个文件查看转换结果</p>
+        <p class="muted">转换后会在这里显示预览和统计参数</p>
+      </div>
+
+      <template v-else>
+        <div class="stats" v-if="activeItem.status === 'done'">
+          <div class="stat"><label>字符数</label><b>{{ activeItem.stats.chars.toLocaleString() }}</b></div>
+          <div class="stat"><label>非空白字符</label><b>{{ activeItem.stats.nonWhitespace.toLocaleString() }}</b></div>
+          <div class="stat"><label>MD 大小</label><b>{{ formatSize(activeItem.stats.mdBytes) }}</b></div>
+          <div class="stat"><label>行数</label><b>{{ activeItem.stats.lines.toLocaleString() }}</b></div>
+          <div class="stat"><label>图片总数</label><b>{{ activeItem.result.imageStats.images }}</b></div>
+          <div class="stat"><label>内嵌 / 外链</label><b>{{ activeItem.result.imageStats.embedded }} / {{ activeItem.result.imageStats.external }}</b></div>
+          <div class="stat"><label>图片总大小</label><b>{{ formatSize(activeItem.result.imageStats.assetBytes) }}</b></div>
+          <div class="stat"><label>图片文件数</label><b>{{ activeItem.result.imageStats.assetCount }}</b></div>
+          <div class="stat"><label>转换耗时</label><b>{{ activeItem.result.timings.ms }} ms</b></div>
+          <div class="stat"><label>识别格式</label><b>{{ activeItem.result.format || '—' }}</b></div>
+          <div class="stat"><label>原文大小</label><b>{{ formatSize(activeItem.result.sizes.input) }}</b></div>
+          <!-- <div class="stat"><label>渲染模式</label><b class="tiny-text">{{ activeItem.result.renderMode }}</b></div> -->
+        </div>
+        <div class="tabs">
+          <button class="tab" :class="{on: tab === 'preview'}" @click="tab = 'preview'">预览</button>
+          <button class="tab" :class="{on: tab === 'markdown'}" @click="tab = 'markdown'">Markdown 源码</button>
+          <button v-if="hasCleanHtml" class="tab" :class="{on: tab === 'html'}" @click="tab = 'html'">HTML 源码（净化后）</button>
+          <button v-if="tab === 'markdown'" class="btn copy-btn" @click="copyMarkdown">{{ copied ? '✓ 已复制' : '📋 一键复制 Markdown' }}</button>
+          <button v-if="tab === 'html' && hasCleanHtml" class="btn copy-btn" @click="copyHtml">{{ copiedHtml ? '✓ 已复制' : '📋 一键复制 HTML' }}</button>
+          <span class="tab-note" v-if="activeItem.status === 'done' && activeItem.result.imageStats.embedded">{{ activeItem.result.imageStats.embedded }} 张内嵌图已导出为链接</span>
+        </div>
+        <div class="result-body" ref="resultBody" @scroll="onResultScroll">
+          <div v-show="tab === 'markdown'" class="code-view"><pre>{{ activeItem.markdown || '（等待转换）' }}</pre></div>
+          <div v-show="tab === 'html'" class="code-view"><pre>{{ hasCleanHtml ? cleanHtml : '（该格式无净化后的 HTML 源码）' }}</pre></div>
+          <div v-show="tab === 'preview'" class="preview" v-html="previewHtmlContent" @click="onPreviewClick"></div>
+        </div>
+        <button v-if="showBackToTop" class="back-to-top" @click="scrollResultToTop" title="回到顶部">↑</button>
+      </template>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>队列 {{ queuePosition }} · 已完成 {{ doneItems.length }}/{{ items.length }}</span>
+  </footer>
+
+  <div v-if="lightbox" class="lightbox" @click.self="lightbox = null">
+    <button class="lightbox-close" @click="lightbox = null" title="关闭">✕</button>
+    <img :src="lightbox" alt="图片预览" @click.stop>
+    <div class="lightbox-hint">点击空白处或按 Esc 关闭</div>
+  </div>
+</div>
+
+<!-- <script src="./static/vendor/vue.global.prod.js"></script>
+<script src="./static/vendor/marked.min.js"></script>
+<script src="./static/vendor/jszip.min.js"></script>
+<script src="./static/vendor/purify.min.js"></script>
+<script src="./static/vendor/turndown.min.js"></script>
+<script src="./static/vendor/turndown-plugin-gfm.min.js"></script> -->
+
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/marked/15.0.12/marked.min.js"></script>
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/dompurify/3.2.7/purify.min.js"></script>
+<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/turndown/7.2.1/turndown.min.js"></script>
+<script src="https://registry.npmmirror.com/turndown-plugin-gfm/1.0.2/files/dist/turndown-plugin-gfm.js"></script>
+
+<script src="./static/html-convert.js"></script>
+<script type="module" src="./static/app.js"></script>
+</body>
+</html>
