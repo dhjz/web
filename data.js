@@ -56,7 +56,7 @@ window.config = {
         { name: '局域网传输', short: '传输', url: 'http://home.199311.xyz:40080/', color: '#4285f4' },
         { name: '家文件服务', short: 'Chfs', url: 'http://home.199311.xyz:9000/', color: '#419641 ' },
         // { name: 'PostMin', short: 'Post', url: 'https://home.199311.xyz:40003/', color: '#67C23A ' },
-        { name: 'D-API', short: 'Post', url: './api/index.html', color: '#67C23A ' },
+        { name: 'D-API', short: 'Post', url: './apis/index.html', color: '#67C23A ' },
         { name: '海纳思', short: 'Nas', url: 'http://home.199311.xyz:20080/', color: '#320EEA' },
         { name: 'AList', short: 'AList', url: 'http://home.199311.xyz:25244/', color: '#238FE7' },
         // { name: '局域网唤醒', short: 'WOL', url: 'http://home.199311.xyz:46666/', color: '#0066cc' },
@@ -87,7 +87,7 @@ window.config = {
         { name: '字幕提取', short: 'ASR', url: './srt/index.html', color: '#039f9c' },
         { name: '扫描处理', short: '扫描', url: './p/index.html', color: '#034948' },
         { name: '字帖', short: '字帖', url: 'https://zt.199311.xyz/', color: '#1d4ed8' },
-        { name: '天气', short: '天气', url: './api/weather.html', color: '#1d4ed8' },
+        { name: '天气', short: '天气', url: './apis/weather.html', color: '#1d4ed8' },
       ]
     },
     {
