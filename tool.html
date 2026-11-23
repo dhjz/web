@@ -198,7 +198,11 @@
     }
 
     function parseCss(val) {
-      const css = val.replace(/\/\*[\s\S]*?\*\//g, '')
+      const comments = []
+      const css = val.replace(/\/\*[\s\S]*?\*\//g, m => {
+        comments.push(m)
+        return '\u0001' + (comments.length - 1) + '\u0001'
+      })
 
       // 拆分 token：{ } ; 作为结构符号，字符串和 url(...) 整体保留
       const tokens = []
@@ -216,6 +220,16 @@
           quote = ch
           buf += ch
           continue
+        }
+        if (ch === '\u0001') {
+          const end = css.indexOf('\u0001', i + 1)
+          if (end !== -1) {
+            if (buf.trim()) tokens.push(buf.trim())
+            tokens.push(css.slice(i, end + 1))
+            buf = ''
+            i = end
+            continue
+          }
         }
         if (/^url\(/i.test(css.slice(i, i + 4))) {
           buf += css.slice(i, i + 4)
@@ -249,6 +263,7 @@
         })
         out = out.replace(/\s+/g, ' ').replace(/:\s/g, ': ').trim()
         return out.replace(/\u0000(\d+)\u0000/g, (m, i) => strings[+i])
+                  .replace(/\u0001(\d+)\u0001/g, (m, i) => comments[+i])
       }
 
       // 组装成树：@ 规则单独成行，子内容缩进 2 格；普通规则保持一行
@@ -257,12 +272,15 @@
       let head = ''
       tokens.forEach(token => {
         const target = stack.length ? stack[stack.length - 1].children : root
-        if (token === '{') {
-          const block = { at: /^@/.test(head.trim()), header: normalize(head), children: [] }
+        if (stack.length === 0 && /^\u0001\d+\u0001$/.test(token) && !head.trim()) {
+          target.push({ text: normalize(token) })
+        } else if (token === '{') {
+          const block = { at: /^@/.test(head.trim().replace(/\u0001\d+\u0001/g, '').trim()), header: normalize(head), children: [] }
           target.push(block)
           stack.push(block)
           head = ''
         } else if (token === '}') {
+          if (head.trim()) target.push({ text: normalize(head) })
           head = ''
           stack.pop()
         } else if (token === ';') {
@@ -272,6 +290,10 @@
           head += (head ? ' ' : '') + token
         }
       })
+      if (head.trim()) {
+        const target = stack.length ? stack[stack.length - 1].children : root
+        target.push({ text: normalize(head) })
+      }
       return root
     }
 
@@ -316,12 +338,17 @@
     }
 
     function $copy(text) {
-      let inputElement = document.createElement('input');
-      inputElement.value = text
-      document.body.appendChild(inputElement)
-      inputElement.select()
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.top = '0'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      textarea.setSelectionRange(0, text.length)
       document.execCommand('copy', true)
-      inputElement.parentNode.removeChild(inputElement)
+      textarea.remove()
       return true
     }
 
