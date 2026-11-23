@@ -103,7 +103,7 @@ button:disabled { opacity:.45; cursor:not-allowed }
 .statusbar { height:26px; flex:0 0 26px; background:var(--surface); border-top:1px solid var(--line); display:flex; align-items:center; gap:8px; padding:0 14px; font-size:11px; color:var(--muted) }
 .statusbar .dot { opacity:.5 }
 .modal-mask { position:fixed; inset:0; background:rgba(10,15,25,.55); display:grid; place-items:center; z-index:100; backdrop-filter:blur(2px) }
-.modal { width:min(650px,92vw); max-height:86vh; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.35); display:flex; flex-direction:column }
+.modal { width:min(650px,92vw); max-height:91vh; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.35); display:flex; flex-direction:column }
 .modal.wide { width:min(1300px,96vw) }
 .modal-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line); font-size:14px }
 .modal-body { flex:1 1 auto; min-height:0; padding:8px; overflow:auto }
@@ -128,9 +128,9 @@ button:disabled { opacity:.45; cursor:not-allowed }
 .param-file { background:var(--surface-2); padding:8px 10px; border-radius:7px; font-size:12px; margin-bottom:14px; word-break:break-all }
 .result-list { display:flex; flex-direction:column; gap:8px }
 .result-row { display:flex; align-items:center; gap:10px; padding:8px; border:1px solid var(--line); border-radius:7px }
-.result-gallery { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px }
+.result-gallery { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px }
 .gallery-card { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface-2) }
-.gallery-card img { display:block; width:100%; aspect-ratio:3 / 4; max-height:220px; object-fit:contain; background:#fff; cursor:zoom-in }
+.gallery-card img { display:block; width:100%; aspect-ratio:3 / 4; max-height:240px; object-fit:contain; background:#fff; cursor:zoom-in }
 .gallery-meta { display:flex; flex-direction:column; gap:6px; padding:8px }
 .gallery-meta .file-name { font-size:12px; word-break:break-all }
 .gallery-meta .btn-sm { align-self:flex-start }
@@ -146,8 +146,10 @@ button:disabled { opacity:.45; cursor:not-allowed }
 }
 .result-row .out-actions,.gallery-meta .out-actions { margin-left:auto; display:flex; gap:6px; align-items:center }
 .gallery-meta .out-actions { margin-left:0; align-self:flex-start }
-.preview-image { text-align:center }
-.preview-image img { max-width:100%; max-height:75vh; object-fit:contain; background:#fff; border:1px solid var(--line); border-radius:6px }
+.preview-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px }
+.preview-image-stage { position:relative; overflow:auto; width:100%; height:72vh; border:1px solid var(--line); border-radius:6px; background:var(--surface-2); cursor:grab }
+.preview-image-stage:active { cursor:grabbing }
+.preview-image-stage img { position:absolute; display:block; max-width:none; max-height:none; object-fit:fill; background:#fff; border-radius:6px; user-select:none; cursor:inherit; touch-action:none }
 .preview-pdf .pdf-frame { width:100%; height:70vh; border:1px solid var(--line); border-radius:6px; background:#fff }
 .preview-text { white-space:pre-wrap; word-break:break-word; max-height:70vh; overflow:auto; background:var(--surface-2); padding:12px; border-radius:7px; font-size:12px; line-height:1.6 }
 /* 水印参数弹窗实时预览：空白 A4 示例页 */

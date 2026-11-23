@@ -93,6 +93,8 @@
       const dialog = ref({ show:false, type:'', title:'', params:[], form:{}, payload:{files:[]}, error:'', outputs:[], wide:false });
       const dialogStack = ref([]);
       const watermarkPreview = ref({ url:'', loading:false, error:'', seq:0, bytes:[] });
+      const imageZoom = ref({ mode:'fit', fit:1, scale:1, native:1, panning:false });
+      const imagePan = { active:false, pointerId:null, startX:0, startY:0, left:0, top:0 };
       const sorts = [ {key:'manual',label:'手动'}, {key:'name',label:'名称'}, {key:'size',label:'大小'}, {key:'time',label:'修改时间'} ];
       const fileInput = ref(null);
 
@@ -424,7 +426,11 @@
       }
       function closeDialog() {
         const previous = dialogStack.value.pop();
-        if (previous) { dialog.value = previous; return; }
+        if (previous) {
+          syncPreviewZoom(previous);
+          dialog.value = previous;
+          return;
+        }
         dialog.value.show=false;
         watermarkPreview.value.seq++;
         if (watermarkPreview.value.url) { URL.revokeObjectURL(watermarkPreview.value.url); watermarkPreview.value.url=''; }
@@ -573,19 +579,23 @@
           doc.setModificationDate(new Date()); tick(80); return [{name:saveName('pdf'),bytes:await doc.save()}];
         }
         if (tool==='grayscale') {
-          const canvases = await C.renderPages(bytes0, 1.5, pwd);
           const out = await PDFLib.PDFDocument.create();
-          for (let i=0;i<canvases.length;i++) {
-            const canvas = canvases[i]; const ctx = canvas.getContext('2d');
-            const imgData = ctx.getImageData(0,0,canvas.width,canvas.height); const data = imgData.data;
-            for (let j=0;j<data.length;j+=4) { const v=data[j]*0.299+data[j+1]*0.587+data[j+2]*0.114; data[j]=data[j+1]=data[j+2]=v; }
-            ctx.putImageData(imgData,0,0);
-            const url = canvas.toDataURL('image/jpeg',0.75);
-            const img = await out.embedJpg(url);
-            const page = out.addPage([canvas.width,canvas.height]);
-            page.drawImage(img,{x:0,y:0,width:canvas.width,height:canvas.height});
-            tick(20+Math.round(70*(i+1)/canvases.length));
-          }
+          let done = 0;
+          await C.renderPages(bytes0, 1.5, pwd, {
+            onPage: async (canvas, pageNo, pageTotal) => {
+              const ctx = canvas.getContext('2d');
+              const imgData = ctx.getImageData(0,0,canvas.width,canvas.height); const data = imgData.data;
+              for (let j=0;j<data.length;j+=4) { const v=data[j]*0.299+data[j+1]*0.587+data[j+2]*0.114; data[j]=data[j+1]=data[j+2]=v; }
+              ctx.putImageData(imgData,0,0);
+              const url = canvas.toDataURL('image/jpeg',0.75);
+              const img = await out.embedJpg(url);
+              const page = out.addPage([canvas.width,canvas.height]);
+              page.drawImage(img,{x:0,y:0,width:canvas.width,height:canvas.height});
+              done++;
+              tick(20+Math.round(70*done/(pageTotal||1)));
+              await new Promise(resolve => setTimeout(resolve, 0));
+            }
+          });
           return [{name:saveName('pdf'),bytes:await out.save()}];
         }
         if (tool==='page-numbers' || tool==='watermark' || tool==='signature') {
@@ -643,20 +653,26 @@
             const totalPages=await C.getPageCount(bytes0,pwd);
             const parsedPages=String(p.pages||'').trim()?C.parseRange(p.pages,totalPages):[];
             if (String(p.pages||'').trim() && !parsedPages.length) throw new Error('没有匹配的页码：' + p.pages);
-            const canvases=await C.renderPages(bytes0,dpi/72,pwd,parsedPages.length?{ pages:parsedPages }:undefined);
             const imagePad=Math.max(2,String(totalPages).length);
             const zip=new JSZip(); const out=[];
-            for (let i=0;i<canvases.length;i++) {
-              const target=outputWidth>0 ? C.resizeCanvasToWidth(canvases[i],outputWidth) : canvases[i];
-              const bytes=useUpng
-                ? await C.canvasToBytes(target,fmt,{upng:true})
-                : await C.canvasToBytes(target,fmt,{quality,useJsquash});
-              const pageNo=parsedPages[i]||i+1;
-              const name=`${baseName(fs[0])}-${String(pageNo).padStart(imagePad,'0')}.${ext}`;
-              zip.file(name,bytes); out.push({name,bytes,width:target.width,height:target.height});
-              if (target!==canvases[i]) { target.width=0; target.height=0; }
-              tick(20+Math.round(70*(i+1)/canvases.length));
-            }
+            const renderOpts = parsedPages.length ? { pages:parsedPages } : {};
+            const total=parsedPages.length || totalPages;
+            // 逐页渲染并立即编码，避免几十页 canvas 同时堆积占用主线程和内存。
+            await C.renderPages(bytes0,dpi/72,pwd,{
+              ...renderOpts,
+              onPage: async (canvas, pageNo) => {
+                const target=outputWidth>0 ? C.resizeCanvasToWidth(canvas,outputWidth) : canvas;
+                const bytes=useUpng
+                  ? await C.canvasToBytes(target,fmt,{upng:true})
+                  : await C.canvasToBytes(target,fmt,{quality,useJsquash});
+                const name=`${baseName(fs[0])}-${String(pageNo).padStart(imagePad,'0')}.${ext}`;
+                zip.file(name,bytes); out.push({name,bytes,width:target.width,height:target.height});
+                if (target!==canvas) { target.width=0; target.height=0; }
+                tick(20+Math.round(70*out.length/total));
+                // 每页编码后让出主线程，进度条和页面交互才能实时刷新。
+                await new Promise(resolve => setTimeout(resolve, 0));
+              }
+            });
             if (p.outputMode==='separate') return out;
             return [{name:saveName('zip'),bytes:await zip.generateAsync({type:'uint8array'})}];
           }
@@ -714,9 +730,119 @@
       function hasImageOutputs(outputs) { return outputs.some(isImageOut); }
       function openDetail(t) { openOverlay({show:true,type:'detail',title:'📄 任务详情 · '+toolOf(t).title,outputs:t.outputs,payload:{files:[]},wide:hasImageOutputs(t.outputs)}); }
       function downloadOut(o) { C.download(o.bytes,o.name); }
+      function fitImageFactor(stage, img) {
+        if (!stage || !img || !img.naturalWidth || !img.naturalHeight) return 1;
+        const { width, height } = stage.getBoundingClientRect();
+        if (!width || !height) return 1;
+        const padding = 24;
+        return Math.max(Math.min((width - padding) / img.naturalWidth, (height - padding) / img.naturalHeight, 1), 0.05);
+      }
+      function applyImageZoom(img, stage, factor, pointer) {
+        const sr = stage.getBoundingClientRect();
+        const width = img.naturalWidth * factor;
+        const height = img.naturalHeight * factor;
+        let left;
+        let top;
+        if (pointer) {
+          const rect = img.getBoundingClientRect();
+          const ratioX = (pointer.x - rect.left) / rect.width;
+          const ratioY = (pointer.y - rect.top) / rect.height;
+          left = pointer.x - sr.left - ratioX * width;
+          top = pointer.y - sr.top - ratioY * height;
+        } else {
+          left = (sr.width - width) / 2;
+          top = (sr.height - height) / 2;
+        }
+        img.style.width = `${width}px`;
+        img.style.height = `${height}px`;
+        img.style.maxWidth = 'none';
+        img.style.maxHeight = 'none';
+        img.style.objectFit = 'fill';
+        img.style.margin = '0';
+        img.style.position = 'absolute';
+        img.style.left = `${left}px`;
+        img.style.top = `${top}px`;
+      }
+      function syncPreviewZoom(next) {
+        imageZoom.value = { mode:'fit', fit:1, scale:1, native:1, panning:false };
+        imagePan.active = false; imagePan.pointerId = null;
+        if (!next || !next.show || next.type !== 'preview' || next.preview.kind !== 'image') return;
+        const apply = () => {
+          const stage = document.querySelector('.preview-image-stage');
+          const img = stage && stage.querySelector('img');
+          if (!img || !img.naturalWidth || dialog.value !== next) return;
+          const fit = fitImageFactor(stage, img);
+          imageZoom.value = { mode:'fit', fit, scale:fit, native:1, panning:false };
+          applyImageZoom(img, stage, fit);
+        };
+        next.preview.onLoad = apply;
+        next.preview.onShown = apply;
+        requestAnimationFrame(apply);
+      }
+      function onImageWheel(e) {
+        if (!dialog.value.show || dialog.value.type !== 'preview' || dialog.value.preview.kind !== 'image') return;
+        const stage = e.currentTarget.closest('.preview-image-stage');
+        const img = stage && stage.querySelector('img');
+        if (!img || !img.naturalWidth) return;
+        e.preventDefault();
+        const z = imageZoom.value;
+        const oldFactor = z.scale;
+        const nextFactor = Math.min(3, Math.max(0.05, oldFactor * Math.exp(-e.deltaY * 0.0015)));
+        if (Math.abs(nextFactor - oldFactor) < 0.0001) return;
+        z.scale = nextFactor;
+        z.mode = 'custom';
+        applyImageZoom(img, stage, nextFactor, { x:e.clientX, y:e.clientY });
+      }
+      function toggleImageZoom() {
+        const stage = document.querySelector('.preview-image-stage');
+        const img = stage && stage.querySelector('img');
+        if (!img || !img.naturalWidth) return;
+        const z = imageZoom.value;
+        if (z.mode === 'fit') {
+          z.scale = 1;
+          z.mode = 'custom';
+          applyImageZoom(img, stage, 1);
+        } else {
+          z.scale = z.fit;
+          z.mode = 'fit';
+          applyImageZoom(img, stage, z.fit);
+        }
+      }
+      function onImagePointerDown(e) {
+        if (!dialog.value.show || dialog.value.type !== 'preview' || dialog.value.preview.kind !== 'image') return;
+        const stage = e.currentTarget.closest('.preview-image-stage');
+        const img = stage && stage.querySelector('img');
+        if (!img || !img.naturalWidth) return;
+        e.preventDefault();
+        try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+        imagePan.active = true;
+        imagePan.pointerId = e.pointerId;
+        imagePan.startX = e.clientX;
+        imagePan.startY = e.clientY;
+        imagePan.left = parseFloat(img.style.left) || 0;
+        imagePan.top = parseFloat(img.style.top) || 0;
+        imageZoom.value.panning = true;
+      }
+      function onImagePointerMove(e) {
+        if (!imagePan.active || e.pointerId !== imagePan.pointerId) return;
+        const stage = e.currentTarget.closest('.preview-image-stage');
+        const img = stage && stage.querySelector('img');
+        if (!img) return;
+        e.preventDefault();
+        img.style.left = `${imagePan.left + e.clientX - imagePan.startX}px`;
+        img.style.top = `${imagePan.top + e.clientY - imagePan.startY}px`;
+      }
+      function onImagePointerUp(e) {
+        if (!imagePan.active || (e.pointerId != null && e.pointerId !== imagePan.pointerId)) return;
+        const stage = document.querySelector('.preview-image-stage');
+        if (stage && e.pointerId != null) { try { stage.releasePointerCapture(e.pointerId); } catch (_) {} }
+        imagePan.active = false;
+        imagePan.pointerId = null;
+        imageZoom.value.panning = false;
+      }
       async function previewOut(o) {
         if (isZipOut(o)) { C.toast('ZIP 暂不支持在线预览，请下载后查看'); return; }
-        if (isImageOut(o)) { openOverlay({show:true,type:'preview',title:'👁 预览 · '+o.name,preview:{kind:'image',url:outputUrl(o)},wide:true}); return; }
+        if (isImageOut(o)) { openOverlay({show:true,type:'preview',title:'👁 预览 · '+o.name,preview:{kind:'image',url:outputUrl(o)},wide:true}); syncPreviewZoom(dialog.value); return; }
         if (isTextOut(o)) { openOverlay({show:true,type:'preview',title:'👁 预览 · '+o.name,preview:{kind:'text',text:new TextDecoder().decode(o.bytes)},wide:true}); return; }
         if (isPdfOut(o)) {
           openOverlay({show:true,type:'preview',title:'👁 预览 · '+o.name,preview:{kind:'pdf',url:outputUrl(o)},wide:true});
@@ -769,6 +895,9 @@
         const fs=Array.from(e.dataTransfer.files||[]);
         if (fs.length) addFiles(fs);
       }
+      watch(() => [dialog.value.show, dialog.value.type, dialog.value.preview && dialog.value.preview.url], () => {
+        if (dialog.value.type === 'preview' && dialog.value.preview && dialog.value.preview.onShown) dialog.value.preview.onShown();
+      });
       watchWatermarkPreview();
       onMounted(()=>{ window.addEventListener('paste',onKey); window.addEventListener('keydown',onKey); window.addEventListener('dragover',onBodyDragOver); window.addEventListener('dragleave',onBodyDragLeave); window.addEventListener('drop',onBodyDrop); });
       onUnmounted(()=>{ window.removeEventListener('paste',onKey); window.removeEventListener('keydown',onKey); window.removeEventListener('dragover',onBodyDragOver); window.removeEventListener('dragleave',onBodyDragLeave); window.removeEventListener('drop',onBodyDrop); });
@@ -776,7 +905,7 @@
       return { dark, files, selected, keyword, category, sortKey, dragOver, tasks, dialog, sorts, tools:C.TOOLS, toolOf,
         visibleFiles, selectedFiles, orderedFiles, runnable, runningCount, statsText, badgeClass, fmtSize, fmtTime, extLabel, extClass, statusText,
         addFiles, pickFiles, openHttpLoad, loadHttpPdf, onDrop, onBodyDragOver, onBodyDragLeave, onBodyDrop, removeFile, clearFiles, toggleSelect, toggleSelectAll, resetFilters, dragFileId, manualOrder, onFileDragArm, onFileDragStart, onFileDragOver, onFileDragLeave, onFileDrop, onFileDragEnd, moveFileByOrder, canUse, openTool, editTask, closeDialog, confirmParams,
-        removeTask, startTask, startAll, runTask, openDetail, setParam, commitParam, clampParam, watermarkTextMatrix, downloadOut, outputUrl, isZipOut, isPdfOut, isTextOut, previewOut, previewFile, outputToInput, isImageOut, hasImageOutputs, paramVisible, toggleTheme, compressionInfo, imageStats, imageDimension, ratioText, watermarkPreview, refreshWatermarkPreview };
+        removeTask, startTask, startAll, runTask, openDetail, setParam, commitParam, clampParam, watermarkTextMatrix, downloadOut, outputUrl, isZipOut, isPdfOut, isTextOut, previewOut, previewFile, outputToInput, isImageOut, hasImageOutputs, paramVisible, toggleTheme, compressionInfo, imageStats, imageDimension, ratioText, watermarkPreview, refreshWatermarkPreview, imageZoom, onImageWheel, toggleImageZoom, onImagePointerDown, onImagePointerMove, onImagePointerUp };
     },
   };
   createApp(App).mount('#app');

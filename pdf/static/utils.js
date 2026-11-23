@@ -155,8 +155,11 @@
     pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
     const pdf = await pdfjs.getDocument({ data: bytes.slice(), cMapUrl: await getPdfCMapUrl(), cMapPacked: true, useSystemFonts: true, disableFontFace: true, isEvalSupported: false, password: password || undefined }).promise;
     const out = [];
+    const onPage = opts && typeof opts.onPage === 'function' ? opts.onPage : null;
     const list = (opts && opts.pages && opts.pages.length) ? opts.pages : Array.from({length:pdf.numPages},(_,i)=>i+1);
     for (const i of list) {
+      // 每页之前让出主线程，让进度条和界面有机会重绘，避免多页任务把页面卡死。
+      await new Promise(resolve => setTimeout(resolve, 0));
       const page = await pdf.getPage(i);
       const baseVp = page.getViewport({ scale: 1 });
       const targetDpi = opts && Number(opts.targetDpi);
@@ -191,7 +194,14 @@
       const ctx = c.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      await page.render({ canvasContext: ctx, viewport: vp }).promise; out.push(c);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (onPage) {
+        await onPage(c, i, list.length);
+        // 流式消费后立刻释放像素缓冲，避免几十页 canvas 同时占用内存。
+        c.width = 0; c.height = 0;
+      } else {
+        out.push(c);
+      }
     }
     return out;
   }
@@ -212,15 +222,15 @@
     const mime = format==='png' ? 'image/png' : 'image/jpeg';
     const quality = Math.max(0.01, Math.min(1, Number(opts && opts.quality) || 0.8));
     if (format!=='png' && opts && opts.useJsquash) {
-      try { return await encodeJpeg(canvas, quality, 'jsquash'); }
-      catch (e) { /* encodeJpeg 内部已回退到 Canvas */ }
+      try {
+        const bytes = await encodeJpegOffThread(canvas, quality, 'jsquash');
+        if (bytes && bytes.length) return bytes;
+      } catch (e) { /* 回退逻辑已在 encodeJpegOffThread 内 */ }
     }
     if (format==='png' && opts && opts.upng) {
       try {
-        const ctx = canvas.getContext('2d');
-        const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        const bytes = await window.ImageEncode.encodePngWithUPNG(rgba, canvas.width, canvas.height);
-        if (bytes) return bytes;
+        const bytes = await encodePngOffThread(canvas);
+        if (bytes && bytes.length) return bytes;
       } catch (e) { /* UPNG 不可用时退回 Canvas */ }
     }
     if (canvas.toBlob) {
@@ -274,6 +284,73 @@
   }
   window.ImageEncode = { encodePngWithUPNG };
 
+  // 同步 JPEG/PNG 编码改到 Worker，避免 MozJPEG wasm / UPNG 长时间独占主线程。
+  // Worker 不可用时退回原有主线程编码，保证功能可用。
+  let imageEncoderWorker = null;
+  let imageEncoderFailed = false;
+  let imageEncoderSeq = 0;
+  const imageEncoderJobs = new Map();
+  function getImageEncoderWorker() {
+    if (imageEncoderFailed) return null;
+    if (!imageEncoderWorker) {
+      try {
+        imageEncoderWorker = new Worker('./static/image-encoder.worker.js', { type: 'module' });
+        imageEncoderWorker.onmessage = (event) => {
+          const msg = event.data || {};
+          const job = imageEncoderJobs.get(msg.id);
+          if (!job) return;
+          imageEncoderJobs.delete(msg.id);
+          if (msg.ok) job.resolve(new Uint8Array(msg.buffer));
+          else job.reject(new Error(msg.error || '图片编码失败'));
+        };
+        imageEncoderWorker.onerror = () => {
+          imageEncoderFailed = true;
+          imageEncoderWorker = null;
+          imageEncoderJobs.forEach(job => job.reject(new Error('图片编码 Worker 不可用')));
+          imageEncoderJobs.clear();
+        };
+      } catch (e) {
+        imageEncoderFailed = true;
+        return null;
+      }
+    }
+    return imageEncoderWorker;
+  }
+  function encodeInWorker(type, pixels, width, height, options) {
+    const worker = getImageEncoderWorker();
+    if (!worker) return Promise.reject(new Error('图片编码 Worker 不可用'));
+    return new Promise((resolve, reject) => {
+      const id = ++imageEncoderSeq;
+      imageEncoderJobs.set(id, { resolve, reject });
+      // 像素缓冲转交给 Worker，主线程不再持有这份副本。
+      worker.postMessage({ id, type, width, height, buffer: pixels.buffer, options }, [pixels.buffer]);
+    });
+  }
+  async function encodeJpegOffThread(canvas, quality, encoder) {
+    const q = clamp(quality, 0.01, 1, 0.65);
+    const ctx = canvas.getContext('2d');
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const options = { quality: Math.round(q * 100), progressive: true, optimize_coding: true, chroma_subsample: 0 };
+    try {
+      return await encodeInWorker('jpeg', pixels, canvas.width, canvas.height, options);
+    } catch (e) {
+      log('Worker JPEG 编码不可用，回退主线程', e);
+      return encodeJpeg(canvas, quality, encoder, () => ctx.getImageData(0, 0, canvas.width, canvas.height));
+    }
+  }
+  async function encodePngOffThread(canvas) {
+    const ctx = canvas.getContext('2d');
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    try {
+      return await encodeInWorker('png', pixels, canvas.width, canvas.height, null);
+    } catch (e) {
+      log('Worker PNG 编码不可用，回退主线程', e);
+      // pixels.buffer 已转交 Worker，失败后需重新读取画布像素。
+      const retry = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      return encodePngWithUPNG(retry, canvas.width, canvas.height);
+    }
+  }
+
 
   const C = window.PdfCore;
 
@@ -324,27 +401,32 @@
   async function rasterize(bytes, quality, encoder, tick, targetDpi) {
     const t0 = performance.now();
     log('栅格化开始', { targetDpi, quality, encoder });
-    const canvases = await C.renderPages(bytes, 1, undefined, { targetDpi });
-    log('栅格化渲染完成', { pages: canvases.length, firstPage: canvases[0] ? canvases[0].width + 'x' + canvases[0].height : '-' });
-    const stats = { photos: canvases.length, shrunk: 0, totalImages: canvases.length, compressedImages: 0, reducedBytes: 0 };
     const out = await PDFLib.PDFDocument.create();
-    for (let i = 0; i < canvases.length; i++) {
-      const canvas = canvases[i];
-      const jpg = await encodeJpeg(canvas, quality, encoder, () => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height));
-      log('栅格化第' + (i + 1) + '页', {
-        rendered: canvas.width + 'x' + canvas.height,
-        encoded: canvas.width + 'x' + canvas.height,
-        jpegBytes: jpg ? jpg.byteLength : 0
-      });
-      if (jpg && jpg.byteLength) { stats.shrunk++; stats.compressedImages++; stats.reducedBytes += Math.max(0, canvas.width * canvas.height * 3 - jpg.byteLength); }
-      const img = await out.embedJpg(jpg);
-      const pageW = Number(canvas._pdfWidth) || canvas.width;
-      const pageH = Number(canvas._pdfHeight) || canvas.height;
-      const page = out.addPage([pageW, pageH]);
-      page.drawImage(img, { x: 0, y: 0, width: pageW, height: pageH });
-      tick((i + 1) / canvases.length * 0.8);
-    }
-    log('栅格化完成', { pages: canvases.length, ms: Math.round(performance.now() - t0), stats });
+    const stats = { photos: 0, shrunk: 0, totalImages: 0, compressedImages: 0, reducedBytes: 0 };
+    // 逐页渲染并立即编码入 PDF，不缓存全部 canvas，避免多页时主线程和内存被长时间占用。
+    await C.renderPages(bytes, 1, undefined, {
+      targetDpi,
+      onPage: async (canvas, pageNo, pageTotal) => {
+        stats.photos++; stats.totalImages++;
+        const jpg = encoder === 'jsquash'
+          ? await encodeJpegOffThread(canvas, quality, encoder)
+          : await encodeJpeg(canvas, quality, encoder, () => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height));
+        log('栅格化第' + pageNo + '页', {
+          rendered: canvas.width + 'x' + canvas.height,
+          encoded: canvas.width + 'x' + canvas.height,
+          jpegBytes: jpg ? jpg.byteLength : 0
+        });
+        if (jpg && jpg.byteLength) { stats.shrunk++; stats.compressedImages++; stats.reducedBytes += Math.max(0, canvas.width * canvas.height * 3 - jpg.byteLength); }
+        const img = await out.embedJpg(jpg);
+        const pageW = Number(canvas._pdfWidth) || canvas.width;
+        const pageH = Number(canvas._pdfHeight) || canvas.height;
+        const page = out.addPage([pageW, pageH]);
+        page.drawImage(img, { x: 0, y: 0, width: pageW, height: pageH });
+        tick(0.1 + 0.7 * stats.photos / (pageTotal || 1));
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    });
+    log('栅格化完成', { pages: stats.photos, ms: Math.round(performance.now() - t0), stats });
     return { bytes: await out.save({ useObjectStreams: true }), stats };
   }
 
@@ -533,7 +615,9 @@
         bitmap.close && bitmap.close();
         if (isJpeg || rawFlate || pngEncoder === 'upng' || pngEncoder === 'auto') imageData = ctx.getImageData(0, 0, targetW, targetH);
         let data;
-        if (isJpeg || rawFlate) data = await encodeJpeg(canvas, quality, jpegEncoder, () => imageData);
+        if (isJpeg || rawFlate) data = jpegEncoder === 'jsquash'
+          ? await encodeJpegOffThread(canvas, quality, jpegEncoder)
+          : await encodeJpeg(canvas, quality, jpegEncoder, () => imageData);
         else {
           if (window.ImageEncode) {
             data = await window.ImageEncode.encodePngWithUPNG(imageData.data, targetW, targetH);

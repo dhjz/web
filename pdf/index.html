@@ -191,7 +191,10 @@
             <div v-if="dialog.error" class="err">{{ dialog.error }}</div>
           </template>
           <template v-else-if="dialog.type==='preview'">
-            <div v-if="dialog.preview.kind==='image'" class="preview-image"><img :src="dialog.preview.url" :alt="dialog.title" /></div>
+            <div v-if="dialog.preview.kind==='image'">
+              <div class="preview-toolbar"><span class="muted small">滚轮以鼠标位置为中心缩放 · 按住拖动平移 · 1:1 切换原大小</span><button class="btn-sm" @click="toggleImageZoom">{{imageZoom.mode==='fit'?'1:1':'适合屏幕'}}</button></div>
+              <div class="preview-image-stage" @wheel="onImageWheel" @pointerdown="onImagePointerDown" @pointermove="onImagePointerMove" @pointerup="onImagePointerUp" @pointercancel="onImagePointerUp"><img :src="dialog.preview.url" :alt="dialog.title" draggable="false" @load="dialog.preview.onLoad && dialog.preview.onLoad()" /></div>
+            </div>
             <div v-else-if="dialog.preview.kind==='pdf'" class="preview-pdf">
               <iframe class="pdf-frame" :src="dialog.preview.url" title="PDF 预览"></iframe>
             </div>
