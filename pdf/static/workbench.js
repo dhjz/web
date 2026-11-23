@@ -5,14 +5,23 @@
   const PDFLib = window.PDFLib;
   const degrees = PDFLib.degrees || (v => v);
   const uid = () => Math.random().toString(36).slice(2, 10);
+  function renameTaskOutput(o, f, tool, oi, total) {
+    if (!f) return o;
+    const titles = { merge:'合并', split:'拆分', rotate:'旋转', rearrange:'重排', 'add-blank':'插入空白页', 'delete-pages':'删除页面', protect:'加密', unlock:'解密', metadata:'元数据', 'page-numbers':'页码', watermark:'水印', signature:'签名', grayscale:'灰度', 'pdf-to-image':'转图片', 'image-to-pdf':'转PDF', 'extract-images':'提取图片', 'pdf-to-text':'转文字', compress:'压缩', repair:'修复' };
+    const ext = o.name.split('.').pop();
+    const base = (f.name.replace(/\.[^.]+$/, '') || f.name) + '_' + (titles[tool]||tool);
+    const seqPad = Math.max(2, String(total).length);
+    const suffix = total > 1 ? `-${String(oi+1).padStart(seqPad,'0')}` : '';
+    return { ...o, name: `${base}${suffix}.${ext}` };
+  }
 
   // 参数定义：每个工具对应一个设置面板
   // 参数定义：对齐 PaperKnife React 原版各工具的可调参数
   const PASSWORD = { key:'unlockPassword', label:'当前密码（若文件已加密）', type:'password', def:'', placeholder:'留空表示未加密' };
   const PARAMS = {
     merge: [],
-    split: [ { key:'splitMode', label:'拆分模式', type:'select', def:'single', options:[{value:'single',label:'单个文档（所选页合并为一个 PDF）'},{value:'individual',label:'多个文件（每页单独 PDF，打包 ZIP）'}] },
-             { key:'pages', label:'页码范围（例：1, 3-5, odd, even）', type:'text', def:'', placeholder:'1, 3-5, odd' }, PASSWORD ],
+    split: [ { key:'splitMode', label:'拆分模式', type:'select', def:'single', options:[{value:'single',label:'单个文档（所选页合并为一个 PDF）'},{value:'individual',label:'多个文件（按页码组分别输出 PDF，打包 ZIP）'}] },
+             { key:'pages', label:'页码范围（例：1, 3-5, odd, even, all；用 ; 或 ；分隔可一次生成多个 PDF）', type:'text', def:'', placeholder:'1, 3-5, odd, all 或 1,2;2-5,10;3,4,5' }, PASSWORD ],
     'add-blank': [ { key:'position', label:'插入位置', type:'select', def:'end', options:[{value:'start',label:'文档开头'},{value:'end',label:'文档结尾'},{value:'after',label:'指定页之后'}] },
                    { key:'afterPage', label:'指定页（插入到该页之后）', type:'number', def:1, min:1, max:9999, showIf:{key:'position',value:'after'} },
                    { key:'count', label:'插入页数', type:'number', def:1, min:1, max:1000 },
@@ -48,6 +57,7 @@
     signature: [ { key:'text', label:'签名文字（图片签名请在 React 原版绘制后导入）', type:'text', def:'已签名' }, PASSWORD ],
     grayscale: [ PASSWORD ],
     'pdf-to-image': [ { key:'dpi', label:'质量（DPI 50-500）', type:'select', def:'150', options:[{value:'72',label:'72 · 草稿'},{value:'150',label:'150 · 标准'},{value:'300',label:'300 · 打印'},{value:'custom',label:'自定义'}] },
+                      { key:'pages', label:'页码范围（例：1, 3-5, odd, even, all；留空=全部）', type:'text', def:'', placeholder:'1, 3-5, odd, even, all' },
                       { key:'dpiCustom', label:'自定义 DPI', type:'numberRange', def:150, min:50, max:500, step:1, unit:'DPI', showIf:{key:'dpi',value:'custom'} },
                       { key:'outputWidth', label:'固定输出宽度（像素，0=按 DPI 自动）', type:'number', def:0, min:0, max:10000, step:1, hint:'0 表示按 DPI 自动；填写数值则在该 DPI 渲染后等比例缩放到指定宽度，可能放大。' },
                       { key:'format', label:'图片格式', type:'select', def:'jpg', options:[{value:'jpg',label:'JPG'},{value:'png',label:'PNG'}] },
@@ -448,8 +458,9 @@
             const group = groups[g];
             const base = g/groups.length, span = 1/groups.length;
             const res = await execute(task.tool, group.files, task.params, p => task.progress=Math.round(base*100 + p*span));
-            // 多文件任务逐个处理时，用各自源文件名生成输出名，避免源文件名不同却共用第一个文件名
-            res.forEach((o, oi) => results.push(group.label ? renamed(o, group.files[0], `-${oi+1}`, res.length) : o));
+            // 多文件任务逐个处理时，用各自源文件名生成输出名。
+            // 分号拆分已在 execute 内按「源文件名_拆分-序号」命名，保留原样。
+            res.forEach((o, oi) => results.push(group.label && task.tool!=='split' ? renameTaskOutput(o, group.files[0], task.tool, oi, res.length) : o));
           }
           task.outputs = results; task.progress=100; task.status='done'; C.toast(`完成：${toolOf(task).title}`);
         } catch(e) { task.status='error'; task.error=C.errMsg(e); }
@@ -470,13 +481,6 @@
         const toolTitles = { merge:'合并', split:'拆分', rotate:'旋转', rearrange:'重排', 'add-blank':'插入空白页', 'delete-pages':'删除页面', protect:'加密', unlock:'解密', metadata:'元数据', 'page-numbers':'页码', watermark:'水印', signature:'签名', grayscale:'灰度', 'pdf-to-image':'转图片', 'image-to-pdf':'转PDF', 'extract-images':'提取图片', 'pdf-to-text':'转文字', compress:'压缩', repair:'修复' };
         const baseName = (f) => f.name.replace(/\.[^.]+$/, '') || f.name;
         const saveName = (ext, f=fs[0]) => tool==='merge' ? `合并.${ext}` : `${baseName(f)}_${toolTitles[tool]||tool}.${ext}`;
-        const renamed = (o, f, suffix, total) => {
-          if (!f) return o;
-          const ext = o.name.split('.').pop();
-          const base = saveName(ext, f).replace(new RegExp('\\.' + ext + '$'), '');
-          const seq = (total > 1 && suffix) ? suffix : '';
-          return { ...o, name: `${base}${seq}.${ext}` };
-        };
         tick(20);
         if (tool==='merge') {
           if (fs.length<2) throw new Error('合并至少需要 2 个 PDF');
@@ -486,10 +490,30 @@
         }
         if (tool==='split') {
           const doc=await load(bytes0); const all=doc.getPageIndices();
-          const idx = p.pages ? C.parseRange(p.pages, all.length).map(x=>x-1) : all;
-          if (!idx.length) throw new Error('没有匹配的页码');
-          if (p.splitMode==='individual') { const zip=new JSZip(); for (const i of idx) { const o=await PDFLib.PDFDocument.create(); o.addPage((await o.copyPages(doc,[i]))[0]); zip.file(`page-${i+1}.pdf`, await o.save()); tick(30+Math.round(60*(idx.indexOf(i)+1)/idx.length)); } return [{name:saveName('zip'),bytes:await zip.generateAsync({type:'uint8array'})}]; }
-          const out=await PDFLib.PDFDocument.create(); (await out.copyPages(doc, idx)).forEach(pg=>out.addPage(pg)); tick(90); return [{name:saveName('pdf'),bytes:await out.save()}];
+          const groups = p.pages ? C.parseRangeGroups(p.pages, all.length) : null;
+          const ranges = groups || (p.pages ? [C.parseRange(p.pages, all.length)] : [Array.from({length:all.length},(_,i)=>i+1)]);
+          if (!ranges.length || ranges.some(r=>!r.length)) throw new Error('没有匹配的页码');
+          const mk = async (pages) => { const o=await PDFLib.PDFDocument.create(); (await o.copyPages(doc, pages.map(x=>x-1))).forEach(pg=>o.addPage(pg)); return await o.save(); };
+          // 分号拆分始终带上源文件名，避免多个源文件产生同名输出互相覆盖。
+          const groupPrefix = `${baseName(fs[0])}_`;
+          if (groups) {
+            // 每个分号组先合并成一个 PDF，避免逐页输出造成重复文件。
+            const built=[];
+            for (let gi=0;gi<groups.length;gi++) {
+              built.push({ name: `${groupPrefix}拆分-${String(gi+1).padStart(2,'0')}.pdf`, bytes:await mk(groups[gi]) });
+              tick(20+Math.round(70*(gi+1)/groups.length));
+            }
+            if (p.splitMode==='individual') {
+              const zip=new JSZip();
+              built.forEach(o => zip.file(o.name, o.bytes));
+              return [{name:saveName('zip'),bytes:await zip.generateAsync({type:'uint8array'})}];
+            }
+            return built;
+          }
+          const picked = ranges[0].map(x=>x-1);
+          const pagePad = Math.max(2, String(all.length).length);
+          if (p.splitMode==='individual') { const zip=new JSZip(); for (const i of picked) { const o=await PDFLib.PDFDocument.create(); o.addPage((await o.copyPages(doc,[i]))[0]); zip.file(`${baseName(fs[0])}_第${String(i+1).padStart(pagePad,'0')}页.pdf`, await o.save()); tick(30+Math.round(60*(picked.indexOf(i)+1)/picked.length)); } return [{name:saveName('zip'),bytes:await zip.generateAsync({type:'uint8array'})}]; }
+          const out=await PDFLib.PDFDocument.create(); (await out.copyPages(doc, picked)).forEach(pg=>out.addPage(pg)); tick(90); return [{name:saveName('pdf'),bytes:await out.save()}];
         }
         if (tool==='add-blank') {
           const doc=await load(bytes0); const n=doc.getPageCount(); let size;
@@ -614,8 +638,11 @@
             const useJsquash = fmt==='jpg' && !!p.useJsquash;
             const useUpng = fmt==='png' && !!p.useUpng;
             const outputWidth=Math.max(0,Math.floor(Number(p.outputWidth)||0));
-            const parsedPages=p.pages?C.parseRange(p.pages,0):[];
-            const canvases=await C.renderPages(bytes0,dpi/72,pwd,{ pages:parsedPages });
+            const totalPages=await C.getPageCount(bytes0,pwd);
+            const parsedPages=String(p.pages||'').trim()?C.parseRange(p.pages,totalPages):[];
+            if (String(p.pages||'').trim() && !parsedPages.length) throw new Error('没有匹配的页码：' + p.pages);
+            const canvases=await C.renderPages(bytes0,dpi/72,pwd,parsedPages.length?{ pages:parsedPages }:undefined);
+            const imagePad=Math.max(2,String(totalPages).length);
             const zip=new JSZip(); const out=[];
             for (let i=0;i<canvases.length;i++) {
               const target=outputWidth>0 ? C.resizeCanvasToWidth(canvases[i],outputWidth) : canvases[i];
@@ -623,7 +650,7 @@
                 ? await C.canvasToBytes(target,fmt,{upng:true})
                 : await C.canvasToBytes(target,fmt,{quality,useJsquash});
               const pageNo=parsedPages[i]||i+1;
-              const name=`${baseName(fs[0])}-${String(pageNo).padStart(2,'0')}.${ext}`;
+              const name=`${baseName(fs[0])}-${String(pageNo).padStart(imagePad,'0')}.${ext}`;
               zip.file(name,bytes); out.push({name,bytes,width:target.width,height:target.height});
               if (target!==canvases[i]) { target.width=0; target.height=0; }
               tick(20+Math.round(70*(i+1)/canvases.length));

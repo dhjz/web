@@ -76,6 +76,10 @@
     String(input || '').split(/[,，\s]+/).filter(Boolean).forEach((rawPart) => {
       const part = rawPart.toLowerCase();
       if (!Number.isFinite(n) || n <= 0) return;
+      if (part === 'all' || part === '全部' || part === '所有') {
+        for (let i = 1; i <= n; i++) out.push(i);
+        return;
+      }
       if (part === 'odd' || part === 'even' || part === '奇数页' || part === '偶数页') {
         const wantOdd = part === 'odd' || part === '奇数页';
         for (let i = 1; i <= n; i++) if ((i % 2 === 1) === wantOdd) out.push(i);
@@ -86,6 +90,16 @@
       else if (/^\d+$/.test(part)) { const p = +part; if (p >= 1 && p <= n) out.push(p); }
     });
     return [...new Set(out)].sort((a, b) => a - b);
+  }
+  // 按中英文分号拆分为多组页码范围；无分号时返回 null，保持原有拆分行为。
+  // 每组仍使用 parseRange 解析，因此逗号/空格分隔、连续范围及 odd/even/all 写法都兼容。
+  function parseRangeGroups(input, n) {
+    const raw = String(input || '');
+    if (!/[;；]/.test(raw)) return null;
+    const parts = raw.split(/[;；]/).map(part => part.trim());
+    const groups = parts.map(part => parseRange(part, n));
+    if (groups.some(g => !g.length)) throw new Error('分号分隔的每组页码范围都需要至少匹配一页：' + raw);
+    return groups;
   }
   function parsePartialOrder(input, n) {
     const out = [];
@@ -247,7 +261,7 @@
     { name: 'pdf-to-text', title: 'PDF 转文字', desc: '提取文档纯文本', icon: '📄', cat: 'Convert' },
     { name: 'repair', title: '修复 PDF', desc: '尝试修复损坏文档', icon: '🔧', cat: 'Optimize' },
   ];
-  window.PdfCore = { store, toast, errMsg, readFile, readHttpPdf, fileToDataUrl, download, loadPdf, cjkFont, textFont, getPageCount, parseRange, parseOrder, parsePartialOrder, renderPages, resizeCanvasToWidth, canvasToBytes, extractText, TOOLS, PDFLib };
+  window.PdfCore = { store, toast, errMsg, readFile, readHttpPdf, fileToDataUrl, download, loadPdf, cjkFont, textFont, getPageCount, parseRange, parseRangeGroups, parseOrder, parsePartialOrder, renderPages, resizeCanvasToWidth, canvasToBytes, extractText, TOOLS, PDFLib };
 
   // UPNG needs pako.deflate; without it the encoder would silently fall back to Canvas.
   function upngReady() { return !!(window.UPNG && window.UPNG.encode && window.pako && window.pako.deflate); }
