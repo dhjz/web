@@ -695,6 +695,10 @@
         }
         C.toast('该格式暂不支持在线预览，请下载后查看');
       }
+      function previewFile(f) {
+        if (!f || !f.bytes) { C.toast('文件仍在读取中，请稍后再试'); return; }
+        previewOut({ name:f.name, bytes:new Uint8Array(f.bytes) });
+      }
       function outputToInput(o) {
         const bytes = Array.from(o.bytes);
         const file = { id:uid(), name:o.name, size:bytes.length, time:Date.now(), kind:kindOf(o.name), bytes };
@@ -743,7 +747,7 @@
       return { dark, files, selected, keyword, category, sortKey, dragOver, tasks, dialog, sorts, tools:C.TOOLS, toolOf,
         visibleFiles, selectedFiles, orderedFiles, runnable, runningCount, statsText, badgeClass, fmtSize, fmtTime, extLabel, extClass, statusText,
         addFiles, pickFiles, openHttpLoad, loadHttpPdf, onDrop, onBodyDragOver, onBodyDragLeave, onBodyDrop, removeFile, clearFiles, toggleSelect, toggleSelectAll, resetFilters, dragFileId, manualOrder, onFileDragArm, onFileDragStart, onFileDragOver, onFileDragLeave, onFileDrop, onFileDragEnd, moveFileByOrder, canUse, openTool, editTask, closeDialog, confirmParams,
-        removeTask, startTask, startAll, runTask, openDetail, setParam, commitParam, clampParam, watermarkTextMatrix, downloadOut, outputUrl, isZipOut, isPdfOut, isTextOut, previewOut, outputToInput, isImageOut, hasImageOutputs, paramVisible, toggleTheme, compressionInfo, imageStats, imageDimension, ratioText, watermarkPreview, refreshWatermarkPreview };
+        removeTask, startTask, startAll, runTask, openDetail, setParam, commitParam, clampParam, watermarkTextMatrix, downloadOut, outputUrl, isZipOut, isPdfOut, isTextOut, previewOut, previewFile, outputToInput, isImageOut, hasImageOutputs, paramVisible, toggleTheme, compressionInfo, imageStats, imageDimension, ratioText, watermarkPreview, refreshWatermarkPreview };
     },
   };
   createApp(App).mount('#app');
