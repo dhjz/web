@@ -24,9 +24,13 @@
     .center > div { margin-bottom: 8px; }
     .center button { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .textarea { display: block; width: 100%; height: 100%; word-break: break-all; }
+    .textarea.no-wrap { white-space: pre; word-break: normal; overflow-wrap: normal; overflow-x: auto; }
     .control { position: absolute; bottom: 4px; font-size: 12px; display: none; }
     .control-right { right: 6px; }
     .control-left { left: 6px; }
+    .control label { display: inline-flex; align-items: center; cursor: pointer; }
+    .control input[type="checkbox"] { -webkit-appearance: checkbox; appearance: auto; width: 13px; height: 13px; padding: 0; margin: 0; vertical-align: middle; }
+    .control label + button { margin-left: 8px; }
     .side:hover .control { display: block; }
     .hide { display: none !important; }
   </style>
@@ -61,6 +65,7 @@
     <div class="side">
       <textarea class="textarea" id="text-right" placeholder="结果数据展示, 只读, 双击复制" readonly></textarea>
       <div class="control control-right">
+        <label><input type="checkbox" id="no-wrap">换行</label>
         <button onclick="$copy($q('#text-right').value)">复制</button>
         <button onclick="download($q('#text-right').value)">下载</button>
       </div>
@@ -86,6 +91,14 @@
     $q('#text-right').addEventListener('dblclick', (e) => {
       if($q('#text-right').value) $copy($q('#text-right').value)
     })
+    const syncWrap = () => {
+      const noWrap = !$q('#no-wrap').checked
+      const textarea = $q('#text-right')
+      textarea.classList.toggle('no-wrap', noWrap)
+      textarea.wrap = noWrap ? 'off' : 'soft'
+    }
+    $q('#no-wrap').addEventListener('change', syncWrap)
+    syncWrap()
     $q('#btns').addEventListener('click', (e) => {
       if (e.target.nodeName == 'BUTTON') {
         $qa('#btns button').forEach(item => item.className = '')
@@ -181,13 +194,99 @@
     }
 
     function miniCss(val, delEnt) {
-      let result = val.replace(/\/\*(?:(?!\*\/)[\s\S])*\*\/|[\r\n\t]+/g, '')
-                .replace(/\s{2,}/g, ' ')
-                .replace(/:\s/g, ': ')
-                .replace(/\s{/g, ' {')
-                .replace(/;\s*/g, '; ')
-                .trim()
-      return  delEnt ? result : result.replace(/}\s/g, '}').replace(/}/g, '}\n')
+      const css = val.replace(/\/\*[\s\S]*?\*\//g, '')
+
+      // 拆分 token：{ } ; 作为结构符号，字符串和 url(...) 整体保留
+      const tokens = []
+      let buf = ''
+      let quote = ''
+      for (let i = 0; i < css.length; i++) {
+        const ch = css[i]
+        if (quote) {
+          buf += ch
+          if (ch === '\\' && i + 1 < css.length) buf += css[++i]
+          else if (ch === quote) quote = ''
+          continue
+        }
+        if (ch === '"' || ch === "'") {
+          quote = ch
+          buf += ch
+          continue
+        }
+        if (/^url\(/i.test(css.slice(i, i + 4))) {
+          buf += css.slice(i, i + 4)
+          i += 4
+          let depth = 1
+          while (i < css.length && depth) {
+            const c = css[i]
+            buf += c
+            if (c === '(') depth++
+            else if (c === ')') depth--
+            i++
+          }
+          i--
+          continue
+        }
+        if (ch === '{' || ch === '}' || ch === ';') {
+          if (buf.trim()) tokens.push(buf.trim())
+          tokens.push(ch)
+          buf = ''
+          continue
+        }
+        buf += ch
+      }
+      if (buf.trim()) tokens.push(buf.trim())
+
+      const normalize = (text) => {
+        const strings = []
+        let out = text.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, m => {
+          strings.push(m)
+          return '\u0000' + (strings.length - 1) + '\u0000'
+        })
+        out = out.replace(/\s+/g, ' ').replace(/:\s/g, ': ').trim()
+        return out.replace(/\u0000(\d+)\u0000/g, (m, i) => strings[+i])
+      }
+
+      // 组装成树：@ 规则单独成行，子内容缩进 2 格；普通规则保持一行
+      const root = []
+      const stack = []
+      let head = ''
+      tokens.forEach(token => {
+        const target = stack.length ? stack[stack.length - 1].children : root
+        if (token === '{') {
+          const block = { at: /^@/.test(head.trim()), header: normalize(head), children: [] }
+          target.push(block)
+          stack.push(block)
+          head = ''
+        } else if (token === '}') {
+          head = ''
+          stack.pop()
+        } else if (token === ';') {
+          if (head.trim()) target.push({ text: normalize(head) + ';' })
+          head = ''
+        } else {
+          head += (head ? ' ' : '') + token
+        }
+      })
+
+      const flat = items => items.map(item => {
+        if (item.text) return item.text
+        const inner = flat(item.children)
+        return item.header + (inner ? ' { ' + inner + ' }' : ' {}')
+      }).join(' ')
+
+      const render = (items, level) => items.map(item => {
+        const pad = ' '.repeat(level * 2)
+        if (item.text) return pad + item.text
+        if (!item.children.length) return pad + item.header + ' {}'
+        const inner = render(item.children, level + 1)
+        if (item.at || item.children.some(c => !c.text)) {
+          return pad + item.header + ' {\n' + inner + '\n' + pad + '}'
+        }
+        return pad + item.header + ' { ' + item.children.map(c => c.text).join(' ').trim() + ' }'
+      }).join('\n')
+
+      return (delEnt ? flat(root) : render(root, 0)).trim()
     }
 
     function $q(val) {
