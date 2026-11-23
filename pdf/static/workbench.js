@@ -266,6 +266,7 @@
           if (files.value.some(x => x.name===f.name && x.size===f.size)) continue;
           const file = { id:uid(), name:f.name, size:f.size, time:f.lastModified||Date.now(), kind, bytes:null };
           files.value.push(file); added++;
+          const sel = new Set(selected.value); sel.add(file.id); selected.value = sel;
           C.readFile(f)
             .then(async bytes => {
               file.bytes = Array.from(bytes);
@@ -298,6 +299,7 @@
           if (files.value.some(x=>x.name===name && x.size===bytes.length)) { closeDialog(); C.toast('该文件已在列表中：'+name); return; }
           const file={id:uid(),name,size:bytes.length,time:Date.now(),kind:'pdf',bytes:Array.from(bytes)};
           files.value.push(file);
+          const sel=new Set(selected.value); sel.add(file.id); selected.value=sel;
           const pages=await C.getPageCount(bytes); if (pages) file.pages=pages;
           closeDialog(); C.toast(`已加载 ${name} · ${pages||'?'} 页`);
         } catch(e) { d.error=C.errMsg(e); }
