@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>电台随身听 - 找Tab</title>
+    <link rel="icon" href="./favicon.svg" />
+    <link rel="stylesheet" href="./style.css">
+    <script defer src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.22/vue.global.prod.js"></script>
+    <script defer src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/hls.js/1.6.13/hls.min.js"></script>
+    <script defer src="./data.js"></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div id="root">
+      <div id="app" v-cloak>
+        <div class="radio-app">
+          <audio ref="audioEl" @error="handleError"></audio>
+          <div class="container">
+            <header class="header">
+              <div class="brand">
+                <h1 class="title">电台随身听</h1>
+                <p class="subtitle">拧旋钮或拖指针调台 · 共 {{ list.length }} 个电台</p>
+              </div>
+              <div class="status">{{ statusText }}</div>
+            </header>
+
+            <section class="panel">
+              <div class="screen">
+                <div class="screen-meta">{{ current ? (current.c || "电台") + " · " + (current.p || "") : "无信号" }}</div>
+                <div class="station-name">{{ current ? current.name : "请选择一个电台" }}</div>
+                <div class="screen-row">
+                  <span class="freq">{{ current && current.f ? current.f : "FM / 网络流" }}</span>
+                  <span class="sleep">{{ sleepText ? "睡眠 " + sleepText : "" }}</span>
+                </div>
+              </div>
+
+              <div class="tuner-row">
+                <div class="dial-wrap" @click="onDialClick" title="点击左右侧换台">
+                  <div class="dial" :style="{ transform: 'rotate(' + dialAngle + 'deg)' }"><i></i></div>
+                </div>
+                <div class="tuner-track">
+                  <input class="tuner" type="range" min="0" :max="maxIdx" v-model.number="idx" @change="select(idx)" />
+                  <div class="tuner-labels"><span>低频</span><span>调谐指针</span><span>高频</span></div>
+                </div>
+              </div>
+
+              <div class="controls">
+                <button class="btn" @click="prev">◀ 上一台</button>
+                <button class="btn primary" @click="toggle">{{ playing ? "暂停" : "播放" }}</button>
+                <button class="btn" @click="next">下一台 ▶</button>
+                <button class="btn" @click="randomPlay">随便听听</button>
+                <button class="btn" :class="{ active: isFav }" @click="toggleFav">{{ isFav ? "已收藏" : "收藏" }}</button>
+                <button class="btn" :class="{ active: favMode }" @click="toggleFavMode">{{ favMode ? "全部电台" : "收藏列表" }}</button>
+                <label class="volume">音量<input type="range" min="0" max="1" step="0.05" v-model.number="volume" /></label>
+              </div>
+            </section>
+
+            <section class="filters">
+              <div class="filter-row">
+                <input v-model="query" placeholder="搜台名 / 频率 / 省份" class="field search" />
+                <select v-model="province" class="field"><option v-for="p in provinces" :key="p">{{ p }}</option></select>
+                <select v-model="category" class="field"><option v-for="c in categories" :key="c">{{ c }}</option></select>
+                <label class="check"><input type="checkbox" v-model="onlyMusic" /> 只听音乐台</label>
+                <select v-model.number="sleepMin" @change="applySleep" class="field">
+                  <option :value="0">睡眠定时</option>
+                  <option :value="15">15 分钟</option>
+                  <option :value="30">30 分钟</option>
+                  <option :value="60">60 分钟</option>
+                </select>
+              </div>
+              <p class="hint">快捷键：← / → 上一台 / 下一台，↑ / ↓ 随机换台，空格 播放 / 暂停。没信号会自动换下一台。</p>
+            </section>
+
+            <section class="filters">
+              <div class="filter-row">
+                <input v-model="cloudUser" maxlength="10" placeholder="云同步用户名（3-10 位）" class="field search" />
+                <button class="btn" @click="pushCloud">上传到云端</button>
+                <button class="btn" @click="pullCloud">从云端拉取</button>
+                <button class="btn" @click="exportJson">导出 JSON</button>
+                <button class="btn" @click="pickFile">导入 JSON</button>
+                <input type="file" accept="application/json,.json" ref="fileInput" class="hidden-file" @change="importJson" />
+              </div>
+              <p class="hint">{{ cloudStatus || '收藏保存在本机；填用户名后可强制上传/拉取，也可导入导出 JSON。' }} · 本地收藏 {{ localCount }} 个 · 云端收藏 {{ syncedCount }} 个</p>
+            </section>
+
+            <section class="station-list">
+              <div class="list-title">{{ favMode ? "收藏列表" : "电台列表" }}（{{ list.length }}）</div>
+              <ul class="list">
+                <li v-for="(s, i) in visible" :key="s.id" @click="select(i)" class="station-item" :class="{ active: i === idx }">
+                  <span class="num">{{ i + 1 }}</span>
+                  <span class="name">{{ s.name }}</span>
+                  <span class="freq-cell">{{ s.f || "" }}</span>
+                  <span class="province">{{ s.p || "" }}</span>
+                  <span class="category">{{ s.c || "" }}</span>
+                </li>
+              </ul>
+              <div v-if="visible.length < list.length" class="more"><button class="btn" @click="pageSize += 40">加载更多</button></div>
+              <div v-if="!list.length" class="empty">没有匹配的电台</div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+      }
+    </script>
+  </body>
+</html>
