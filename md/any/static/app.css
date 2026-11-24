@@ -93,6 +93,7 @@ body {
   border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px;
   background: var(--panel); color: var(--text); font-size: 12px; cursor: pointer;
 }
+.pdf-engine-error { color: var(--error); font-size: 11px; cursor: help; }
 .field.switch { gap: 5px; cursor: pointer; }
 .field.switch input { accent-color: var(--accent); }
 .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
@@ -175,7 +176,7 @@ body {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 1px;
   background: var(--line); border-bottom: 1px solid var(--line);
 }
-.stat { background: var(--panel-2); padding: 4px 8px; min-width: 0; }
+.stat { background: var(--panel-2); padding: 4px 6px; min-width: 0; }
 .stat label { display: block; color: var(--muted); font-size: 10.5px; margin-bottom: 3px; }
 .stat b { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .stat b.tiny-text { font-size: 11px; font-weight: 500; color: var(--muted); }
@@ -203,6 +204,9 @@ body {
   font-size: 12.5px; line-height: 1.7; color: var(--text);
 }
 .preview { padding: 10px 20px; line-height: 1.75; }
+/* PDF tab: show the original PDF with the browser's native viewer. */
+.pdf-preview { height: 100%; }
+.pdf-preview embed { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
 .preview h1, .preview h2, .preview h3 { border-bottom: 1px solid var(--line); padding-bottom: 5px; }
 .preview img {
    max-width: calc(min(800px, 90%)); border: 1px solid var(--line); border-radius: 6px;

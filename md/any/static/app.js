@@ -12,6 +12,7 @@
       const previewHtml = ref(true);
       const exportImages = ref(true);
       const formatHint = ref('');
+      const pdfEngine = ref('anydoc');
       const engineState = ref('loading');
       const engineError = ref('');
       const engineInfo = ref('加载中…');
@@ -68,23 +69,46 @@
       const hasCleanHtml = computed(() => !!cleanHtml.value);
       const doneItems = computed(() => items.value.filter(i => i.status === 'done'));
       const canStart = computed(() => engineState.value === 'ready' && !running.value && items.value.some(i => i.status === 'pending' || i.status === 'error'));
+      const hasPdfFiles = computed(() => items.value.some(i => isPdfItem(i)));
       const queuePosition = computed(() => queue.length + (currentJob ? 1 : 0));
 
       const previewUrls = new Map(); // blob URL cache, keyed by `media/...` path
+      const pdftomdPreviewUrls = new Map(); // keyed by sourceResult object -> Map(path, blob URL)
+      const pdfPreviewUrl = ref('');
+      let pdfPreviewItemId = null;
       const previewHtmlContent = computed(() => {
         const item = activeItem.value;
         if (!item || !item.markdown) return '';
         if (!previewHtml.value) return `<pre class="plain">${escapeHtml(item.markdown)}</pre>`;
         try {
           let md = item.markdown;
-          for (const asset of item.result?.assets || []) {
-            if (!asset.path || !asset.bytes || !asset.bytes.length) continue;
-            let url = previewUrls.get(asset.path);
-            if (!url) {
-              url = URL.createObjectURL(new Blob([asset.bytes], { type: asset.mediaType || 'application/octet-stream' }));
-              previewUrls.set(asset.path, url);
+          if (item.result?.renderMode === 'pdftomd') {
+            const source = item.result.sourceResult;
+            const images = source?.images || [];
+            const manifest = source?.imageManifest || [];
+            let urls = pdftomdPreviewUrls.get(source);
+            if (!urls) { urls = new Map(); pdftomdPreviewUrls.set(source, urls); }
+            manifest.forEach((m, i) => {
+              const raw = images[i]?.bytes;
+              if (!raw?.length || urls.has(m?.placeholder)) return;
+              const blob = new Blob([raw], { type: m.contentType || images[i].contentType || 'image/png' });
+              const url = URL.createObjectURL(blob);
+              const ext = m.contentType === 'image/jpeg' ? 'jpg' : 'png';
+              const aliases = [m.placeholder, m.fileName && `images/${m.fileName}`,
+                `images/p${m.page || 1}-${i + 1}.${ext}`].filter(Boolean);
+              for (const alias of aliases) urls.set(alias, url);
+            });
+            for (const [path, url] of urls) md = md.split(`(${path})`).join(`(${url})`);
+          } else {
+            for (const asset of item.result?.assets || []) {
+              if (!asset.path || !asset.bytes || !asset.bytes.length) continue;
+              let url = previewUrls.get(asset.path);
+              if (!url) {
+                url = URL.createObjectURL(new Blob([asset.bytes], { type: asset.mediaType || 'application/octet-stream' }));
+                previewUrls.set(asset.path, url);
+              }
+              md = md.split(`(${asset.path})`).join(`(${url})`);
             }
-            md = md.split(`(${asset.path})`).join(`(${url})`);
           }
           const raw = marked.parse(md);
           // DOMPurify's default URI policy drops blob: URLs; without this the
@@ -130,6 +154,16 @@
         const m = /\.([^.]+)$/.exec(String(name || ''));
         return m ? m[1].toLowerCase() : '';
       }
+      function isPdfItem(item) {
+        if (!item) return false;
+        const hint = String(formatHint.value || '').toLowerCase();
+        if (hint === 'pdf') return true;
+        if (hint && hint !== 'pdf') return false;
+        const ext = extOfName(item.file?.name);
+        if (ext === 'pdf' || /pdf/i.test(item.file?.type || '')) return true;
+        const bytes = item._buffer ? new Uint8Array(item._buffer, 0, Math.min(8, item._buffer.byteLength)) : null;
+        return !!bytes && String.fromCharCode(...bytes) === '%PDF-';
+      }
       function formatLabel(item) {
         const ext = extOfName(item.file.name);
         return (ext || 'FILE').slice(0, 5).toUpperCase();
@@ -159,6 +193,11 @@
       function itemBusy(item) {
         return !!item && (item.status === 'queued' || item.status === 'converting');
       }
+
+      const pdfReady = ref(false);
+      const pdfInitError = ref('');
+      const pdfEngineInfo = ref('');
+      let pdfInitPromise = null;
 
       const fileInput = ref(null);
       function addInputFiles(fileList) {
@@ -242,6 +281,23 @@
       }
 
       function selectItem(id) { activeId.value = id; tab.value = 'preview'; resetResultScroll(); }
+      // The PDF tab shows the original file through <embed>, like the reference site.
+      function ensurePdfPreviewUrl() {
+        const item = activeItem.value;
+        if (!item || !isPdfItem(item)) { clearPdfPreviewUrl(); return; }
+        if (pdfPreviewItemId === item.id && pdfPreviewUrl.value) return;
+        clearPdfPreviewUrl();
+        const data = item.file?.type === 'application/pdf' || /\.pdf$/i.test(item.file?.name || '')
+          ? item.file
+          : new Blob([item._buffer || item.file], { type: 'application/pdf' });
+        pdfPreviewUrl.value = URL.createObjectURL(data);
+        pdfPreviewItemId = item.id;
+      }
+      function clearPdfPreviewUrl() {
+        if (pdfPreviewUrl.value) URL.revokeObjectURL(pdfPreviewUrl.value);
+        pdfPreviewUrl.value = '';
+        pdfPreviewItemId = null;
+      }
       function toggleSelected(id) {
         const s = new Set(selectedIds.value);
         s.has(id) ? s.delete(id) : s.add(id);
@@ -253,10 +309,12 @@
       function removeSelected() {
         const ids = selectedIds.value;
         items.value = items.value.filter(i => !ids.has(i.id));
+        if (ids.has(activeId.value)) clearPdfPreviewUrl();
         selectedIds.value = new Set();
         if (!items.value.some(i => i.id === activeId.value)) activeId.value = items.value[0]?.id || null;
       }
       function clearAll() {
+        clearPdfPreviewUrl();
         items.value = [];
         selectedIds.value = new Set();
         activeId.value = null;
@@ -277,14 +335,26 @@
         item.status = 'converting';
         const bytes = new Uint8Array(currentJob.arrayBuffer);
         const payload = { name: item.file.name, bytes, formatHint: formatHint.value || null };
-        const convert = window.any2mdConvertHtml && window.any2mdConvertHtml.isHtmlPayload(payload)
-          ? Promise.resolve().then(() => window.any2mdConvertHtml.convertHtml(payload))
-          : callWorker('convert', payload);
+        const usePdfToMd = pdfEngine.value === 'pdftomd' && isPdfItem(item) && !(window.any2mdConvertHtml && window.any2mdConvertHtml.isHtmlPayload(payload));
+        if (usePdfToMd && pdfInitError.value) {
+          item.status = 'error';
+          item.errorMessage = `自有 PDF 引擎初始化失败: ${pdfInitError.value}`;
+          currentJob = null;
+          running.value = false;
+          pumpQueue();
+          return;
+        }
+        const convert = usePdfToMd
+          ? window.any2mdPdfToMd.convertPdf(payload)
+          : (window.any2mdConvertHtml && window.any2mdConvertHtml.isHtmlPayload(payload)
+            ? Promise.resolve().then(() => window.any2mdConvertHtml.convertHtml(payload))
+            : callWorker('convert', payload));
         convert
           .then(result => {
             item.status = 'done';
             item.result = result;
             item.markdown = result.markdown;
+            item.usedEngine = usePdfToMd ? 'pdf-to-md' : 'anydoc';
             const stats = computeStats(result.markdown);
             item.stats = stats;
             activeId.value = item.id;
@@ -303,6 +373,12 @@
       }
       async function startQueue() {
         if (engineState.value !== 'ready') return;
+        if (pdfEngine.value === 'pdftomd') {
+          const pdfItems = items.value.filter(i => i.status === 'pending' || i.status === 'error');
+          if (pdfItems.some(isPdfItem)) {
+            try { await ensurePdfEngine(); } catch (e) { return; }
+          }
+        }
         await prepareBuffers();
         for (const item of items.value) {
           if (item.status !== 'pending' && item.status !== 'error') continue;
@@ -340,9 +416,26 @@
         pumpQueue();
         return true;
       }
+      async function ensurePdfEngine() {
+        if (pdfReady.value) return;
+        if (pdfInitPromise) return pdfInitPromise;
+        pdfInitPromise = window.any2mdPdfToMd.init().then(info => {
+          pdfEngineInfo.value = `${info.name} v${info.version}`;
+          pdfReady.value = true;
+          pdfInitError.value = '';
+        }).catch(err => {
+          pdfInitError.value = err?.message || String(err);
+          pdfInitPromise = null;
+          throw err;
+        });
+        return pdfInitPromise;
+      }
       async function startItem(item) {
         if (!canStartItem(item)) return;
         item.errorMessage = '';
+        if (pdfEngine.value === 'pdftomd' && isPdfItem(item)) {
+          try { await ensurePdfEngine(); } catch (e) { return; }
+        }
         await enqueueItem(item);
       }
 
@@ -460,6 +553,7 @@
           `- Files: ${count}`,
           `- Images: ${exportImages.value ? 'included' : 'excluded'} (${imageCount})`,
           `- Engine: ${engineInfo.value}`,
+          `- PDF Engine: ${pdfEngine.value === 'pdftomd' ? pdfEngineInfo.value : 'anydoc-wasm'}`,
           `- Exported: ${new Date().toLocaleString('zh-CN')}`, '',
           'Generated locally by any2md (offline).',
         ].join('\n');
@@ -469,12 +563,27 @@
       }
       async function downloadOneZip(item) {
         if (!item || item.status !== 'done') return;
+        if (item.result?.renderMode === 'pdftomd' && item.result.sourceResult && window.PdfToMd?.createMarkdownZip && exportImages.value) {
+          const zipBytes = window.PdfToMd.createMarkdownZip(item.result.sourceResult, { fileName: item.file.name });
+          triggerDownload(new Blob([zipBytes], { type: 'application/zip' }), baseName(item.file.name) + '.zip');
+          return;
+        }
         const zip = new JSZip();
         const mdName = baseName(item.file.name) + '.md';
         zip.file(mdName, item.markdown);
         const images = addItemAssets(zip, item);
         zip.file('README.txt', zipReadme(1, images));
         triggerDownload(await generateZipBlob(zip), baseName(item.file.name) + '.zip');
+      }
+      async function addPdftomdToZip(zip, item, folder) {
+        const zipBytes = window.PdfToMd.createMarkdownZip(item.result.sourceResult, { fileName: item.file.name });
+        const inner = await JSZip.loadAsync(zipBytes);
+        await Promise.all(Object.values(inner.files).map(async f => {
+          if (f.dir) return;
+          const data = await f.async('uint8array');
+          zip.file(`${folder}/${f.name}`, data);
+        }));
+        return (item.result.sourceResult?.images || []).length;
       }
       async function exportZip() {
         const done = doneItems.value;
@@ -483,13 +592,17 @@
         const usedNames = new Set();
         let images = 0;
         for (const item of done) {
+          const isPdftomd = item.result?.renderMode === 'pdftomd' && item.result.sourceResult && window.PdfToMd?.createMarkdownZip;
           let name = baseName(item.file.name);
-          let mdName = name + '.md';
           let n = 2;
-          while (usedNames.has(mdName)) mdName = `${name}-${n++}.md`;
-          usedNames.add(mdName);
-          zip.file(mdName, item.markdown);
-          images += addItemAssets(zip, item);
+          while (usedNames.has(name)) name = `${baseName(item.file.name)}-${n++}`;
+          usedNames.add(name);
+          if (isPdftomd && exportImages.value) {
+            images += await addPdftomdToZip(zip, item, name);
+          } else {
+            zip.file(`${name}.md`, item.markdown);
+            if (!isPdftomd) images += addItemAssets(zip, item);
+          }
         }
         zip.file('README.txt', zipReadme(done.length, images));
         triggerDownload(await generateZipBlob(zip), `any2md-${new Date().toISOString().slice(0, 10)}.zip`);
@@ -572,14 +685,17 @@
         appEl.removeEventListener('drop', onDrop);
         clearTimeout(copiedTimer);
         for (const url of previewUrls.values()) URL.revokeObjectURL(url);
+        for (const urls of pdftomdPreviewUrls.values()) for (const url of urls.values()) URL.revokeObjectURL(url);
+        clearPdfPreviewUrl();
         if (worker) worker.terminate();
       });
 
       return {
         items, activeId, activeItem, doneItems, selectedIds, theme, tab, previewHtml,
-        exportImages, formatHint, formats, engineState, engineError, engineInfo, engineProgress, enginePercent, engineProgressText, fileInput,
+        exportImages, formatHint, pdfEngine, hasPdfFiles, pdfEngineInfo, formats, engineState, engineError, engineInfo, engineProgress, enginePercent, engineProgressText, fileInput,
         running, dragDepth, lightbox, copied, copiedHtml, resultBody, showBackToTop, canStart, queuePosition,
-        previewHtmlContent, cleanHtml, hasCleanHtml,
+        previewHtmlContent, pdfPreviewUrl, isPdfItem, cleanHtml, hasCleanHtml,
+        ensurePdfPreviewUrl, clearPdfPreviewUrl,
         addFiles, onFileInput, onPreviewClick, onResultScroll, scrollResultToTop,
         selectItem, toggleSelected, selectAll, removeSelected, clearAll, startQueue, pauseQueue,
         startItem, canStartItem, itemStartLabel, itemBusy,

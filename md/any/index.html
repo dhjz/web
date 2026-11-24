@@ -53,9 +53,17 @@
     <label class="field">
       <span>导出图片</span>
       <select v-model="exportImages">
-        <option :value="true">包含图片（打包 media/）</option>
+        <option :value="true">包含图片</option>
         <option :value="false">不包含图片（仅 .md）</option>
       </select>
+    </label>
+    <label class="field" v-if="hasPdfFiles">
+      <span>PDF 引擎</span>
+      <select v-model="pdfEngine">
+        <option value="anydoc">anydoc-wasm（默认）</option>
+        <option value="pdftomd">自有引擎 pdf-to-md</option>
+      </select>
+      <span class="pdf-engine-error" v-if="pdfEngine === 'pdftomd' && pdfInitError" :title="pdfInitError">⚠ 自有引擎加载失败</span>
     </label>
     <label class="field">
       <span>转换格式</span>
@@ -146,6 +154,7 @@
         <div class="tabs">
           <button class="tab" :class="{on: tab === 'preview'}" @click="tab = 'preview'">预览</button>
           <button class="tab" :class="{on: tab === 'markdown'}" @click="tab = 'markdown'">Markdown 源码</button>
+          <button v-if="isPdfItem(activeItem)" class="tab" :class="{on: tab === 'pdf'}" @click="ensurePdfPreviewUrl(); tab = 'pdf'">PDF 预览</button>
           <button v-if="hasCleanHtml" class="tab" :class="{on: tab === 'html'}" @click="tab = 'html'">HTML 源码（净化后）</button>
           <button v-if="tab === 'markdown'" class="btn copy-btn" @click="copyMarkdown">{{ copied ? '✓ 已复制' : '📋 一键复制 Markdown' }}</button>
           <button v-if="tab === 'html' && hasCleanHtml" class="btn copy-btn" @click="copyHtml">{{ copiedHtml ? '✓ 已复制' : '📋 一键复制 HTML' }}</button>
@@ -155,6 +164,10 @@
           <div v-show="tab === 'markdown'" class="code-view"><pre>{{ activeItem.markdown || '（等待转换）' }}</pre></div>
           <div v-show="tab === 'html'" class="code-view"><pre>{{ hasCleanHtml ? cleanHtml : '（该格式无净化后的 HTML 源码）' }}</pre></div>
           <div v-show="tab === 'preview'" class="preview" v-html="previewHtmlContent" @click="onPreviewClick"></div>
+          <div v-show="tab === 'pdf'" class="pdf-preview">
+            <embed v-if="pdfPreviewUrl && isPdfItem(activeItem)" :src="pdfPreviewUrl" type="application/pdf" title="PDF 预览" />
+            <div v-else class="empty">暂无可预览的 PDF</div>
+          </div>
         </div>
         <button v-if="showBackToTop" class="back-to-top" @click="scrollResultToTop" title="回到顶部">↑</button>
       </template>
@@ -172,21 +185,14 @@
   </div>
 </div>
 
-<!-- <script src="./static/vendor/vue.global.prod.js"></script>
+<script src="./static/vendor/vue.global.prod.js"></script>
 <script src="./static/vendor/marked.min.js"></script>
 <script src="./static/vendor/jszip.min.js"></script>
 <script src="./static/vendor/purify.min.js"></script>
 <script src="./static/vendor/turndown.min.js"></script>
-<script src="./static/vendor/turndown-plugin-gfm.min.js"></script> -->
-
-<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/vue/3.5.17/vue.global.prod.js"></script>
-<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/marked/15.0.12/marked.min.js"></script>
-<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/dompurify/3.2.7/purify.min.js"></script>
-<script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/turndown/7.2.1/turndown.min.js"></script>
-<script src="https://registry.npmmirror.com/turndown-plugin-gfm/1.0.2/files/dist/turndown-plugin-gfm.js"></script>
-
+<script src="./static/vendor/turndown-plugin-gfm.min.js"></script>
 <script src="./static/html-convert.js"></script>
+<script type="module" src="./static/pdf-to-md-adapter.js"></script>
 <script type="module" src="./static/app.js"></script>
 </body>
 </html>
