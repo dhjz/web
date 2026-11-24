@@ -4,7 +4,7 @@ html { background: #11131f; }
 body { margin: 0; color: #f4f4f5; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
 audio { display: none; }
 input, select, button { font: inherit; }
-.radio-app { min-height: 100vh; background: radial-gradient(circle at 20% 0%, #3b3f7a 0%, #1d2138 45%, #11131f 100%); }
+.radio-app { min-height: 100vh; min-height: 100dvh; background: radial-gradient(circle at 20% 0%, #3b3f7a 0%, #1d2138 45%, #11131f 100%); }
 .container { max-width: 860px; margin: 0 auto; padding: 12px 12px 24px; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .brand { min-width: 0; }
@@ -13,11 +13,14 @@ input, select, button { font: inherit; }
 .status { flex: none; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.1); font-size: 12px; }
 .panel { margin-bottom: 12px; padding: 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: linear-gradient(145deg, #4a4f63, #2a2e3d); box-shadow: 0 12px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18); }
 .screen { margin-bottom: 12px; padding: 10px 14px; border: 1px solid rgba(120,255,190,.18); border-radius: 12px; background: linear-gradient(180deg, #0f2a24, #0a1a17); color: #9ff2c8; box-shadow: inset 0 3px 10px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.1); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.screen-meta { margin-bottom: 2px; font-size: 11px; opacity: .6; }
-.station-name { overflow: hidden; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.screen-row { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 8px; }
-.freq { font-size: 12px; opacity: .8; }
-.sleep { font-size: 11px; opacity: .5; }
+.screen-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.screen-line-1 { margin-bottom: 3px; }
+.screen-line-2 { min-height: 15px; }
+.screen-meta { flex: none; font-size: 11px; opacity: .6; }
+.station-name { flex: 1; min-width: 0; overflow: hidden; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.stream-url { flex: 1; min-width: 0; overflow: hidden; font-size: 10px; opacity: .55; text-overflow: ellipsis; white-space: nowrap; }
+.freq { flex: none; font-size: 12px; opacity: .8; }
+.sleep { flex: none; margin-left: auto; font-size: 11px; opacity: .5; }
 .tuner-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .dial-wrap { display: flex; flex: none; align-items: center; justify-content: center; width: 84px; height: 84px; border: 2px solid rgba(255,255,255,.14); border-radius: 50%; background: linear-gradient(145deg, #1c1f2b, #353a4d); box-shadow: inset 0 0 0 6px rgba(0,0,0,.25), 0 4px 10px rgba(0,0,0,.4); cursor: pointer; }
 .dial { position: relative; width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(145deg, #e8e9ee, #9ba0b3); box-shadow: 0 3px 8px rgba(0,0,0,.45), inset 0 1px 2px rgba(255,255,255,.9); transition: transform .18s ease-out; }
@@ -25,6 +28,7 @@ input, select, button { font: inherit; }
 .tuner-track { flex: 1; min-width: 0; }
 .tuner { width: 100%; }
 .tuner-labels { display: flex; justify-content: space-between; margin-top: 2px; font-size: 9px; opacity: .4; }
+.tuner-current { font-weight: 600; opacity: .9; }
 input[type="range"] { height: 16px; accent-color: #667eea; cursor: pointer; }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .btn { padding: 5px 11px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(255,255,255,.08); color: inherit; font-size: 13px; cursor: pointer; transition: background .15s, transform .1s; }
@@ -41,11 +45,16 @@ input[type="range"] { height: 16px; accent-color: #667eea; cursor: pointer; }
 .field:focus { border-color: #667eea; }
 .field option { background: #1d2138; }
 .search { flex: 1 1 160px; }
+.sync-user { flex: 1 1 160px; }
 .hidden-file { display: none; }
 .check { display: flex; align-items: center; gap: 5px; font-size: 12px; opacity: .8; }
 .hint { margin: 0; font-size: 11px; line-height: 1.4; opacity: .5; }
-.station-list { overflow: hidden; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
-.list-title { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 12px; opacity: .7; }
+.filter-hint { font-size: 11px; }
+.sync-hint { font-size: 11px; }
+.station-list { max-height: 520px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
+.station-list::-webkit-scrollbar { width: 6px; }
+.station-list::-webkit-scrollbar-thumb { border-radius: 6px; background: rgba(255,255,255,.18); }
+.list-title { position: sticky; top: 0; z-index: 1; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.1); background: #23263c; font-size: 12px; opacity: .85; }
 .list { margin: 0; padding: 0; list-style: none; }
 .station-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.05); cursor: pointer; }
 .station-item:hover { background: rgba(255,255,255,.08); }
@@ -57,4 +66,34 @@ input[type="range"] { height: 16px; accent-color: #667eea; cursor: pointer; }
 .category { width: 48px; text-align: right; font-size: 11px; opacity: .5; }
 .more { padding: 8px; text-align: center; }
 .empty { padding: 20px; font-size: 13px; text-align: center; opacity: .5; }
-@media (max-width: 600px) { .header { align-items: flex-start; flex-direction: column; } .dial-wrap { width: 72px; height: 72px; } .dial { width: 46px; height: 46px; } .volume { margin-left: 0; } .freq-cell, .province, .category { display: none; } }
+@media (max-width: 600px) {
+  .container { padding: 8px 8px 16px; }
+  .header { align-items: center; margin-bottom: 8px; }
+  .title { font-size: 18px; }
+  .subtitle { display: none; }
+  .status { padding: 3px 10px; font-size: 11px; }
+  .panel { margin-bottom: 8px; padding: 8px; border-radius: 12px; }
+  .screen { margin-bottom: 8px; padding: 7px 10px; }
+  .station-name { font-size: 15px; }
+  .screen-meta, .freq { font-size: 10px; }
+  .stream-url { font-size: 9px; }
+  .tuner-row { gap: 8px; margin-bottom: 6px; }
+  .dial-wrap { width: 56px; height: 56px; }
+  .dial { width: 36px; height: 36px; }
+  .dial i { top: 3px; height: 9px; }
+  .tuner-labels { font-size: 8px; }
+  .controls { gap: 4px; }
+  .btn { padding: 3px 4px; font-size: 12px; }
+  .volume { display: none; }
+  .filters { margin-bottom: 8px; padding: 8px; }
+  .filter-row { gap: 6px; margin-bottom: 6px; }
+  .field { padding: 5px 8px; font-size: 12px; }
+  .search { flex: 1 1 100%; }
+  .sync-user { flex: 1 1 120px; }
+  .check { font-size: 11px; }
+  .filter-hint { display: none; }
+  .sync-hint { font-size: 10px; }
+  .freq-cell, .province, .category { display: none; }
+  .station-item { padding: 7px 10px; }
+  .station-list { max-height: 42vh; max-height: 42dvh; }
+}

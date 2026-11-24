@@ -8,7 +8,12 @@
   var onMounted = Vue.onMounted;
   var onUnmounted = Vue.onUnmounted;
 
-  var STATIONS = window.RADIO_STATIONS || [];
+  var PROVINCE_MAP = window.RADIO_PROVINCE_MAP || {};
+  var STATIONS = (window.RADIO_STATIONS || []).map(function (s) {
+    var key = String(s.p || '').trim().toLowerCase();
+    if (PROVINCE_MAP[key]) s.p = PROVINCE_MAP[key];
+    return s;
+  });
   var FAV_KEY = 'fm-radio-favorites';
   var COUNT_KEY = 'fm-radio-cloud-count';
   var USER_KEY = 'fm-radio-cloud-user';

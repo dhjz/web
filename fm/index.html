@@ -27,9 +27,12 @@
 
             <section class="panel">
               <div class="screen">
-                <div class="screen-meta">{{ current ? (current.c || "电台") + " · " + (current.p || "") : "无信号" }}</div>
-                <div class="station-name">{{ current ? current.name : "请选择一个电台" }}</div>
-                <div class="screen-row">
+                <div class="screen-line screen-line-1">
+                  <span class="screen-meta">{{ current ? (current.c || "电台") + " · " + (current.p || "") : "无信号" }}</span>
+                  <span class="station-name">{{ current ? current.name : "请选择一个电台" }}</span>
+                </div>
+                <div class="screen-line screen-line-2">
+                  <span class="stream-url" v-if="playing && current" :title="current.url">{{ current.url }}</span>
                   <span class="freq">{{ current && current.f ? current.f : "FM / 网络流" }}</span>
                   <span class="sleep">{{ sleepText ? "睡眠 " + sleepText : "" }}</span>
                 </div>
@@ -41,7 +44,7 @@
                 </div>
                 <div class="tuner-track">
                   <input class="tuner" type="range" min="0" :max="maxIdx" v-model.number="idx" @change="select(idx)" />
-                  <div class="tuner-labels"><span>低频</span><span>调谐指针</span><span>高频</span></div>
+                  <div class="tuner-labels"><span>87.5 MHz</span><span class="tuner-current">{{ current && current.f ? current.f : "网络流" }}</span><span>108.0 MHz</span></div>
                 </div>
               </div>
 
@@ -69,19 +72,19 @@
                   <option :value="60">60 分钟</option>
                 </select>
               </div>
-              <p class="hint">快捷键：← / → 上一台 / 下一台，↑ / ↓ 随机换台，空格 播放 / 暂停。没信号会自动换下一台。</p>
+              <p class="hint filter-hint">快捷键：← / → 上一台 / 下一台，↑ / ↓ 随机换台，空格 播放 / 暂停。没信号会自动换下一台。</p>
             </section>
 
             <section class="filters">
               <div class="filter-row">
-                <input v-model="cloudUser" maxlength="10" placeholder="云同步用户名（3-10 位）" class="field search" />
+                <input v-model="cloudUser" maxlength="10" placeholder="云同步用户名（3-10 位）" class="field sync-user" />
                 <button class="btn" @click="pushCloud">上传到云端</button>
                 <button class="btn" @click="pullCloud">从云端拉取</button>
                 <button class="btn" @click="exportJson">导出 JSON</button>
                 <button class="btn" @click="pickFile">导入 JSON</button>
                 <input type="file" accept="application/json,.json" ref="fileInput" class="hidden-file" @change="importJson" />
               </div>
-              <p class="hint">{{ cloudStatus || '收藏保存在本机；填用户名后可强制上传/拉取，也可导入导出 JSON。' }} · 本地收藏 {{ localCount }} 个 · 云端收藏 {{ syncedCount }} 个</p>
+              <p class="hint sync-hint">{{ cloudStatus || '' }} · 本地收藏 {{ localCount }} 个 · 云端收藏 {{ syncedCount }} 个</p>
             </section>
 
             <section class="station-list">
