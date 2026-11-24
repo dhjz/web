@@ -28,12 +28,12 @@
             <section class="panel">
               <div class="screen">
                 <div class="screen-line screen-line-1">
-                  <span class="screen-meta">{{ current ? (current.c || "电台") + " · " + (current.p || "") : "无信号" }}</span>
-                  <span class="station-name">{{ current ? current.name : "请选择一个电台" }}</span>
+                  <span class="screen-meta">{{ nowPlaying ? (nowPlaying.c || "电台") + " · " + (nowPlaying.p || "") : "无信号" }}</span>
+                  <span class="station-name">{{ nowPlaying ? nowPlaying.name : "请选择一个电台" }}</span>
                 </div>
                 <div class="screen-line screen-line-2">
-                  <span class="stream-url" v-if="playing && current" :title="current.url">{{ current.url }}</span>
-                  <span class="freq">{{ current && current.f ? current.f : "FM / 网络流" }}</span>
+                  <span class="stream-url" v-if="playing && nowPlaying" :title="nowPlaying.url">{{ nowPlaying.url }}</span>
+                  <span class="freq">{{ nowPlaying && nowPlaying.f ? nowPlaying.f : "FM / 网络流" }}</span>
                   <span class="sleep">{{ sleepText ? "睡眠 " + sleepText : "" }}</span>
                 </div>
               </div>
@@ -87,10 +87,15 @@
               <p class="hint sync-hint">{{ cloudStatus || '' }} · 本地收藏 {{ localCount }} 个 · 云端收藏 {{ syncedCount }} 个</p>
             </section>
 
-            <section class="station-list">
-              <div class="list-title">{{ favMode ? "收藏列表" : "电台列表" }}（{{ list.length }}）</div>
+            <section class="station-list" ref="listEl">
+              <div class="list-title">
+                <span>{{ favMode ? "收藏列表" : "电台列表" }}（{{ list.length }}）</span>
+                <button class="locate-btn" @click="scrollToActive" title="定位到正在播放">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>
+                </button>
+              </div>
               <ul class="list">
-                <li v-for="(s, i) in visible" :key="s.id" @click="select(i)" class="station-item" :class="{ active: i === idx }">
+                <li v-for="(s, i) in visible" :key="s.id" :data-id="s.id" @click="select(i)" class="station-item" :class="{ active: i === idx }">
                   <span class="num">{{ i + 1 }}</span>
                   <span class="name">{{ s.name }}</span>
                   <span class="freq-cell">{{ s.f || "" }}</span>

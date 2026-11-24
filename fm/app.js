@@ -7,6 +7,7 @@
   var watch = Vue.watch;
   var onMounted = Vue.onMounted;
   var onUnmounted = Vue.onUnmounted;
+  var nextTick = Vue.nextTick;
 
   var PROVINCE_MAP = window.RADIO_PROVINCE_MAP || {};
   var STATIONS = (window.RADIO_STATIONS || []).map(function (s) {
@@ -15,6 +16,7 @@
     return s;
   });
   var FAV_KEY = 'fm-radio-favorites';
+  var STATE_KEY = 'fm-radio-state';
   var COUNT_KEY = 'fm-radio-cloud-count';
   var USER_KEY = 'fm-radio-cloud-user';
   var CLOUD_BASE = 'https://x.199311.xyz';
@@ -39,28 +41,37 @@
     catch (e) { return ''; }
   }
 
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
   createApp({
     setup: function () {
-      var query = ref('');
-      var province = ref('全部');
-      var category = ref('全部');
-      var onlyMusic = ref(false);
+      var saved = loadState();
+      var query = ref(saved.query || '');
+      var province = ref(saved.province || '全部');
+      var category = ref(saved.category || '全部');
+      var onlyMusic = ref(!!saved.onlyMusic);
       var favorites = ref(loadFavorites());
-      var favMode = ref(false);
+      var favMode = ref(!!saved.favMode);
       var cloudUser = ref(loadUser());
       var cloudStatus = ref('');
       var syncedCount = ref(0);
       var fileInput = ref(null);
-      var idx = ref(0);
+      var idx = ref(Number(saved.idx) || 0);
       var playing = ref(false);
       var volume = ref(0.8);
       var status = ref('idle');
       var sleepMin = ref(0);
       var sleepLeft = ref(0);
-      var pageSize = ref(40);
+      var pageSize = ref(Number(saved.pageSize) || 40);
       var audioEl = ref(null);
+      var listEl = ref(null);
+      var active = ref(null);
+      var savedActiveId = saved.activeId || '';
 
       var hls = null;
       var sleepTimer = null;
@@ -95,11 +106,14 @@
         if (idx.value > maxIdx.value) idx.value = 0;
         return list.value[idx.value] || null;
       });
+      var nowPlaying = computed(function () { return active.value || current.value; });
       var isFav = computed(function () {
-        return !!current.value && favorites.value.indexOf(current.value.id) >= 0;
+        return !!nowPlaying.value && favorites.value.indexOf(nowPlaying.value.id) >= 0;
       });
       var dialAngle = computed(function () {
-        return maxIdx.value > 0 ? -60 + (idx.value / maxIdx.value) * 120 : 0;
+        var i = active.value ? list.value.findIndex(function (s) { return s.id === active.value.id; }) : -1;
+        if (i < 0) i = idx.value;
+        return maxIdx.value > 0 ? -60 + (i / maxIdx.value) * 120 : 0;
       });
       var statusText = computed(function () {
         return {
@@ -171,7 +185,7 @@
             try { localStorage.setItem(FAV_KEY, JSON.stringify(favorites.value)); } catch (e) {}
             syncedCount.value = favorites.value.length;
             saveCount();
-            if (favMode.value) { onFilterChange(); attach(current.value); }
+            if (favMode.value) { onFilterChange(); scrollToActive(); }
             cloudStatus.value = '已从云端拉取';
           })
           .catch(function () { cloudStatus.value = '拉取失败'; });
@@ -224,10 +238,41 @@
         if (fileInput.value) fileInput.value.click();
       }
 
+      function scrollToActive() {
+        nextTick(function () {
+          var box = listEl.value;
+          if (!box) return;
+          var id = active.value && active.value.id;
+          var i = id ? list.value.findIndex(function (s) { return s.id === id; }) : -1;
+          if (i >= 0 && pageSize.value <= i) {
+            pageSize.value = i + 40;
+            nextTick(scrollToActive);
+            return;
+          }
+          var item = id ? box.querySelector('[data-id="' + id + '"]') : null;
+          if (!item) item = box.querySelector('.station-item.active');
+          if (!item) return;
+          var title = box.querySelector('.list-title');
+          var headH = title ? title.offsetHeight : 0;
+          var visibleH = box.clientHeight - headH;
+          var itemH = item.offsetHeight;
+          var itemTop = item.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+          box.scrollTop = Math.max(0, itemTop - headH - (visibleH - itemH) / 2);
+        });
+      }
+
       function toggleFavMode() {
+        var playingId = nowPlaying.value && nowPlaying.value.id;
         favMode.value = !favMode.value;
         onFilterChange();
-        if (favMode.value) attach(current.value);
+        if (playingId) {
+          var i = list.value.findIndex(function (s) { return s.id === playingId; });
+          if (i >= 0) {
+            idx.value = i;
+            if (pageSize.value <= i) pageSize.value = i + 40;
+          }
+        }
+        scrollToActive();
       }
 
       function destroyHls() {
@@ -257,6 +302,7 @@
 
       function attach(s) {
         if (!s || !audioEl.value) return;
+        active.value = s;
         destroyHls();
         retries = 0;
         var a = audioEl.value;
@@ -286,12 +332,12 @@
       function step(delta) {
         if (!list.value.length) return;
         idx.value = (idx.value + delta + list.value.length) % list.value.length;
-        attach(current.value);
+        attach(list.value[idx.value]);
       }
 
       function select(i) {
         idx.value = i;
-        attach(current.value);
+        attach(list.value[i]);
       }
 
       function prev() { step(-1); }
@@ -308,7 +354,7 @@
       }
 
       function toggle() {
-        if (!current.value) return;
+        if (!nowPlaying.value) return;
         if (playing.value) {
           audioEl.value.pause();
           playing.value = false;
@@ -316,7 +362,7 @@
         } else if (audioEl.value && audioEl.value.src) {
           doPlay(audioEl.value);
         } else {
-          attach(current.value);
+          attach(nowPlaying.value);
         }
       }
 
@@ -327,10 +373,10 @@
       }
 
       function toggleFav() {
-        if (!current.value) return;
-        var i = favorites.value.indexOf(current.value.id);
+        if (!nowPlaying.value) return;
+        var i = favorites.value.indexOf(nowPlaying.value.id);
         if (i >= 0) favorites.value.splice(i, 1);
-        else favorites.value.push(current.value.id);
+        else favorites.value.push(nowPlaying.value.id);
         saveFavorites();
       }
 
@@ -357,6 +403,21 @@
         step(e.clientX - rect.left < rect.width / 2 ? -1 : 1);
       }
 
+      function saveState() {
+        try {
+          localStorage.setItem(STATE_KEY, JSON.stringify({
+            favMode: favMode.value,
+            query: query.value,
+            province: province.value,
+            category: category.value,
+            onlyMusic: onlyMusic.value,
+            idx: idx.value,
+            pageSize: pageSize.value,
+            activeId: active.value && active.value.id
+          }));
+        } catch (e) {}
+      }
+
       function onFilterChange() {
         idx.value = 0;
         pageSize.value = 40;
@@ -375,11 +436,24 @@
 
       watch(volume, function (v) { if (audioEl.value) audioEl.value.volume = v; });
       watch([query, province, category, onlyMusic], onFilterChange);
+      watch([favMode, query, province, category, onlyMusic, idx, pageSize, active], saveState);
 
       onMounted(function () {
-        if (STATIONS.length) attach(current.value);
+        var restore = null;
+        if (savedActiveId) {
+          for (var i = 0; i < STATIONS.length; i++) {
+            if (STATIONS[i].id === savedActiveId) { restore = STATIONS[i]; break; }
+          }
+        }
+        if (!restore) restore = current.value;
+        if (restore) {
+          var pos = list.value.findIndex(function (s) { return s.id === restore.id; });
+          if (pos >= 0) idx.value = pos;
+          attach(restore);
+        }
         window.addEventListener('keydown', onKeydown);
         syncedCount.value = loadCount();
+        nextTick(scrollToActive);
       });
       onUnmounted(function () {
         window.removeEventListener('keydown', onKeydown);
@@ -392,15 +466,16 @@
         favorites: favorites, favMode: favMode, cloudUser: cloudUser, cloudStatus: cloudStatus,
         syncedCount: syncedCount, fileInput: fileInput, idx: idx, playing: playing, volume: volume,
         status: status, sleepMin: sleepMin, sleepLeft: sleepLeft,
-        pageSize: pageSize, audioEl: audioEl,
+        pageSize: pageSize, audioEl: audioEl, listEl: listEl,
         provinces: provinces, categories: categories, list: list, visible: visible,
-        maxIdx: maxIdx, current: current, isFav: isFav, dialAngle: dialAngle,
+        maxIdx: maxIdx, current: current, nowPlaying: nowPlaying, isFav: isFav, dialAngle: dialAngle,
         statusText: statusText, sleepText: sleepText, localCount: localCount,
         select: select, prev: prev, next: next, randomPlay: randomPlay,
         toggle: toggle, pause: pause, toggleFav: toggleFav, applySleep: applySleep,
         toggleFavMode: toggleFavMode, pushCloud: pushCloud, pullCloud: pullCloud,
         exportJson: exportJson, importJson: importJson, pickFile: pickFile,
-        onDialClick: onDialClick, onFilterChange: onFilterChange, handleError: handleError
+        onDialClick: onDialClick, onFilterChange: onFilterChange, scrollToActive: scrollToActive,
+        handleError: handleError
       };
     }
   }).mount('#root');

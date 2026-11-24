@@ -54,7 +54,10 @@ input[type="range"] { height: 16px; accent-color: #667eea; cursor: pointer; }
 .station-list { max-height: 520px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
 .station-list::-webkit-scrollbar { width: 6px; }
 .station-list::-webkit-scrollbar-thumb { border-radius: 6px; background: rgba(255,255,255,.18); }
-.list-title { position: sticky; top: 0; z-index: 1; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.1); background: #23263c; font-size: 12px; opacity: .85; }
+.list-title { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.1); background: #23263c; font-size: 12px; opacity: .85; }
+.locate-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; background: transparent; color: inherit; opacity: .7; cursor: pointer; }
+.locate-btn:hover { opacity: 1; }
+.locate-btn svg { width: 14px; height: 14px; }
 .list { margin: 0; padding: 0; list-style: none; }
 .station-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.05); cursor: pointer; }
 .station-item:hover { background: rgba(255,255,255,.08); }
