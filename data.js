@@ -88,6 +88,7 @@ window.config = {
         { name: '扫描处理', short: '扫描', url: './p/index.html', color: '#034948' },
         { name: '字帖', short: '字帖', url: 'https://zt.199311.xyz/', color: '#1d4ed8' },
         { name: '天气', short: '天气', url: './apis/weather.html', color: '#1d4ed8' },
+        { name: 'FM收音机', short: 'FM', url: './fm/index.html', color: '#7d910c' },
       ]
     },
     {
