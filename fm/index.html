@@ -49,9 +49,9 @@
               </div>
 
               <div class="controls">
-                <button class="btn" @click="prev">◀ 上一台</button>
+                <button class="btn" @click="prev">◀ 上<span class="hide-sm">一</span>台</button>
                 <button class="btn primary" @click="toggle">{{ playing ? "暂停" : "播放" }}</button>
-                <button class="btn" @click="next">下一台 ▶</button>
+                <button class="btn" @click="next">下<span class="hide-sm">一</span>台 ▶</button>
                 <button class="btn" @click="randomPlay">随便听听</button>
                 <button class="btn" :class="{ active: isFav }" @click="toggleFav">{{ isFav ? "已收藏" : "收藏" }}</button>
                 <button class="btn" :class="{ active: favMode }" @click="toggleFavMode">{{ favMode ? "全部电台" : "收藏列表" }}</button>
@@ -80,8 +80,8 @@
                 <input v-model="cloudUser" maxlength="10" placeholder="云同步用户名（3-10 位）" class="field sync-user" />
                 <button class="btn" @click="pushCloud">上传到云端</button>
                 <button class="btn" @click="pullCloud">从云端拉取</button>
-                <button class="btn" @click="exportJson">导出 JSON</button>
-                <button class="btn" @click="pickFile">导入 JSON</button>
+                <button class="btn json-btn" @click="exportJson">导出 JSON</button>
+                <button class="btn json-btn" @click="pickFile">导入 JSON</button>
                 <input type="file" accept="application/json,.json" ref="fileInput" class="hidden-file" @change="importJson" />
               </div>
               <p class="hint sync-hint">{{ cloudStatus || '' }} · 本地收藏 {{ localCount }} 个 · 云端收藏 {{ syncedCount }} 个</p>
