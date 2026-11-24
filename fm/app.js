@@ -262,17 +262,8 @@
       }
 
       function toggleFavMode() {
-        var playingId = nowPlaying.value && nowPlaying.value.id;
         favMode.value = !favMode.value;
         onFilterChange();
-        if (playingId) {
-          var i = list.value.findIndex(function (s) { return s.id === playingId; });
-          if (i >= 0) {
-            idx.value = i;
-            if (pageSize.value <= i) pageSize.value = i + 40;
-          }
-        }
-        scrollToActive();
       }
 
       function destroyHls() {
@@ -419,8 +410,12 @@
       }
 
       function onFilterChange() {
-        idx.value = 0;
         pageSize.value = 40;
+        var id = active.value && active.value.id;
+        var i = id ? list.value.findIndex(function (s) { return s.id === id; }) : -1;
+        idx.value = i >= 0 ? i : 0;
+        if (i >= 0 && pageSize.value <= i) pageSize.value = i + 40;
+        scrollToActive();
       }
 
       function onKeydown(e) {
