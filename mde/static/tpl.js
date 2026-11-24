@@ -243,37 +243,81 @@ var templates = [
 
 var templateCategories = ['全部', '商务', '极简', '学术'];
 
+if (window.typesetThemes && window.typesetThemes.length) {
+  templates = templates.concat(window.typesetThemes.map(function (theme, i) {
+    return {
+      id: 100 + i,
+      name: theme.name,
+      category: '公众号',
+      accent: theme.accent,
+      theme: theme,
+      preview: theme.name + '\n' + theme.tags.join(' · '),
+      config: window.themeToConfig(theme)
+    };
+  }));
+  templateCategories.push('公众号');
+}
+
 var exampleMarkdown = `# Markdown 转换器使用指南
 
 ## 功能介绍
 
-这是一个功能强大的 **Markdown 转换器**，支持实时预览和多格式导出。
+这是一个功能强大的 **Markdown 转换器**，支持 *实时预览*、~~手动刷新~~ 和多种格式导出。使用 \`marked.js\` 解析，语法详情见 [Markdown 指南](https://marked.js.org/)。
 
 ### 主要功能
 
-1. **实时预览** - 左侧输入，右侧即时显示渲染效果
-2. **模板切换** - 多种精美模板一键切换
-3. **自定义样式** - 颜色、字体、字号、间距自由配置
-4. **多格式导出** - 支持 HTML、PDF、Word 格式
+1. **实时预览** — 左侧输入，右侧即时显示渲染效果
+2. **模板切换** — 内置 20 套通用模板 + 35 套公众号主题
+3. **自定义样式** — 颜色、字体、字号、间距自由配置
+4. **多格式导出** — 支持 HTML、PDF、Word，也能直接复制富文本
 
 ### 代码示例
 
 \`\`\`javascript
-function hello() {
-  console.log('Hello, Markdown!');
+function hello(name) {
+  const message = \`Hello, \${name}!\`;
+  console.log(message);
+  return message;
 }
 \`\`\`
 
+### 表格
+
+| 功能 | 状态 | 说明 |
+| :--- | :---: | ---: |
+| 实时预览 | ✅ | 输入即时渲染 |
+| 代码高亮 | ✅ | 支持多语言 |
+| 导出 Word | ⏳ | 实验功能 |
+| 导出 PDF | ✅ | 基于 html2pdf |
+
 ### 引用块
 
-> 这是一段引用文字，可以用来强调重要内容或引用他人观点。
+> 好的工具应该让你专注内容本身，而不是被排版分散注意力。
+>
+> —— 支持多级引用、**加粗** 与 [链接](https://example.com)
 
-### 链接与列表
+### 列表与任务
 
-- [Vue.js 官方文档](https://vuejs.org/)
-- [Element Plus 组件库](https://element-plus.org/)
-- [Marked.js 解析库](https://marked.js.org/)
+- 无序列表项一
+- 无序列表项二
+  - 嵌套列表项
+- [x] 已完成：切换主题
+- [ ] 待完成：导出并分享
+
+### 图片
+
+![示例图片](https://picsum.photos/seed/markdown/600/180)
+
+### 数学公式
+
+行内公式：$E = mc^2$
+
+块级公式：
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+$$
 
 ---
 
-感谢使用本工具！`;
+感谢使用本工具！点击「填入示例」可随时恢复这段内容。`;

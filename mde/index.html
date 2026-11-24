@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/element-plus/2.10.6/index.css">
     <link rel="stylesheet" href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/KaTeX/0.16.8/katex.min.css">
     <link rel="stylesheet" href="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/themes/prism.min.css">
-    <link rel="stylesheet" href="static/index.css">
+    <link rel="stylesheet" href="static/index.css?v=20261124h">
 </head>
 <body>
     <div id="app" v-cloak>
@@ -61,8 +61,8 @@
                     </div>
                     <div class="panel-body">
                         <div class="preview-container">
-                            <div class="preview-paper">
-                                <div class="preview-content" v-html="renderedHTML"></div>
+                            <div class="preview-paper" ref="previewPaper">
+                                <div class="preview-content" :key="themeKey" ref="previewContent" v-html="renderedHTML"></div>
                             </div>
                         </div>
                     </div>
@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <el-dialog v-model="selectDialogVisible" title="选择模板" width="850px">
+        <el-dialog v-model="selectDialogVisible" title="选择模板" width="calc(min(1200px, 97vw))">
             <div class="category-tabs">
                 <el-radio-group v-model="currentCategory" size="small">
                     <el-radio-button v-for="cat in templateCategories" :key="cat" :value="cat">{{ cat }}</el-radio-button>
@@ -81,10 +81,11 @@
                     v-for="tpl in filteredTemplates" 
                     :key="tpl.id"
                     class="template-card"
-                    :class="{ active: currentTemplate && currentTemplate.id === tpl.id }"
+                    :class="{ active: currentTemplate && currentTemplate.id === tpl.id, 'theme-card': !!tpl.theme }"
+                    :style="tpl.accent ? { '--theme-accent': tpl.accent } : null"
                     @click="selectTemplate(tpl)"
                 >
-                    <h4>{{ tpl.name }}</h4>
+                    <h4><span v-if="tpl.accent" class="theme-swatch" :style="{ background: tpl.accent }"></span>{{ tpl.name }}</h4>
                     <div class="template-preview-sample">
                         <div class="sample-title" :style="{ color: tpl.config.colors.title, fontFamily: tpl.config.fonts.title }">这是示例标题</div>
                         <div class="sample-text" :style="{ color: tpl.config.colors.text, fontFamily: tpl.config.fonts.text }">这是示例的一段正文</div>
@@ -238,6 +239,7 @@
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/element-plus/2.10.6/index.full.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/element-plus-icons-vue/2.3.2/index.iife.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script>window.Prism = window.Prism || {}; window.Prism.manual = true;</script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
@@ -253,9 +255,10 @@
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/KaTeX/0.16.8/katex.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
-    <script src="static/lib/html-docx.min.js"></script>
-    <script src="static/tpl.js"></script>
-    <script src="static/utils.js"></script>
-    <script src="static/index.js"></script>
+    <script src="static/lib/html-docx.min.js?v=20261124h"></script>
+    <script src="static/typeset-themes.js?v=20261124h"></script>
+    <script src="static/tpl.js?v=20261124h"></script>
+    <script src="static/utils.js?v=20261124h"></script>
+    <script src="static/index.js?v=20261124h"></script>
 </body>
 </html>

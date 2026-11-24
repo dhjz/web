@@ -1,5 +1,12 @@
 var prismCss = `code[class*=language-],pre[class*=language-]{color:#000;background:0 0;text-shadow:0 1px #fff;font-family:Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}code[class*=language-] ::-moz-selection,code[class*=language-]::-moz-selection,pre[class*=language-] ::-moz-selection,pre[class*=language-]::-moz-selection{text-shadow:none;background:#b3d4fc}code[class*=language-] ::selection,code[class*=language-]::selection,pre[class*=language-] ::selection,pre[class*=language-]::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=language-],pre[class*=language-]{text-shadow:none}}pre[class*=language-]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=language-],pre[class*=language-]{background:#f5f2f0}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal}.token.cdata,.token.comment,.token.doctype,.token.prolog{color:#708090}.token.punctuation{color:#999}.token.namespace{opacity:.7}.token.boolean,.token.constant,.token.deleted,.token.number,.token.property,.token.symbol,.token.tag{color:#905}.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string{color:#690}.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url{color:#9a6e3a;background:hsla(0,0%,100%,.5)}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.class-name,.token.function{color:#dd4a68}.token.important,.token.regex,.token.variable{color:#e90}.token.bold,.token.important{font-weight:700}.token.italic{font-style:italic}.token.entity{cursor:help}`;
 
+function extractPreviewBackground(css) {
+  const block = String(css || '').match(/\.preview-content\s*\{([^}]*)\}/);
+  if (!block) return '';
+  const bg = block[1].match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/);
+  return bg ? bg[1].trim() : '';
+}
+
 function readTxt(f) {
   return new Promise((r) => {
     Object.assign(new FileReader(), { onload: ({ target: { result } }) => r(result) }).readAsText(f)
@@ -441,6 +448,7 @@ function downloadFile(content, filename, mimeType) {
 }
 
 function exportAsHTML(htmlContent, cssContent, filename) {
+  const bg = extractPreviewBackground(cssContent);
   const fullHTML = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -448,8 +456,10 @@ function exportAsHTML(htmlContent, cssContent, filename) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Markdown 文档</title>
   <style>
+    html, body { min-height: 100%; ${bg ? `background: ${bg};` : ''} }
     body { font-family: 'Microsoft YaHei', sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
     ${cssContent}
+    .preview-content pre code { text-shadow: none !important; }
   </style>
 </head>
 <body>
@@ -461,7 +471,7 @@ function exportAsHTML(htmlContent, cssContent, filename) {
   downloadFile(fullHTML, filename || 'markdown-document.html', 'text/html;charset=utf-8');
 }
 
-async function exportAsPDF(element, filename) {
+async function exportAsPDF(element, filename, backgroundColor) {
   const avoidBreakSelectors = 'p, h1, h2, h3, h4, h5, h6, table, pre, blockquote, ul, ol, img, .math-block';
   const elements = element.querySelectorAll(avoidBreakSelectors);
   const originalStyles = [];
@@ -498,13 +508,21 @@ async function exportAsPDF(element, filename) {
     el.style.pageBreakInside = 'avoid';
   });
   
+  let captureEl = element;
+  if (backgroundColor) {
+    captureEl = document.createElement('div');
+    captureEl.style.cssText = `padding:10mm;box-sizing:border-box;background:${backgroundColor};width:${Math.max(element.scrollWidth, 600)}px;`;
+    captureEl.appendChild(element.cloneNode(true));
+  }
+
   const opt = {
-    margin: [10, 10, 10, 10],
+    margin: [0, 0, 0, 0],
     filename: filename,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
       scale: 2, 
       useCORS: true,
+      backgroundColor: backgroundColor || '#ffffff',
       scrollY: 0,
       scrollX: 0
     },
@@ -516,7 +534,7 @@ async function exportAsPDF(element, filename) {
   };
   
   try {
-    await html2pdf().set(opt).from(element).save();
+    await html2pdf().set(opt).from(captureEl).save();
   } finally {
     originalStyles.forEach(item => {
       item.el.style.breakInside = item.breakInside;
@@ -576,6 +594,7 @@ console.log('fullHTML', fullHTML);
 }
 
 function printPreviewContent(templateCSS) {
+  const bg = extractPreviewBackground(templateCSS);
   const previewEl = document.querySelector('.preview-content');
   if (!previewEl) return;
   
@@ -602,7 +621,7 @@ function printPreviewContent(templateCSS) {
   const printStyles = `
     @page {
       size: A4;
-      margin: 10mm 10mm;
+      margin: ${bg ? '0' : '10mm 10mm'};
     }
     @media print {
       html, body {
@@ -615,11 +634,14 @@ function printPreviewContent(templateCSS) {
         color-adjust: exact;
       }
     }
-    body {
+    html, body {
       font-family: 'Microsoft YaHei', sans-serif;
-      background: #fff;
+      background: ${bg || '#fff'};
       margin: 0;
-      padding: 0;
+    }
+    body {
+      padding: ${bg ? '10mm' : '0'};
+      box-sizing: border-box;
     }
     .preview-content {
       padding: 0 10px;

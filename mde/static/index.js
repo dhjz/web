@@ -74,6 +74,7 @@ const app = Vue.createApp({
       editDialogVisible: false,
       historyDialogVisible: false,
       currentCategory: '全部',
+      templateCategories: templateCategories,
       activeCollapse: ['colors', 'fonts', 'sizes', 'spacing'],
       historyList: [],
       maxHistoryCount: MAX_HISTORY_DEFAULT,
@@ -119,7 +120,8 @@ const app = Vue.createApp({
         { value: "'Monaco', monospace", label: 'Monaco' },
         { value: "'Menlo', 'Consolas', monospace", label: 'Menlo' }
       ],
-      leftWidth: parseFloat(localStorage.getItem('panel-width')) || 50
+      leftWidth: parseFloat(localStorage.getItem('panel-width')) || 50,
+      themeKey: 0
     };
   },
   computed: {
@@ -146,11 +148,29 @@ const app = Vue.createApp({
     templateCSS: {
       handler(css) {
         updateDynamicStyle(css);
+        this.applyPreviewPaperBackground();
       },
       immediate: true
+    },
+    renderedHTML() {
+      this.$nextTick(() => this.applyThemeDecor());
     }
   },
   methods: {
+    applyPreviewPaperBackground() {
+      const paper = this.$refs.previewPaper;
+      if (!paper) return;
+      paper.style.background = extractPreviewBackground(this.templateCSS) || '';
+    },
+    applyThemeDecor() {
+      if (!this.currentTemplate || !this.currentTemplate.theme) return;
+      const el = this.$refs.previewContent;
+      if (el) window.applyTypesetDecor(el, this.currentTemplate.theme);
+    },
+    getPreviewHTML() {
+      const el = this.$refs.previewContent;
+      return el ? el.innerHTML : this.renderedHTML;
+    },
     startResize(e) {
       const container = this.$refs.mainContainer;
       const onMove = (ev) => {
@@ -193,6 +213,8 @@ const app = Vue.createApp({
           html = highlightCode(html);
         }
         html = this.addTargetBlankToLinks(html);
+        const previewEl = this.$refs.previewContent;
+        if (previewEl) delete previewEl.dataset.typesetThemeApplied;
         this.renderedHTML = html;
       } else {
         this.renderedHTML = this.markdownText;
@@ -217,6 +239,10 @@ const app = Vue.createApp({
       this.selectDialogVisible = true;
     },
     openEditDialog() {
+      if (this.currentTemplate && this.currentTemplate.theme) {
+        ElementPlus.ElMessage.info('公众号主题是原样迁移的预设样式，不支持编辑；需要调整请用原有模板。');
+        return;
+      }
       if (this.currentTemplate) {
         const savedConfig = this.getTemplateConfigFromStorage(this.currentTemplate.id);
         if (savedConfig) {
@@ -230,19 +256,29 @@ const app = Vue.createApp({
       }
       this.editDialogVisible = true;
     },
-    selectTemplate(template) {
+    selectTemplate(template, silent) {
       this.currentTemplate = template;
       localStorage.setItem(LAST_TEMPLATE_ID_STORAGE_KEY, template.id);
-      const savedConfig = this.getTemplateConfigFromStorage(template.id);
-      if (savedConfig) {
-        this.editConfig = deepClone(savedConfig);
-        this.templateCSS = generateTemplateCSS(savedConfig);
-      } else {
+      if (template.theme) {
         this.editConfig = deepClone(template.config);
-        this.templateCSS = generateTemplateCSS(template.config);
+        this.templateCSS = window.generateTypesetThemeCSS(template.theme);
+      } else {
+        const savedConfig = this.getTemplateConfigFromStorage(template.id);
+        if (savedConfig) {
+          this.editConfig = deepClone(savedConfig);
+          this.templateCSS = generateTemplateCSS(savedConfig);
+        } else {
+          this.editConfig = deepClone(template.config);
+          this.templateCSS = generateTemplateCSS(template.config);
+        }
       }
-      this.selectDialogVisible = false;
-      ElementPlus.ElMessage.success(`已应用模板：${template.name}`);
+      this.themeKey += 1;
+      this.renderMarkdown();
+      this.$nextTick(() => this.applyThemeDecor());
+      if (!silent) {
+        this.selectDialogVisible = false;
+        ElementPlus.ElMessage.success(`已应用模板：${template.name}`);
+      }
     },
     getTemplateConfigFromStorage(templateId) {
       try {
@@ -294,6 +330,7 @@ const app = Vue.createApp({
         if (data) {
           const configMap = JSON.parse(data);
           for (const template of templates) {
+            if (template.theme) continue;
             const savedConfig = configMap[template.id];
             if (savedConfig) {
               this.currentTemplate = template;
@@ -348,7 +385,7 @@ const app = Vue.createApp({
       const previewEl = document.querySelector('.preview-content');
       if (previewEl) {
         const filename = extractFilename(this.markdownText) + '.html';
-        exportAsHTML(this.renderedHTML, this.templateCSS, filename);
+        exportAsHTML(this.getPreviewHTML(), this.templateCSS, filename);
         this.saveToHistory();
         ElementPlus.ElMessage.success('HTML 文件已下载');
       }
@@ -358,7 +395,7 @@ const app = Vue.createApp({
       if (previewEl) {
         ElementPlus.ElMessage.info('正在生成 PDF...');
         const filename = extractFilename(this.markdownText) + '.pdf';
-        await exportAsPDF(previewEl, filename);
+        await exportAsPDF(previewEl, filename, extractPreviewBackground(this.templateCSS));
         this.saveToHistory();
         ElementPlus.ElMessage.success('PDF 文件已下载');
       }
@@ -372,7 +409,7 @@ const app = Vue.createApp({
       try {
         const config = this.currentTemplate ? this.currentTemplate.config : this.editConfig;
         const filename = extractFilename(this.markdownText) + '.docx';
-        await exportAsDocx(this.renderedHTML, config, filename);
+        await exportAsDocx(this.getPreviewHTML(), config, filename);
         this.saveToHistory();
         ElementPlus.ElMessage.success('Word 文件已下载');
       } catch (e) {
@@ -417,9 +454,9 @@ const app = Vue.createApp({
     }
   },
   mounted() {
+    let initialTemplate = null;
     if (templates && templates.length > 0) {
       const lastTemplateId = localStorage.getItem(LAST_TEMPLATE_ID_STORAGE_KEY);
-      let initialTemplate = null;
       if (lastTemplateId) {
         initialTemplate = templates.find(t => t.id === parseInt(lastTemplateId));
       }
@@ -429,20 +466,14 @@ const app = Vue.createApp({
           initialTemplate = templates[0];
         }
       }
-      if (initialTemplate) {
-        this.currentTemplate = initialTemplate;
-        const savedConfig = this.getTemplateConfigFromStorage(initialTemplate.id);
-        if (savedConfig) {
-          this.editConfig = deepClone(savedConfig);
-          this.templateCSS = generateTemplateCSS(savedConfig);
-        } else {
-          this.editConfig = deepClone(initialTemplate.config);
-          this.templateCSS = generateTemplateCSS(initialTemplate.config);
-        }
-      }
     }
-    let list = loadHistoryFromStorage();
+    const list = loadHistoryFromStorage();
     this.markdownText = list[0]?.content || '';
+    if (initialTemplate) {
+      this.selectTemplate(initialTemplate, true);
+    } else {
+      this.themeKey += 1;
+    }
     document.body.addEventListener('dragover', this.onDrag);
     document.body.addEventListener('drop', this.onDrop);
   },
