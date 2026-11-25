@@ -96,7 +96,7 @@
           <div class="empty-icon">📄</div>
           <p>还没有文件</p>
           <p class="muted">拖入文档、粘贴文件，或点击左上角「选择文件」</p>
-          <p class="muted tiny">支持 docx / doc / odt / rtf / epub / pdf / pptx / xlsx / csv 等</p>
+          <p class="muted tiny">支持 docx / doc / odt / rtf / epub / pdf / pptx / xlsx / xls / csv 等</p>
         </div>
         <div v-for="item in items" :key="item.id" class="file-card" :class="{ active: item.id === activeId, selected: selectedIds.has(item.id) }" @click="selectItem(item.id)">
           <div class="file-row">
@@ -154,15 +154,20 @@
         <div class="tabs">
           <button class="tab" :class="{on: tab === 'preview'}" @click="tab = 'preview'">预览</button>
           <button class="tab" :class="{on: tab === 'markdown'}" @click="tab = 'markdown'">Markdown 源码</button>
+          <button v-if="isSheetItem(activeItem)" class="tab" :class="{on: tab === 'xlsxPreview'}" @click="tab = 'xlsxPreview'">平铺预览</button>
+          <button v-if="isSheetItem(activeItem)" class="tab" :class="{on: tab === 'xlsxMd'}" @click="tab = 'xlsxMd'">平铺MD源码</button>
           <button v-if="isPdfItem(activeItem)" class="tab" :class="{on: tab === 'pdf'}" @click="ensurePdfPreviewUrl(); tab = 'pdf'">PDF 预览</button>
           <button v-if="hasCleanHtml" class="tab" :class="{on: tab === 'html'}" @click="tab = 'html'">HTML 源码（净化后）</button>
           <button v-if="tab === 'markdown'" class="btn copy-btn" @click="copyMarkdown">{{ copied ? '✓ 已复制' : '📋 一键复制 Markdown' }}</button>
+          <button v-if="tab === 'xlsxMd'" class="btn copy-btn" @click="copyOwnMarkdown">{{ copiedOwn ? '✓ 已复制' : '📋 一键复制平铺 MD' }}</button>
           <button v-if="tab === 'html' && hasCleanHtml" class="btn copy-btn" @click="copyHtml">{{ copiedHtml ? '✓ 已复制' : '📋 一键复制 HTML' }}</button>
           <span class="tab-note" v-if="activeItem.status === 'done' && activeItem.result.imageStats.embedded">{{ activeItem.result.imageStats.embedded }} 张内嵌图已导出为链接</span>
         </div>
         <div class="result-body" ref="resultBody" @scroll="onResultScroll">
           <div v-show="tab === 'markdown'" class="code-view"><pre>{{ activeItem.markdown || '（等待转换）' }}</pre></div>
+          <div v-show="tab === 'xlsxMd'" class="code-view"><pre>{{ ownMarkdown || '（等待转换）' }}</pre></div>
           <div v-show="tab === 'html'" class="code-view"><pre>{{ hasCleanHtml ? cleanHtml : '（该格式无净化后的 HTML 源码）' }}</pre></div>
+          <div v-show="tab === 'xlsxPreview'" class="preview" v-html="ownPreviewHtml"></div>
           <div v-show="tab === 'preview'" class="preview" v-html="previewHtmlContent" @click="onPreviewClick"></div>
           <div v-show="tab === 'pdf'" class="pdf-preview">
             <embed v-if="pdfPreviewUrl && isPdfItem(activeItem)" :src="pdfPreviewUrl" type="application/pdf" title="PDF 预览" />
@@ -192,6 +197,9 @@
 <script src="./static/vendor/turndown.min.js"></script>
 <script src="./static/vendor/turndown-plugin-gfm.min.js"></script>
 <script src="./static/html-convert.js"></script>
+<script src="./static/xlsx-to-md.js"></script>
+<script src="./static/xls-to-md.js"></script>
+<script src="./static/csv-to-md.js"></script>
 <script type="module" src="./static/pdf-to-md-adapter.js"></script>
 <script type="module" src="./static/app.js"></script>
 </body>

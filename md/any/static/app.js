@@ -22,10 +22,12 @@
       const lightbox = ref(null);
       const copied = ref(false);
       const copiedHtml = ref(false);
+      const copiedOwn = ref(false);
       const resultBody = ref(null);
       const showBackToTop = ref(false);
       let copiedTimer = null;
       let copiedHtmlTimer = null;
+      let copiedOwnTimer = null;
       const formats = [
         { value: 'docx', label: 'DOCX (.docx)' },
         { value: 'doc', label: 'DOC (.doc)' },
@@ -121,6 +123,21 @@
         }
       });
 
+      const ownMarkdown = computed(() => {
+        const item = activeItem.value;
+        return item?.sheetResult?.markdown || '';
+      });
+      const ownPreviewHtml = computed(() => {
+        const md = ownMarkdown.value;
+        if (!md) return '';
+        try {
+          const raw = marked.parse(md);
+          return window.DOMPurify ? DOMPurify.sanitize(raw) : raw;
+        } catch (e) {
+          return `<pre class="plain">${escapeHtml(md)}</pre>`;
+        }
+      });
+
       // Mark broken images in the preview so CSS can render a visible placeholder.
       function markBrokenImages(root) {
         root.querySelectorAll('img').forEach(img => {
@@ -163,6 +180,20 @@
         if (ext === 'pdf' || /pdf/i.test(item.file?.type || '')) return true;
         const bytes = item._buffer ? new Uint8Array(item._buffer, 0, Math.min(8, item._buffer.byteLength)) : null;
         return !!bytes && String.fromCharCode(...bytes) === '%PDF-';
+      }
+      function isXlsxItem(item) {
+        if (!item) return false;
+        const name = String(item.file?.name || '').toLowerCase();
+        if (/\.(xlsx|xlsm|xls)$/.test(name)) return true;
+        const hint = String(formatHint.value || '').toLowerCase();
+        return hint === 'xlsx' || hint === 'xlsm' || hint === 'xls';
+      }
+      function isSheetItem(item) {
+        if (!item) return false;
+        const name = String(item.file?.name || '').toLowerCase();
+        if (/\.(xlsx|xlsm|xls|csv)$/.test(name)) return true;
+        const hint = String(formatHint.value || '').toLowerCase();
+        return ['xlsx', 'xlsm', 'xls', 'csv'].includes(hint);
       }
       function formatLabel(item) {
         const ext = extOfName(item.file.name);
@@ -327,6 +358,23 @@
           worker.postMessage({ id, type, payload });
         });
       }
+      // .xlsx/.xls/.csv 主流程都走 anydoc；
+      // 平铺视图用本地库单独异步生成，不阻塞主预览。
+      function prepareSheetPreview(item, payload) {
+        const convert = window.any2mdCsv?.isCsvPayload(payload)
+          ? window.any2mdCsv.convertCsv
+          : window.any2mdXls?.isXlsPayload(payload)
+            ? window.any2mdXls.convertXls
+            : window.any2mdXlsx?.isXlsxPayload(payload)
+              ? window.any2mdXlsx.convertXlsx
+              : null;
+        if (!convert) return;
+        Promise.resolve()
+          .then(() => convert(payload))
+          .then(result => { item.sheetResult = result; })
+          .catch(err => { item.sheetError = err?.message || String(err); });
+      }
+
       function pumpQueue() {
         if (running.value || !queue.length) return;
         running.value = true;
@@ -355,6 +403,7 @@
             item.result = result;
             item.markdown = result.markdown;
             item.usedEngine = usePdfToMd ? 'pdf-to-md' : 'anydoc';
+            prepareSheetPreview(item, payload);
             const stats = computeStats(result.markdown);
             item.stats = stats;
             activeId.value = item.id;
@@ -364,6 +413,7 @@
           .catch(err => {
             item.status = 'error';
             item.errorMessage = `${err.code || 'error'}: ${err.message}` + (err.pages ? `（需 OCR 页：${err.pages.join(', ')}）` : '');
+            prepareSheetPreview(item, payload);
           })
           .finally(() => {
             currentJob = null;
@@ -503,6 +553,20 @@
         copied.value = true;
         clearTimeout(copiedTimer);
         copiedTimer = setTimeout(() => { copied.value = false; }, 1800);
+      }
+      async function copyOwnMarkdown() {
+        const text = ownMarkdown.value || '';
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (e) {
+          const ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); ta.remove();
+        }
+        copiedOwn.value = true;
+        clearTimeout(copiedOwnTimer);
+        copiedOwnTimer = setTimeout(() => { copiedOwn.value = false; }, 1800);
       }
       function onPreviewClick(e) {
         const img = e.target.closest('img');
@@ -684,6 +748,7 @@
         appEl.removeEventListener('dragleave', onDragLeave);
         appEl.removeEventListener('drop', onDrop);
         clearTimeout(copiedTimer);
+        clearTimeout(copiedOwnTimer);
         for (const url of previewUrls.values()) URL.revokeObjectURL(url);
         for (const urls of pdftomdPreviewUrls.values()) for (const url of urls.values()) URL.revokeObjectURL(url);
         clearPdfPreviewUrl();
@@ -691,13 +756,13 @@
       });
 
       return {
-        items, activeId, activeItem, doneItems, selectedIds, theme, tab, previewHtml,
+        items, activeId, activeItem, doneItems, selectedIds, theme, tab, previewHtml, copiedOwn,
         exportImages, formatHint, pdfEngine, hasPdfFiles, pdfEngineInfo, formats, engineState, engineError, engineInfo, engineProgress, enginePercent, engineProgressText, fileInput,
         running, dragDepth, lightbox, copied, copiedHtml, resultBody, showBackToTop, canStart, queuePosition,
-        previewHtmlContent, pdfPreviewUrl, isPdfItem, cleanHtml, hasCleanHtml,
+        previewHtmlContent, pdfPreviewUrl, isPdfItem, isXlsxItem, isSheetItem, cleanHtml, hasCleanHtml, ownMarkdown, ownPreviewHtml,
         ensurePdfPreviewUrl, clearPdfPreviewUrl,
         addFiles, onFileInput, onPreviewClick, onResultScroll, scrollResultToTop,
-        selectItem, toggleSelected, selectAll, removeSelected, clearAll, startQueue, pauseQueue,
+        selectItem, toggleSelected, selectAll, removeSelected, clearAll, startQueue, pauseQueue, copyOwnMarkdown,
         startItem, canStartItem, itemStartLabel, itemBusy,
         formatSize, formatDate, extClass, formatLabel, statusText, copyMarkdown, copyHtml, downloadOne,
         downloadHtml,
