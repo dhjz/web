@@ -603,18 +603,28 @@ async function exportAsVectorPDF(element, filename, backgroundColor) {
   if (typeof window.dompdf !== 'function') {
     throw new Error('dompdf.js 未加载');
   }
+  const fontReady = document.fonts
+    ? document.fonts.load('13px DejaVuSansMono').then(() => document.fonts.ready).catch(() => {})
+    : Promise.resolve();
   const [cjkBytes, monoBytes] = await Promise.all([
-    loadVectorPdfFont('static/fonts/AlibabaPuHuiTi.ttf?v=20261125j', 'cjk'),
-    loadVectorPdfFont('static/fonts/DejaVuSansMono.ttf?v=20261125j', 'mono'),
-    document.fonts ? document.fonts.ready : Promise.resolve()
+    loadVectorPdfFont('static/fonts/AlibabaPuHuiTi.ttf?v=20261125k', 'cjk'),
+    loadVectorPdfFont('static/fonts/DejaVuSansMono.ttf?v=20261125k', 'mono'),
+    fontReady
   ]);
-  const blob = await window.dompdf(element, {
-    format: 'a4',
-    pagination: true,
-    marginPt: [36, 36, 36, 36],
-    backgroundColor: backgroundColor || '#ffffff',
-    fontConfig: getVectorPdfFontConfig(element, cjkBytes, monoBytes)
-  });
+  document.body.classList.add('exporting-vector-pdf');
+  let blob;
+  try {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    blob = await window.dompdf(element, {
+      format: 'a4',
+      pagination: true,
+      marginPt: [36, 36, 36, 36],
+      backgroundColor: backgroundColor || '#ffffff',
+      fontConfig: getVectorPdfFontConfig(element, cjkBytes, monoBytes)
+    });
+  } finally {
+    document.body.classList.remove('exporting-vector-pdf');
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
