@@ -552,25 +552,25 @@ async function exportAsPDF(element, filename, backgroundColor) {
   return true;
 }
 
-let vectorPdfFontPromise = null;
+const vectorPdfFontPromises = {};
 
-function loadVectorPdfFont() {
-  if (!vectorPdfFontPromise) {
-    vectorPdfFontPromise = fetch('static/fonts/AlibabaPuHuiTi.ttf')
+function loadVectorPdfFont(url, key) {
+  if (!vectorPdfFontPromises[key]) {
+    vectorPdfFontPromises[key] = fetch(url)
       .then(response => {
         if (!response.ok) throw new Error(`字体加载失败: ${response.status}`);
         return response.arrayBuffer();
       })
       .then(buffer => new Uint8Array(buffer))
       .catch(error => {
-        vectorPdfFontPromise = null;
+        delete vectorPdfFontPromises[key];
         throw error;
       });
   }
-  return vectorPdfFontPromise;
+  return vectorPdfFontPromises[key];
 }
 
-function getVectorPdfFontConfig(element, fontBytes) {
+function getVectorPdfFontConfig(element, cjkBytes, monoBytes) {
   const genericFamilies = /^(sans-serif|serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace|inherit|initial|unset)$/i;
   const specialFamilies = /^(KaTeX|el-icon|element-icons|iconfont)/i;
   const weightMap = { normal: 400, bold: 700, bolder: 700, lighter: 300 };
@@ -580,16 +580,22 @@ function getVectorPdfFontConfig(element, fontBytes) {
     const computed = getComputedStyle(el);
     const fontWeight = weightMap[computed.fontWeight] || Number(computed.fontWeight) || 400;
     const fontStyle = computed.fontStyle === 'italic' || computed.fontStyle === 'oblique' ? 'italic' : 'normal';
+    const fontKind = el.closest('pre, code') ? 'mono' : 'cjk';
     computed.fontFamily.split(',').forEach(family => {
       const fontFamily = family.trim().replace(/^['"]+|['"]+$/g, '');
       if (fontFamily && !genericFamilies.test(fontFamily) && !specialFamilies.test(fontFamily)) {
-        combos.add(`${fontFamily}|${fontStyle}|${fontWeight}`);
+        combos.add(`${fontFamily}|${fontStyle}|${fontWeight}|${fontKind}`);
       }
     });
   });
   return Array.from(combos).map(key => {
-    const [fontFamily, fontStyle, fontWeight] = key.split('|');
-    return { fontFamily, fontStyle, fontWeight: Number(fontWeight), fontBytes };
+    const [fontFamily, fontStyle, fontWeight, fontKind] = key.split('|');
+    return {
+      fontFamily,
+      fontStyle,
+      fontWeight: Number(fontWeight),
+      fontBytes: fontKind === 'mono' ? monoBytes : cjkBytes
+    };
   });
 }
 
@@ -597,8 +603,9 @@ async function exportAsVectorPDF(element, filename, backgroundColor) {
   if (typeof window.dompdf !== 'function') {
     throw new Error('dompdf.js 未加载');
   }
-  const [fontBytes] = await Promise.all([
-    loadVectorPdfFont(),
+  const [cjkBytes, monoBytes] = await Promise.all([
+    loadVectorPdfFont('static/fonts/AlibabaPuHuiTi.ttf?v=20261125j', 'cjk'),
+    loadVectorPdfFont('static/fonts/DejaVuSansMono.ttf?v=20261125j', 'mono'),
     document.fonts ? document.fonts.ready : Promise.resolve()
   ]);
   const blob = await window.dompdf(element, {
@@ -606,7 +613,7 @@ async function exportAsVectorPDF(element, filename, backgroundColor) {
     pagination: true,
     marginPt: [36, 36, 36, 36],
     backgroundColor: backgroundColor || '#ffffff',
-    fontConfig: getVectorPdfFontConfig(element, fontBytes)
+    fontConfig: getVectorPdfFontConfig(element, cjkBytes, monoBytes)
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
