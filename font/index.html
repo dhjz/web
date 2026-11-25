@@ -296,22 +296,27 @@
           }
         },
         async onPaste(e) {
-          const files = Array.from(e.clipboardData?.files || []);
+          const clipboard = e.clipboardData;
+          if (!clipboard) return;
+          const files = Array.from(clipboard.files || []);
           const fontFiles = files.filter(file => this.targetFormats.includes(this.getFileFormat(file.name)));
           if (fontFiles.length > 0) {
             e.preventDefault();
             await this.processFiles(fontFiles);
             return;
           }
-          if (files.length === 0 && e.clipboardData?.items?.length) {
-            e.preventDefault();
-            try {
-              const items = await window.DFontFont.readClipboardFonts();
-              const normalized = items.map(item => this.normalizeClipboardFile(item));
-              await this.processFiles(normalized);
-            } catch (err) {
-              this.showToast('粘贴字体失败: ' + err.message, 'error');
-            }
+          const fontItems = Array.from(clipboard.items || []).filter(item =>
+            item.kind === 'file' && this.guessExt(item.type)
+          );
+          if (fontItems.length === 0) return;
+          e.preventDefault();
+          try {
+            const items = await window.DFontFont.readClipboardFonts();
+            if (!items || items.length === 0) return;
+            const normalized = items.map(item => this.normalizeClipboardFile(item));
+            await this.processFiles(normalized);
+          } catch (err) {
+            this.showToast('粘贴字体失败: ' + err.message, 'error');
           }
         },
         guessExt(type) {
