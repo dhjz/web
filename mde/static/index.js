@@ -392,12 +392,25 @@ const app = Vue.createApp({
     },
     async handleExportPDF() {
       const previewEl = document.querySelector('.preview-content');
-      if (previewEl) {
-        ElementPlus.ElMessage.info('正在生成 PDF...');
+      if (!previewEl) return;
+      const filename = extractFilename(this.markdownText) + '.pdf';
+      const generated = await exportAsPDF(previewEl, filename, extractPreviewBackground(this.templateCSS));
+      if (!generated) return;
+      this.saveToHistory();
+      ElementPlus.ElMessage.success('PDF 文件已下载');
+    },
+    async handleExportVectorPDF() {
+      const previewEl = document.querySelector('.preview-content');
+      if (!previewEl) return;
+      ElementPlus.ElMessage.info('正在生成矢量 PDF...');
+      try {
         const filename = extractFilename(this.markdownText) + '.pdf';
-        await exportAsPDF(previewEl, filename, extractPreviewBackground(this.templateCSS));
+        await exportAsVectorPDF(previewEl, filename, extractPreviewBackground(this.templateCSS));
         this.saveToHistory();
-        ElementPlus.ElMessage.success('PDF 文件已下载');
+        ElementPlus.ElMessage.success('矢量 PDF 文件已下载');
+      } catch (e) {
+        console.error(e);
+        ElementPlus.ElMessage.error('矢量 PDF 导出失败，请重试');
       }
     },
     handlePrintPDF() {

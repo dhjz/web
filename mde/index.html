@@ -60,6 +60,7 @@
                             <el-button size="small" type="success" @click="handleCopyRichText">复制富文本</el-button>
                             <el-button size="small" type="primary" @click="handleExportWord">导出 Word</el-button>
                             <el-button size="small" type="danger" @click="handleExportPDF">导出 PDF</el-button>
+                            <el-button size="small" type="danger" plain @click="handleExportVectorPDF">矢量 PDF</el-button>
                             <el-button size="small" type="warning" @click="handleExportHTML">导出 HTML</el-button>
                             <el-button size="small" type="danger" plain @click="handlePrintPDF">打印</el-button>
                         </div>
@@ -260,10 +261,11 @@
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/KaTeX/0.16.8/katex.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompdf.js@latest/dist/dompdf.min.js"></script>
     <script src="static/lib/html-docx.min.js?v=20261124h"></script>
     <script src="static/typeset-themes.js?v=20261124h"></script>
     <script src="static/tpl.js?v=20261124h"></script>
-    <script src="static/utils.js?v=20261124h"></script>
-    <script src="static/index.js?v=20261124h"></script>
+    <script src="static/utils.js?v=20261125e"></script>
+    <script src="static/index.js?v=20261125e"></script>
 </body>
 </html>

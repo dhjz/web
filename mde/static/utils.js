@@ -474,6 +474,10 @@ function exportAsHTML(htmlContent, cssContent, filename) {
 }
 
 async function exportAsPDF(element, filename, backgroundColor) {
+  const scaleInput = window.prompt('请输入 PDF 画布缩放比例（默认 2，越大越清晰，文件也越大）：', '2');
+  if (scaleInput === null) return false;
+  const scale = Math.min(5, Math.max(1, Number(scaleInput) || 2));
+
   const avoidBreakSelectors = 'p, h1, h2, h3, h4, h5, h6, table, pre, blockquote, ul, ol, img, .math-block';
   const elements = element.querySelectorAll(avoidBreakSelectors);
   const originalStyles = [];
@@ -511,18 +515,20 @@ async function exportAsPDF(element, filename, backgroundColor) {
   });
   
   let captureEl = element;
+  let margin = [10, 10, 10, 10];
   if (backgroundColor) {
     captureEl = document.createElement('div');
-    captureEl.style.cssText = `padding:10mm;box-sizing:border-box;background:${backgroundColor};width:${Math.max(element.scrollWidth, 600)}px;`;
+    captureEl.style.cssText = `padding:38px;box-sizing:border-box;background:${backgroundColor};width:794px;`;
     captureEl.appendChild(element.cloneNode(true));
+    margin = [0, 0, 0, 0];
   }
 
   const opt = {
-    margin: [0, 0, 0, 0],
+    margin: margin,
     filename: filename,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
-      scale: 2, 
+      scale: scale, 
       useCORS: true,
       backgroundColor: backgroundColor || '#ffffff',
       scrollY: 0,
@@ -543,6 +549,73 @@ async function exportAsPDF(element, filename, backgroundColor) {
       item.el.style.pageBreakInside = item.pageBreakInside;
     });
   }
+  return true;
+}
+
+let vectorPdfFontPromise = null;
+
+function loadVectorPdfFont() {
+  if (!vectorPdfFontPromise) {
+    vectorPdfFontPromise = fetch('static/fonts/AlibabaPuHuiTi.ttf')
+      .then(response => {
+        if (!response.ok) throw new Error(`字体加载失败: ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then(buffer => new Uint8Array(buffer))
+      .catch(error => {
+        vectorPdfFontPromise = null;
+        throw error;
+      });
+  }
+  return vectorPdfFontPromise;
+}
+
+function getVectorPdfFontConfig(element, fontBytes) {
+  const genericFamilies = /^(sans-serif|serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace|inherit|initial|unset)$/i;
+  const specialFamilies = /^(KaTeX|el-icon|element-icons|iconfont)/i;
+  const weightMap = { normal: 400, bold: 700, bolder: 700, lighter: 300 };
+  const combos = new Set();
+  const targets = [element, ...element.querySelectorAll('*')];
+  targets.forEach(el => {
+    const computed = getComputedStyle(el);
+    const fontWeight = weightMap[computed.fontWeight] || Number(computed.fontWeight) || 400;
+    const fontStyle = computed.fontStyle === 'italic' || computed.fontStyle === 'oblique' ? 'italic' : 'normal';
+    computed.fontFamily.split(',').forEach(family => {
+      const fontFamily = family.trim().replace(/^['"]+|['"]+$/g, '');
+      if (fontFamily && !genericFamilies.test(fontFamily) && !specialFamilies.test(fontFamily)) {
+        combos.add(`${fontFamily}|${fontStyle}|${fontWeight}`);
+      }
+    });
+  });
+  return Array.from(combos).map(key => {
+    const [fontFamily, fontStyle, fontWeight] = key.split('|');
+    return { fontFamily, fontStyle, fontWeight: Number(fontWeight), fontBytes };
+  });
+}
+
+async function exportAsVectorPDF(element, filename, backgroundColor) {
+  if (typeof window.dompdf !== 'function') {
+    throw new Error('dompdf.js 未加载');
+  }
+  const [fontBytes] = await Promise.all([
+    loadVectorPdfFont(),
+    document.fonts ? document.fonts.ready : Promise.resolve()
+  ]);
+  const blob = await window.dompdf(element, {
+    format: 'a4',
+    pagination: true,
+    marginPt: [36, 36, 36, 36],
+    backgroundColor: backgroundColor || '#ffffff',
+    fontConfig: getVectorPdfFontConfig(element, fontBytes)
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'markdown-document.pdf';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 async function exportAsDocx(htmlContent, config, filename) {
@@ -646,7 +719,7 @@ function printPreviewContent(templateCSS) {
       box-sizing: border-box;
     }
     .preview-content {
-      padding: 0 10px;
+      padding: 0 26px;
       line-height: 1.8;
     }
     ${templateCSS}
