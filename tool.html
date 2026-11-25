@@ -58,6 +58,7 @@
       <div><button type="html_min">minHTML</button></div>
       <div><button type="html_min1">minHTML1</button></div>
       <div><button type="mini_css">压缩css</button></div>
+      <div><button type="mini_css_del">压缩css删</button></div>
       <div><button type="mini_css1">压缩css全</button></div>
       <div><button type="format_css">格式化css</button></div>
       <div><button type="blank">压缩所有空白</button></div>
@@ -154,6 +155,9 @@
       if (type == 'mini_css') {
         setVal(miniCss(getVal()))
       }
+      if (type == 'mini_css_del') {
+        setVal(miniCss(getVal(), false, true))
+      }
       if (type == 'mini_css1') {
         setVal(miniCss(getVal(), true))
       }
@@ -197,11 +201,11 @@
       return str
     }
 
-    function parseCss(val) {
+    function parseCss(val, keepComments = true) {
       const comments = []
       const css = val.replace(/\/\*[\s\S]*?\*\//g, m => {
         comments.push(m)
-        return '\u0001' + (comments.length - 1) + '\u0001'
+        return keepComments ? '\u0001' + (comments.length - 1) + '\u0001' : ''
       })
 
       // 拆分 token：{ } ; 作为结构符号，字符串和 url(...) 整体保留
@@ -297,8 +301,8 @@
       return root
     }
 
-    function miniCss(val, delEnt) {
-      const root = parseCss(val)
+    function miniCss(val, delEnt, delComment) {
+      const root = parseCss(val, !delComment)
 
       const flat = items => items.map(item => {
         if (item.text) return item.text
