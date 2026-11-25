@@ -203,9 +203,129 @@ function hashImageBytes(bytes) {
   // Turndown keeps <table> blocks as literal HTML. Convert only real grids
   // (at least 2 rows and at least 2 columns) into GFM tables; 1-row/1-column
   // tables stay as HTML because they are usually layout artifacts.
+  // Merged cells (colspan/rowspan) are expanded into a rectangular grid:
+  // a spanned cell keeps its text in the top-left slot, the covered slots
+  // become empty cells. The header row is the first row that contains <th>
+  // (or the first row when no <th> exists), so preceding title rows stay as
+  // regular data rows instead of becoming the header.
   // We pull qualifying tables out before Turndown and stitch the GFM back
   // afterwards, so backslashes in cell text are not escaped by Turndown.
-  function extractLargeTables(html, td) {
+  //
+  // When mergeContinuationTables is true (Word paste), adjacent tables that
+  // are clearly pieces of one page-split table are joined first. The signal
+  // is deliberately strict: identical column count, only <br>/whitespace
+  // between them, and the next table's first row has an empty leading cell
+  // while the previous table's last row is non-empty. Plain HTML code paste
+  // never sets this flag, so independent tables are left untouched.
+
+  function rawCellText(cell, td) {
+    if (!cell || cell === '__SPAN__') return '';
+    if (typeof cell === 'string') return cell;
+    if (!td) return (cell.textContent || '').replace(/\s+/g, ' ').trim();
+    return (td.turndown(cell.innerHTML) || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function escapeGfmCell(text) {
+    return text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+  }
+
+  function parseTable(table) {
+    const sourceRows = Array.from(table.querySelectorAll('tr')).map(tr =>
+      Array.from(tr.children).filter(c => /^(TD|TH)$/i.test(c.nodeName))
+    ).filter(r => r.length);
+    const cols = sourceRows.reduce((m, r) =>
+      Math.max(m, r.reduce((sum, c) => sum + (parseInt(c.getAttribute('colspan'), 10) || 1), 0)), 0);
+    if (cols < 2) return null;
+
+    // Expand colspan/rowspan into a rectangular (rows x cols) grid.
+    const grid = sourceRows.map(() => Array.from({ length: cols }, () => null));
+    const occupied = sourceRows.map(() => Array.from({ length: cols }, () => false));
+    sourceRows.forEach((cells, ri) => {
+      let ci = 0;
+      for (const cell of cells) {
+        while (ci < cols && occupied[ri][ci]) ci++;
+        if (ci >= cols) break;
+        const cs = Math.max(1, parseInt(cell.getAttribute('colspan'), 10) || 1);
+        const rs = Math.max(1, parseInt(cell.getAttribute('rowspan'), 10) || 1);
+        for (let dr = 0; dr < rs && ri + dr < grid.length; dr++) {
+          for (let dc = 0; dc < cs && ci + dc < cols; dc++) {
+            if (occupied[ri + dr][ci + dc]) continue;
+            occupied[ri + dr][ci + dc] = true;
+            // Only the top-left slot carries the cell content; the rest
+            // are placeholders with a marker so turndown keeps them empty.
+            grid[ri + dr][ci + dc] = (dr === 0 && dc === 0) ? cell : '__SPAN__';
+          }
+        }
+        ci += cs;
+      }
+    });
+
+    const headerIndex = sourceRows.findIndex(cells => cells.some(c => /^TH$/i.test(c.nodeName)));
+    return { table, cols, grid, headerIndex: headerIndex >= 0 ? headerIndex : 0, rowCount: sourceRows.length };
+  }
+
+  function isVisualOnly(node) {
+    if (node.nodeType === 3) return !(node.nodeValue || '').trim();
+    if (node.nodeType !== 1) return false;
+    const walker = node.ownerDocument.createTreeWalker(node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) {
+      if (n.nodeType === 3) {
+        if ((n.nodeValue || '').trim()) return false;
+      } else if (n.nodeName.toLowerCase() !== 'br') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function onlyVisualBetween(doc, prev, next) {
+    const range = doc.createRange();
+    range.setStartAfter(prev);
+    range.setEndBefore(next);
+    for (const child of range.cloneContents().childNodes) {
+      if (!isVisualOnly(child)) return false;
+    }
+    return true;
+  }
+
+  function canMergeContinuation(doc, group, next) {
+    if (!group || !next || group.cols !== next.cols) return false;
+    const lastRow = group.grid[group.grid.length - 1];
+    const firstRow = next.grid[0];
+    if (!lastRow || !firstRow) return false;
+    // The continuation row repeats the first column as empty; otherwise it
+    // is an ordinary independent table and must stay separate.
+    if (rawCellText(firstRow[0], null) !== '') return false;
+    if (!lastRow.some(c => rawCellText(c, null) !== '')) return false;
+    const prevTable = group.tables[group.tables.length - 1];
+    if (prevTable === next.table) return false;
+    return onlyVisualBetween(doc, prevTable, next.table);
+  }
+
+  function mergeContinuation(group, next, td) {
+    const lastRow = group.grid[group.grid.length - 1];
+    const firstRow = next.grid[0];
+    for (let c = 0; c < group.cols; c++) {
+      const a = rawCellText(lastRow[c], td);
+      const b = rawCellText(firstRow[c], td);
+      if (a && b) lastRow[c] = a + b;
+      else if (!a && b) lastRow[c] = b;
+    }
+    for (let r = 1; r < next.grid.length; r++) group.grid.push(next.grid[r]);
+    group.tables.push(next.table);
+  }
+
+  function groupGfm(group, td) {
+    const cellText = (cell) => escapeGfmCell(rawCellText(cell, td));
+    return group.grid.map((cells, ri) => {
+      const line = `| ${cells.map(cellText).join(' | ')} |`;
+      if (ri !== group.headerIndex) return line;
+      return `${line}\n| ${Array.from({ length: group.cols }, () => '---').join(' | ')} |`;
+    }).join('\n');
+  }
+
+  function extractLargeTables(html, td, mergeContinuationTables) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const tables = Array.from(doc.body.querySelectorAll('table'));
     const placeholders = [];
@@ -213,27 +333,32 @@ function hashImageBytes(bytes) {
     // can't touch real document text.
     let prefix = 'ANY2MDTABLEPLACEHOLDER';
     while (html.includes(prefix)) prefix += 'X';
-    tables.forEach((table, i) => {
-      const rows = Array.from(table.querySelectorAll('tr')).map(tr =>
-        Array.from(tr.children).filter(c => /^(TD|TH)$/i.test(c.nodeName))
-      ).filter(r => r.length);
-      const cols = rows.reduce((m, r) => Math.max(m, r.length), 0);
-      if (rows.length < 2 || cols < 2) return; // keep 1-row/1-column tables as HTML
+
+    const groups = [];
+    let current = null;
+    for (const table of tables) {
+      const parsed = parseTable(table);
+      if (!parsed) continue;
+      parsed.tables = [table];
+      if (mergeContinuationTables && canMergeContinuation(doc, current, parsed)) {
+        mergeContinuation(current, parsed, td);
+        continue;
+      }
+      if (current) groups.push(current);
+      current = parsed;
+    }
+    if (current) groups.push(current);
+
+    groups.forEach((group, i) => {
+      // A lone 1-row grid is a layout artifact unless it was merged into a
+      // real continuation table.
+      if (group.rowCount < 2 && group.tables.length < 2) return;
       const marker = `${prefix}${i}END`;
-      const cellText = (cell) => {
-        if (!cell) return '';
-        // Turndown handles inline markup (bold/italic/links/code/images) for
-        // us; the result is a Markdown fragment safe to place inside a cell.
-        let md = (td.turndown(cell.innerHTML) || '').replace(/\s+/g, ' ').trim();
-        // Escapes for GFM cell syntax: backslashes first, then pipes.
-        return md.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-      };
-      const lines = rows.map((cells, ri) => {
-        const line = `| ${Array.from({ length: cols }, (_, ci) => cellText(cells[ci])).join(' | ')} |`;
-        return ri === 0 ? `${line}\n| ${Array.from({ length: cols }, () => '---').join(' | ')} |` : line;
-      });
-      placeholders.push({ marker, gfm: lines.join('\n') });
-      table.replaceWith(doc.createTextNode(marker));
+      placeholders.push({ marker, gfm: groupGfm(group, td) });
+      for (const table of group.tables) {
+        if (table === group.tables[0]) table.replaceWith(doc.createTextNode(marker));
+        else table.remove();
+      }
     });
     return { html: doc.body.innerHTML, placeholders };
   }
@@ -245,7 +370,7 @@ function hashImageBytes(bytes) {
     return markdown;
   }
 
-  function convertHtml({ name, bytes: raw }) {
+  function convertHtml({ name, bytes: raw, mergeContinuationTables = false }) {
     if (typeof TurndownService !== 'function' || !window.turndownPluginGfm || !window.DOMPurify) {
       throw Object.assign(new Error('HTML 转换组件尚未加载完成'), { code: 'htmlNotReady' });
     }
@@ -276,7 +401,7 @@ function hashImageBytes(bytes) {
 
     const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
     td.use(window.turndownPluginGfm.gfm);
-    const extracted = extractLargeTables(html, td);
+    const extracted = extractLargeTables(html, td, mergeContinuationTables);
     let markdown = td.turndown(extracted.html) || '';
     markdown = restoreTables(markdown, extracted.placeholders).replace(/\n{3,}/g, '\n\n').trim() + '\n';
 

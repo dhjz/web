@@ -78,12 +78,16 @@
     </label>
     <div class="toolbar-right">
       <span class="hint">拖到页面任意位置 / Ctrl+V 粘贴 / 点击选择</span>
+      <label class="field switch" title="显示 / 隐藏文件列表">
+        <input type="checkbox" v-model="showFileList">
+        <span>文件列表</span>
+      </label>
       <button class="btn primary" @click="exportZip" :disabled="!doneItems.length">⬇ 导出 ZIP（{{ doneItems.length }}）</button>
     </div>
   </div>
 
-  <main class="workspace">
-    <section class="panel files-panel">
+  <main class="workspace" :class="{ 'no-files': !showFileList }">
+    <section class="panel files-panel" v-if="showFileList">
       <div class="panel-head">
         <h2>文件列表 <span class="count">{{ items.length }}</span></h2>
         <div class="mini-actions">
@@ -104,14 +108,15 @@
             <div class="file-ext" :class="extClass(item.file)">{{ formatLabel(item) }}</div>
             <div class="file-main">
               <div class="file-name" :title="item.file.name">{{ item.file.name }}</div>
-              <div class="file-meta">
-                <span :title="item.typeLabel">{{ item.typeLabel }}</span>
+              <div class="file-meta" :title="item.typeLabel">
+                <span>{{ item.typeLabel }}</span>
                 <span>{{ formatSize(item.file.size) }}</span>
                 <span>{{ formatDate(item.file.lastModified) }}</span>
               </div>
             </div>
             <span class="status" :class="item.status">{{ statusText(item) }}</span>
             <button class="btn-start" :class="{ busy: itemBusy(item) }" :disabled="!canStartItem(item)" @click.stop="startItem(item)" :title="itemStartLabel(item) + '该文件'">{{ itemBusy(item) ? '…' : (item.status === 'done' ? '↻' : (item.status === 'error' ? '↻' : '▶')) }}</button>
+            <button class="btn-del" @click.stop="removeItem(item)" title="删除该文件">🗑</button>
           </div>
           <div class="progress" v-if="item.status === 'converting'"><i></i></div>
           <div class="file-error" v-if="item.status === 'error'">{{ item.errorMessage }}</div>
@@ -161,6 +166,7 @@
           <button v-if="tab === 'markdown'" class="btn copy-btn" @click="copyMarkdown">{{ copied ? '✓ 已复制' : '📋 一键复制 Markdown' }}</button>
           <button v-if="tab === 'xlsxMd'" class="btn copy-btn" @click="copyOwnMarkdown">{{ copiedOwn ? '✓ 已复制' : '📋 一键复制平铺 MD' }}</button>
           <button v-if="tab === 'html' && hasCleanHtml" class="btn copy-btn" @click="copyHtml">{{ copiedHtml ? '✓ 已复制' : '📋 一键复制 HTML' }}</button>
+          <button v-if="tab === 'html' && hasCleanHtml" class="btn copy-btn" @click="previewCleanHtml">🔍 一键预览 HTML</button>
           <span class="tab-note" v-if="activeItem.status === 'done' && activeItem.result.imageStats.embedded">{{ activeItem.result.imageStats.embedded }} 张内嵌图已导出为链接</span>
         </div>
         <div class="result-body" ref="resultBody" @scroll="onResultScroll">

@@ -101,6 +101,7 @@ body {
 
 /* Workspace */
 .workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 380px 1fr; gap: 0; }
+.workspace.no-files { grid-template-columns: 1fr; }
 .panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel); }
 .files-panel { border-right: 1px solid var(--line); }
 .panel-head {
@@ -157,6 +158,13 @@ body {
 .btn-start:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
 .btn-start:disabled { opacity: .35; cursor: not-allowed; color: var(--muted); }
 .btn-start.busy { color: var(--muted); border-style: dashed; }
+.btn-del {
+  flex: none; width: 26px; height: 26px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+  font-size: 12px; line-height: 1; display: grid; place-items: center; padding: 0;
+  transition: .15s ease;
+}
+.btn-del:hover { border-color: var(--error); background: rgba(209, 58, 69, .12); color: var(--error); }
 .status.done { background: rgba(22, 130, 93, .12); color: var(--success); }
 .status.error { background: rgba(209, 58, 69, .12); color: var(--error); }
 .progress { height: 3px; margin-top: 9px; background: var(--line); border-radius: 3px; overflow: hidden; }
@@ -203,11 +211,12 @@ body {
   margin: 0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12.5px; line-height: 1.7; color: var(--text);
 }
-.preview { padding: 10px 20px; line-height: 1.75; }
+.preview { padding: 10px 20px; line-height: 1.75; word-break: break-all;}
 /* PDF tab: show the original PDF with the browser's native viewer. */
 .pdf-preview { height: 100%; }
 .pdf-preview embed { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
 .preview h1, .preview h2, .preview h3 { border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+.preview table th { white-space: nowrap; }
 .preview img {
    max-width: calc(min(800px, 90%)); border: 1px solid var(--line); border-radius: 6px;
   cursor: zoom-in;
@@ -276,6 +285,7 @@ body {
 
 @media (max-width: 900px) {
   .workspace { grid-template-columns: 1fr; grid-template-rows: 40% 60%; }
+  .workspace.no-files { grid-template-rows: 1fr; }
   .files-panel { border-right: 0; border-bottom: 1px solid var(--line); }
   .hint { display: none; }
 }

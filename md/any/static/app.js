@@ -10,6 +10,7 @@
       const theme = ref('light');
       const tab = ref('preview');
       const previewHtml = ref(true);
+      const showFileList = ref(true);
       const exportImages = ref(true);
       const formatHint = ref('');
       const pdfEngine = ref('anydoc');
@@ -231,13 +232,14 @@
       let pdfInitPromise = null;
 
       const fileInput = ref(null);
-      function addInputFiles(fileList) {
+      function addInputFiles(fileList, flags = {}) {
         const arr = Array.from(fileList || []);
         if (!arr.length) return;
-        const added = arr.map(file => ({
+        const added = arr.map((file, i) => ({
           id: nextId++, file, typeLabel: typeLabel(file),
           status: 'pending', errorMessage: '', markdown: '', result: null,
           _buffer: null,
+          pasteMergeTables: !!flags.pasteMergeTables && i === 0,
         }));
         items.value.push(...added);
         selectedIds.value = new Set([...selectedIds.value, ...added.map(i => i.id)]);
@@ -260,6 +262,19 @@
         // Clipboard text/html has no file; synthesize one so it flows through
         // the same queue, stats and export as dropped .html files.
         return new File([text], name || `pasted-${new Date().toISOString().replace(/[:.]/g, '-')}.html`, { type: 'text/html' });
+      }
+      // Word writes application/x-msword-ish metadata into text/html; code
+      // editors pasting raw HTML only populate text/plain. That distinction
+      // enables continuation-table merging for Word only.
+      function plainFromHtml(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return (doc.body.textContent || '').replace(/\s+/g, '');
+      }
+      function looksLikeWordHtml(html, plain) {
+        if (/<!--StartFragment-->|mso-|progid:|xmlns:o=|<o:p|<v:shape/i.test(html)) return true;
+        const a = plainFromHtml(html);
+        const b = String(plain || '').replace(/\s+/g, '');
+        return !!a && a === b;
       }
       function onDragEnter(e) {
         if (!hasFiles(e)) return;
@@ -293,22 +308,34 @@
         const cd = e.clipboardData;
         if (!cd) return;
         const files = [];
+        let skippedImage = false;
         for (const item of cd.items || []) {
           if (item.kind !== 'file') continue;
           const f = item.getAsFile();
-          if (f) files.push(f);
+          if (!f) continue;
+          // 暂时不支持图片转 Markdown，粘贴的图片直接过滤掉。
+          if (item.type.startsWith('image/') || /^image\//i.test(f.type || '') || /\.(png|jpe?g|gif|webp|bmp|avif|svg)$/i.test(f.name || '')) {
+            skippedImage = true;
+            continue;
+          }
+          files.push(f);
         }
         // Clipboard may expose rich HTML (copy from browser/Office) as
         // text/html with no File item. Turn it into a .html file.
         const html = cd.getData('text/html');
         const plain = cd.getData('text/plain');
         const hasHtmlFile = files.some(f => /\.html?$/i.test(f.name || ''));
+        let pasteMergeTables = false;
         if (html && looksLikeHtmlText(html)) {
-          if (!hasHtmlFile) files.unshift(htmlFileFromClipboard(html));
+          if (!hasHtmlFile) {
+            files.unshift(htmlFileFromClipboard(html));
+            pasteMergeTables = looksLikeWordHtml(html, plain);
+          }
         } else if (!hasHtmlFile && plain && looksLikeHtmlText(plain)) {
           files.unshift(htmlFileFromClipboard(plain, `pasted-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`));
         }
-        if (files.length) { e.preventDefault(); addInputFiles(files); }
+        if (files.length) { e.preventDefault(); addInputFiles(files, { pasteMergeTables }); }
+        else if (skippedImage) e.preventDefault();
       }
 
       function selectItem(id) { activeId.value = id; tab.value = 'preview'; resetResultScroll(); }
@@ -336,6 +363,22 @@
       }
       function selectAll() {
         selectedIds.value = selectedIds.value.size === items.value.length ? new Set() : new Set(items.value.map(i => i.id));
+      }
+      function removeItem(item) {
+        if (!item || !window.confirm(`确定删除「${item.file.name}」吗？`)) return;
+        if (currentJob?.item?.id === item.id) {
+          queue.length = 0;
+          currentJob = null;
+          running.value = false;
+        }
+        const idx = queue.findIndex(q => q.id === item.id);
+        if (idx >= 0) queue.splice(idx, 1);
+        items.value = items.value.filter(i => i.id !== item.id);
+        if (item.id === activeId.value) clearPdfPreviewUrl();
+        const sel = new Set(selectedIds.value);
+        sel.delete(item.id);
+        selectedIds.value = sel;
+        if (!items.value.some(i => i.id === activeId.value)) activeId.value = items.value[0]?.id || null;
       }
       function removeSelected() {
         const ids = selectedIds.value;
@@ -383,6 +426,7 @@
         item.status = 'converting';
         const bytes = new Uint8Array(currentJob.arrayBuffer);
         const payload = { name: item.file.name, bytes, formatHint: formatHint.value || null };
+        if (item.pasteMergeTables) payload.mergeContinuationTables = true;
         const usePdfToMd = pdfEngine.value === 'pdftomd' && isPdfItem(item) && !(window.any2mdConvertHtml && window.any2mdConvertHtml.isHtmlPayload(payload));
         if (usePdfToMd && pdfInitError.value) {
           item.status = 'error';
@@ -526,6 +570,13 @@
         if (!item || !item.result?.cleanHtml) return;
         const blob = new Blob([item.result.cleanHtml], { type: 'text/html;charset=utf-8' });
         triggerDownload(blob, baseName(item.file.name) + '.html');
+      }
+      function previewCleanHtml() {
+        const html = cleanHtml.value || '';
+        if (!html) return;
+        const url = URL.createObjectURL(new Blob([html + '<link rel="stylesheet" href="https://199311.xyz/reset.css"><style>*{word-break: break-all;}tr:first-of-type { white-space: nowrap;}</style>'], { type: 'text/html;charset=utf-8' }));
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }
       async function copyHtml() {
         const text = cleanHtml.value || '';
@@ -756,15 +807,15 @@
       });
 
       return {
-        items, activeId, activeItem, doneItems, selectedIds, theme, tab, previewHtml, copiedOwn,
+        items, activeId, activeItem, doneItems, selectedIds, theme, tab, previewHtml, showFileList, copiedOwn,
         exportImages, formatHint, pdfEngine, hasPdfFiles, pdfEngineInfo, formats, engineState, engineError, engineInfo, engineProgress, enginePercent, engineProgressText, fileInput,
         running, dragDepth, lightbox, copied, copiedHtml, resultBody, showBackToTop, canStart, queuePosition,
         previewHtmlContent, pdfPreviewUrl, isPdfItem, isXlsxItem, isSheetItem, cleanHtml, hasCleanHtml, ownMarkdown, ownPreviewHtml,
         ensurePdfPreviewUrl, clearPdfPreviewUrl,
         addFiles, onFileInput, onPreviewClick, onResultScroll, scrollResultToTop,
-        selectItem, toggleSelected, selectAll, removeSelected, clearAll, startQueue, pauseQueue, copyOwnMarkdown,
+        selectItem, toggleSelected, selectAll, removeItem, removeSelected, clearAll, startQueue, pauseQueue, copyOwnMarkdown,
         startItem, canStartItem, itemStartLabel, itemBusy,
-        formatSize, formatDate, extClass, formatLabel, statusText, copyMarkdown, copyHtml, downloadOne,
+        formatSize, formatDate, extClass, formatLabel, statusText, copyMarkdown, copyHtml, previewCleanHtml, downloadOne,
         downloadHtml,
         downloadOneZip, exportZip, toggleTheme,
       };
