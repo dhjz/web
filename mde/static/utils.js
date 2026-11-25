@@ -758,9 +758,52 @@ function printPreviewContent(templateCSS) {
   }, 500);
 }
 
+function buildRichTextHTML(element) {
+  const clone = element.cloneNode(true);
+  const sourceNodes = [element, ...element.querySelectorAll('*')];
+  const targetNodes = [clone, ...clone.querySelectorAll('*')];
+  const props = [
+    'background-color', 'background-image', 'background-size', 'background-position', 'background-repeat',
+    'color', 'font-family', 'font-size', 'font-weight', 'font-style',
+    'line-height', 'text-align', 'text-decoration', 'white-space',
+    'border-top', 'border-right', 'border-bottom', 'border-left', 'border-radius',
+    'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+    'margin-top', 'margin-right', 'margin-bottom', 'margin-left'
+  ];
+  const isTransparent = value => !value || value === 'transparent' || /^rgba\(.*,\s*0\)$/.test(value);
+  sourceNodes.forEach((source, index) => {
+    const computed = getComputedStyle(source);
+    const target = targetNodes[index];
+    props.forEach(prop => {
+      const value = computed.getPropertyValue(prop);
+      if (!value) return;
+      if (prop.startsWith('background') && isTransparent(value)) return;
+      if ((prop.startsWith('padding') || prop.startsWith('margin')) && /^0px$/.test(value)) return;
+      if (prop.startsWith('border') && /^0px none/.test(value)) return;
+      target.style.setProperty(prop, value);
+    });
+    const currentWidth = target.style.getPropertyValue('width');
+    if (currentWidth.includes('%')) {
+      const pxWidth = parseFloat(computed.getPropertyValue('width'));
+      if (pxWidth > 0) target.style.setProperty('width', `${Math.round(pxWidth)}px`);
+    }
+  });
+  const paper = element.closest('.preview-paper') || element.parentElement;
+  if (paper && paper !== element) {
+    const paperStyle = getComputedStyle(paper);
+    ['background-color', 'background-image', 'background-size', 'background-position', 'background-repeat'].forEach(prop => {
+      const value = paperStyle.getPropertyValue(prop);
+      if (!value || value === 'none' || value === 'auto' || isTransparent(value)) return;
+      if (!isTransparent(clone.style.getPropertyValue(prop))) return;
+      clone.style.setProperty(prop, value);
+    });
+  }
+  return clone.outerHTML;
+}
+
 async function copyRichText(element) {
   try {
-    const html = element.innerHTML;
+    const html = buildRichTextHTML(element);
     await navigator.clipboard.write([
       new ClipboardItem({
         'text/html': new Blob([html], { type: 'text/html' }),
