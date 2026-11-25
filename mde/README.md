@@ -83,6 +83,21 @@ document.body.classList.remove('exporting-vector-pdf');
 
 注意 `document.fonts.ready` 只等待**已经触发加载**的字体；需要显式 `document.fonts.load('13px XXX')` 才会去加载并测量。
 
+### 3.1 行内 `code`：导出时换成带样式的 `span`
+
+现象：预览里正常的高亮短代码（如 `marked.js`），矢量 PDF 里会整体上移、贴底，甚至下半截被切掉。去掉背景、只留纯文本都解决不了。
+
+原因：主题会给行内 `code` 写内联 `style`（`font-family: Menlo...`、`font-size:90%`、`background: rgba(...)`）。dompdf 对 `<code>` 的内联样式/基线处理与浏览器不一致；CSS 的 `inherit` 在 dompdf 里也不可靠。
+
+最终做法（`exportAsVectorPDF()`）：
+
+1. 导出前把非 `pre` 内的 `code` 换成 `<span>`；
+2. `span` 的 `font-family` / `font-size` / `font-style` / `font-weight` / `line-height` 用 `getComputedStyle(parent)` 写成**明确的值**，不依赖 `inherit`；
+3. 保留主题的 `color` 和背景色，但用 `toPdfColor()` 把 `rgba()` 合成成实心 `rgb()`，再设 `padding:1px 3px`、`border-radius:3px`、`vertical-align:baseline`；
+4. 导出结束后把 `span` 换回原来的 `code`，页面预览不受影响。
+
+也就是说：**行内代码的高亮保留，字体度量跟正文一致**，避免 dompdf 自己处理 `<code>` 时画歪或裁字。`fontConfig` 里只有 `pre` 内的元素注册等宽字体，行内 `code` 走正文的中文字体。
+
 ### 4. 字体文件体积：做子集，不要整包放进仓库
 
 完整 DejaVu Sans Mono 是 333K，子集后 47K：
