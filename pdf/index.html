@@ -186,8 +186,9 @@
             <div v-if="!dialog.outputs.length" class="muted">任务没有产生输出文件。</div>
           </template>
           <template v-else-if="dialog.type==='http'">
-            <div class="field"><label>PDF 地址（HTTP/HTTPS，跨域需允许 CORS）</label><input type="text" v-model="dialog.form.url" placeholder="http://localhost:8080/artifacts/pdfs/http-sample-1.pdf" @keyup.enter="loadHttpPdf" /></div>
-            <div class="muted small">直接 fetch 二进制并转为 Uint8Array，不经过 Data URL。加载成功后自动加入左侧文件列表。</div>
+            <div class="field"><label>PDF 地址（HTTP/HTTPS）</label><input type="text" v-model="dialog.form.url" placeholder="https://example.com/path/file.pdf" @keyup.enter="loadHttpPdf" /></div>
+            <div class="checkline" style="margin-bottom:10px"><input id="http-use-proxy" type="checkbox" v-model="dialog.form.useProxy" /><label for="http-use-proxy" style="margin:0">使用代理加载（解决跨域）</label></div>
+            <div class="muted small">加载成功后自动加入左侧文件列表。</div>
             <div v-if="dialog.error" class="err">{{ dialog.error }}</div>
           </template>
           <template v-else-if="dialog.type==='preview'">

@@ -18,9 +18,29 @@
     const bin = atob(dataUrl.split(',')[1] || '');
     return Uint8Array.from(bin, ch => ch.charCodeAt(0));
   }
-  async function readHttpPdf(url) {
-    if (!url || !String(url).trim()) throw new Error('请输入 PDF 的 HTTP(S) 地址');
-    const res = await fetch(String(url).trim(), { credentials: 'omit' });
+  const DEFAULT_HTTP_PROXY = 'https://x.199311.xyz/';
+  function buildHttpProxyUrl(url, proxy) {
+    const raw = String(url || '').trim();
+    if (!raw) throw new Error('请输入 PDF 的 HTTP(S) 地址');
+    let parsed;
+    try { parsed = new URL(raw); } catch (e) { throw new Error('请输入完整的 HTTP(S) 地址'); }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('仅支持 HTTP(S) 地址');
+    const prefix = String(proxy == null || proxy === '' ? DEFAULT_HTTP_PROXY : proxy).trim();
+    if (!prefix) return parsed.href;
+    let base;
+    try { base = new URL(prefix); }
+    catch (e) { throw new Error('代理地址不是有效的 URL'); }
+    if (base.protocol !== 'http:' && base.protocol !== 'https:') throw new Error('代理地址仅支持 HTTP(S)');
+    if (base.search || base.hash) throw new Error('代理地址不要包含查询参数或锚点');
+    const basePath = base.pathname.replace(/\/+$/, '');
+    return base.origin + basePath + '/' + parsed.href.replace(/^\/+/, '');
+  }
+  async function readHttpPdf(url, options) {
+    const opts = options && typeof options === 'object' ? options : { useProxy: options === true };
+    const sourceUrl = String(url || '').trim();
+    const target = opts.useProxy ? buildHttpProxyUrl(sourceUrl, opts.proxy) : sourceUrl;
+    if (!target) throw new Error('请输入 PDF 的 HTTP(S) 地址');
+    const res = await fetch(target, { credentials: 'omit' });
     if (!res.ok) throw new Error('HTTP ' + res.status + (res.statusText ? ' ' + res.statusText : ''));
     const buf = await res.arrayBuffer();
     if (!buf || !buf.byteLength) throw new Error('HTTP 返回内容为空');
@@ -271,7 +291,7 @@
     { name: 'pdf-to-text', title: 'PDF 转文字', desc: '提取文档纯文本', icon: '📄', cat: 'Convert' },
     { name: 'repair', title: '修复 PDF', desc: '尝试修复损坏文档', icon: '🔧', cat: 'Optimize' },
   ];
-  window.PdfCore = { store, toast, errMsg, readFile, readHttpPdf, fileToDataUrl, download, loadPdf, cjkFont, textFont, getPageCount, parseRange, parseRangeGroups, parseOrder, parsePartialOrder, renderPages, resizeCanvasToWidth, canvasToBytes, extractText, TOOLS, PDFLib };
+  window.PdfCore = { store, toast, errMsg, readFile, readHttpPdf, buildHttpProxyUrl, DEFAULT_HTTP_PROXY, fileToDataUrl, download, loadPdf, cjkFont, textFont, getPageCount, parseRange, parseRangeGroups, parseOrder, parsePartialOrder, renderPages, resizeCanvasToWidth, canvasToBytes, extractText, TOOLS, PDFLib };
 
   // UPNG needs pako.deflate; without it the encoder would silently fall back to Canvas.
   function upngReady() { return !!(window.UPNG && window.UPNG.encode && window.pako && window.pako.deflate); }

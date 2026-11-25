@@ -288,13 +288,13 @@
         i.click();
       }
       function openHttpLoad() {
-        openOverlay({show:true,type:'http',title:'🌐 从 HTTP 加载 PDF（二进制）',params:[],form:{url:''},payload:{files:[]},error:'',outputs:[],wide:false});
+        openOverlay({show:true,type:'http',title:'🌐 从 HTTP 加载 PDF（二进制）',params:[],form:{url:'',useProxy:false},payload:{files:[]},error:'',outputs:[],wide:false});
       }
       async function loadHttpPdf() {
         const d=dialog.value; d.error='';
         try {
           const url=d.form.url||'';
-          const bytes=await C.readHttpPdf(url);
+          const bytes=await C.readHttpPdf(url, { useProxy: !!d.form.useProxy });
           let name='remote.pdf';
           try { const u=new URL(url, location.href); name=decodeURIComponent(u.pathname.split('/').filter(Boolean).pop()||'remote.pdf'); } catch (e) {}
           if (!/\.pdf$/i.test(name)) name += '.pdf';
