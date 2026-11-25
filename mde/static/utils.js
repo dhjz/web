@@ -461,6 +461,7 @@ function exportAsHTML(htmlContent, cssContent, filename) {
     html, body { min-height: 100%; ${bg ? `background: ${bg};` : ''} }
     body { font-family: 'Microsoft YaHei', sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
     ${cssContent}
+    ${typeof katexCss === 'string' ? katexCss : ''}
     .preview-content pre code { text-shadow: none !important; }
   </style>
 </head>
@@ -580,7 +581,7 @@ function getVectorPdfFontConfig(element, cjkBytes, monoBytes) {
     const computed = getComputedStyle(el);
     const fontWeight = weightMap[computed.fontWeight] || Number(computed.fontWeight) || 400;
     const fontStyle = computed.fontStyle === 'italic' || computed.fontStyle === 'oblique' ? 'italic' : 'normal';
-    const fontKind = el.closest('pre, code') ? 'mono' : 'cjk';
+    const fontKind = el.closest('pre') ? 'mono' : 'cjk';
     computed.fontFamily.split(',').forEach(family => {
       const fontFamily = family.trim().replace(/^['"]+|['"]+$/g, '');
       if (fontFamily && !genericFamilies.test(fontFamily) && !specialFamilies.test(fontFamily)) {
@@ -599,6 +600,17 @@ function getVectorPdfFontConfig(element, cjkBytes, monoBytes) {
   });
 }
 
+function toPdfColor(value, fallback) {
+  if (!value || value === 'transparent' || /^rgba\(.*,\s*0\)$/.test(value)) return fallback;
+  const match = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+  if (!match) return value;
+  const r = Number(match[1]), g = Number(match[2]), b = Number(match[3]);
+  const alpha = match[4] === undefined ? 1 : Number(match[4]);
+  if (alpha >= 1) return `rgb(${r},${g},${b})`;
+  const mix = channel => Math.round(channel * alpha + 255 * (1 - alpha));
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
 async function exportAsVectorPDF(element, filename, backgroundColor) {
   if (typeof window.dompdf !== 'function') {
     throw new Error('dompdf.js 未加载');
@@ -607,10 +619,30 @@ async function exportAsVectorPDF(element, filename, backgroundColor) {
     ? document.fonts.load('13px DejaVuSansMono').then(() => document.fonts.ready).catch(() => {})
     : Promise.resolve();
   const [cjkBytes, monoBytes] = await Promise.all([
-    loadVectorPdfFont('static/fonts/AlibabaPuHuiTi.ttf?v=20261125k', 'cjk'),
-    loadVectorPdfFont('static/fonts/DejaVuSansMono.ttf?v=20261125k', 'mono'),
+    loadVectorPdfFont('static/fonts/AlibabaPuHuiTi.ttf?v=20261125l', 'cjk'),
+    loadVectorPdfFont('static/fonts/DejaVuSansMono.ttf?v=20261125l', 'mono'),
     fontReady
   ]);
+  const inlineCodeReplacements = Array.from(element.querySelectorAll(':not(pre) > code')).map(code => {
+    const computed = getComputedStyle(code);
+    const parent = getComputedStyle(code.parentElement || element);
+    const span = document.createElement('span');
+    span.textContent = code.textContent;
+    span.style.cssText = [
+      `font-family:${parent.fontFamily}`,
+      `font-size:${parent.fontSize}`,
+      `font-style:${parent.fontStyle}`,
+      `font-weight:${parent.fontWeight}`,
+      `line-height:${parent.lineHeight}`,
+      `color:${computed.color}`,
+      `background-color:${toPdfColor(computed.backgroundColor, 'transparent')}`,
+      'padding:1px 3px',
+      'border-radius:3px',
+      'vertical-align:baseline'
+    ].join(';');
+    code.parentNode.replaceChild(span, code);
+    return { code, span };
+  });
   document.body.classList.add('exporting-vector-pdf');
   let blob;
   try {
@@ -624,6 +656,9 @@ async function exportAsVectorPDF(element, filename, backgroundColor) {
     });
   } finally {
     document.body.classList.remove('exporting-vector-pdf');
+    inlineCodeReplacements.forEach(({ code, span }) => {
+      if (span.parentNode) span.parentNode.replaceChild(code, span);
+    });
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
