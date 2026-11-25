@@ -233,6 +233,14 @@ function preprocessHTMLForDocx(html, config) {
     table.appendChild(tr);
     blockquote.parentNode.replaceChild(table, blockquote);
   });
+
+  tempDiv.querySelectorAll('th').forEach(th => {
+    const raw = th.style.backgroundColor || th.style.background || colors.codeBg;
+    const solid = toPdfColor(raw, colors.codeBg);
+    th.style.removeProperty('background');
+    th.style.backgroundColor = solid;
+    th.setAttribute('bgcolor', solid);
+  });
   
   return tempDiv.innerHTML;
 }
