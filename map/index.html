@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>经纬度坐标系转换与距离计算</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.13/vue.global.prod.js"></script>
+  <style>
+    :root { --bg: #f4f6fb; --card: #ffffff; --ink: #1b2440; --muted: #74809c; --line: #e7ebf4; --brand: #4564e8; --brand-deep: #2f48bd; --violet: #7a5af0; --ok: #0e9b74; --warn: #c77b12; --shadow: 0 6px 18px rgba(28, 44, 92, .07); }
+    [v-cloak] { display: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); -webkit-font-smoothing: antialiased; }
+    .hero { padding: 10px 20px 14px; }
+    .hero h1 { margin: 0; font-size: 21px; letter-spacing: -.01em; text-align: center; }
+    .hero p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+    .container { max-width: 1500px; margin: 0 auto 30px; padding: 0 20px; }
+    .grid { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.05fr); gap: 18px; align-items: start; }
+    .left-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    @media (max-width: 1020px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 14px; }
+    .tabs { display: inline-flex; gap: 4px; padding: 4px; background: #f1f4fa; border-radius: 10px; margin-bottom: 18px; }
+    .tabs button { border: 0; background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 7px; cursor: pointer; }
+    .tabs button.on { background: #fff; color: var(--brand); box-shadow: 0 2px 7px rgba(30,45,90,.10); }
+    .tab-panel { min-width: 0; }
+    .card-head { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 22px; }
+    .head-icon { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, var(--brand), var(--violet)); box-shadow: 0 8px 18px rgba(69, 100, 232, .26); }
+    .head-icon svg { width: 22px; height: 22px; }
+    .card-head h2 { margin: 1px 0 4px; font-size: 18px; }
+    .card-head p { margin: 0; color: var(--muted); font-size: 12.5px; }
+    .map-pane { position: sticky; top: 16px; }
+    .map-pane .map-frame { height: min(68vh, 620px); }
+    @media (max-width: 640px) { .map-pane { position: static; } .map-pane .map-frame { height: 360px; } }
+    .map-toolbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+    .map-toolbar .field { margin: 0; min-width: 170px; flex: 1; }
+    .map-toolbar .btn { height: 42px; display: inline-flex; align-items: center; text-decoration: none; }
+    .map-meta { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+    .map-frame { height: 420px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #eef1f6; }
+    .map-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .map-frame.tiles { position: relative; }
+    .tile-canvas { position: absolute; width: 768px; height: 768px; font-size: 0; line-height: 0; }
+    .tile-canvas img { width: 256px; height: 256px; display: inline-block; vertical-align: top; user-select: none; }
+    .route-overlay { position: absolute; width: 768px; height: 768px; pointer-events: none; z-index: 3; }
+    .route-label { fill: #1b2440; stroke: #fff; stroke-width: 4px; paint-order: stroke; font-size: 14px; font-weight: 700; }
+    .seg button:disabled { opacity: .45; cursor: not-allowed; }
+    .map-pin { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; z-index: 2; background: #e8443a; border: 2px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+    .map-pin::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #e8443a; }
+    @media (max-width: 640px) { .map-frame { height: 320px; } }
+    .label { display: block; margin-bottom: 8px; font-size: 12.5px; font-weight: 600; color: #465275; }
+    .field { margin-bottom: 10px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    select, input[type="text"] { width: 100%; height: 42px; padding: 0 12px; font-size: 14px; color: var(--ink); background: #fbfcff; border: 1px solid var(--line); border-radius: 10px; outline: none; transition: border-color .18s, box-shadow .18s, background .18s; font-family: inherit; }
+    select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2374809c' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer; }
+    input[type="text"]:focus, select:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(69,100,232,.12); }
+    input.invalid { border-color: #e06060; box-shadow: 0 0 0 3px rgba(224,96,96,.1); }
+    .seg { display: inline-flex; padding: 3px; background: #f1f4fa; border-radius: 10px; gap: 2px; }
+    .seg button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; padding: 6px 12px; border-radius: 8px; font-family: inherit; transition: all .18s; }
+    .seg button.on { background: #fff; color: var(--brand); font-weight: 600; box-shadow: 0 2px 7px rgba(30,45,90,.10); }
+    .seg-line { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 18px; }
+    .chip { border: 1px solid var(--line); background: #fff; color: #5a6684; border-radius: 999px; padding: 5px 11px; font-size: 12px; cursor: pointer; font-family: inherit; transition: all .16s; }
+    .chip:hover { border-color: var(--brand); color: var(--brand); background: #f6f8ff; }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .err { color: #cf4b4b; font-size: 12px; margin: 4px 0 0; }
+    .notice { margin: 4px 0 16px; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.6; color: #8a5c0b; background: #fff8ea; border: 1px solid #f5e3bf; }
+    .result-box { border: 1px solid #dfe6ff; border-radius: 14px; padding: 10px; background: linear-gradient(135deg, #f5f7ff, #fbfaff); margin-bottom: 10px; }
+    .result-box .cap { font-size: 11.5px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+    .result-box .cap b { color: var(--brand); font-weight: 700; }
+    .bigpair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+    .bigpair > div { background: rgba(255,255,255,.8); border: 1px solid #e9edfb; border-radius: 10px; padding: 10px 12px; }
+    .bigpair small { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .bigpair strong { font-size: clamp(15px, 2vw, 19px); font-variant-numeric: tabular-nums; letter-spacing: -.01em; word-break: break-all; }
+    .dms { display: block; margin-top: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid #eef1f7; }
+    th { color: var(--muted); font-weight: 500; font-size: 11.5px; }
+    td.num { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr { cursor: pointer; transition: background .15s; }
+    tbody tr:hover { background: #f7f9ff; }
+    .tag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #eef2ff; color: var(--brand); }
+    .tag.cur { background: #e7f7f1; color: var(--ok); }
+    .icon-btn { border: 1px solid var(--line); background: #fff; color: var(--muted); width: 27px; height: 27px; border-radius: 7px; cursor: pointer; display: grid; place-items: center; }
+    .icon-btn:hover { color: var(--brand); border-color: var(--brand); }
+    .icon-btn svg { width: 14px; height: 14px; }
+    .btn { border: 0; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; background: linear-gradient(135deg, var(--brand), var(--violet)); color: #fff; box-shadow: 0 7px 16px rgba(69,100,232,.22); transition: transform .15s, box-shadow .15s; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(69,100,232,.3); }
+    .btn.ghost { background: #fff; color: var(--brand); border: 1px solid #d9e0fa; box-shadow: none; }
+    .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+    .open-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+    .btn.mini { padding: 7px 12px; font-size: 12px; height: auto; text-decoration: none; box-shadow: none; }
+    .point { border: 1px solid var(--line); border-radius: 13px; padding: 14px; margin-bottom: 12px; background: #fcfdff; }
+    .point-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 11px; font-size: 13px; font-weight: 700; }
+    .point-title span:first-child { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .dot.a { background: var(--brand); box-shadow: 0 0 0 4px rgba(69,100,232,.14); }
+    .dot.b { background: var(--violet); box-shadow: 0 0 0 4px rgba(122,90,240,.14); }
+    .point .row { gap: 10px; }
+    .point select { height: 38px; font-size: 13px; margin-bottom: 10px; }
+    .point input { height: 38px; font-size: 13px; }
+    .distance-result { border-radius: 14px; padding: 20px; color: #fff; background: linear-gradient(130deg, #25357f, #4a55c8 60%, #7652d6); margin-top: 16px; }
+    .distance-result .cap { font-size: 12px; color: rgba(255,255,255,.72); }
+    .distance-result .value { font-size: clamp(28px, 4vw, 40px); font-weight: 750; letter-spacing: -.02em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+    .distance-result .value small { font-size: 16px; font-weight: 500; margin-left: 5px; opacity: .85; }
+    .distance-result .sub { font-size: 12px; color: rgba(255,255,255,.72); }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+    .metric { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 10px; }
+    .metric small { display: block; font-size: 10.5px; color: rgba(255,255,255,.7); margin-bottom: 5px; }
+    .metric b { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    footer { max-width: 1200px; margin: 0 auto; padding: 0 20px 14px; color: #93a0b9; font-size: 12px; line-height: 1.8; }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #1b2440; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; box-shadow: 0 12px 30px rgba(0,0,0,.2); z-index: 20; }
+  </style>
+</head>
+<body>
+<div id="app" v-cloak>
+  <header class="hero">
+    <h1>经纬度坐标转换与距离计算</h1>
+    <!-- <p>WGS-84 / GCJ-02 / BD-09 互转 · 粘贴识别 · 实时地图预览 · 两点距离</p> -->
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <div class="left-col">
+      <section class="card">
+        <div class="tabs">
+          <button :class="{ on: activeTab === 'convert' }" @click="activeTab = 'convert'">坐标系转换</button>
+          <button :class="{ on: activeTab === 'distance' }" @click="activeTab = 'distance'">计算距离</button>
+        </div>
+        <div v-show="activeTab === 'convert'" class="tab-panel">
+        <div class="seg-line">
+          <span class="label" style="margin:0">输入格式</span>
+          <div class="seg">
+            <button v-for="f in ['decimal', 'dms']" :key="f" :class="{ on: inputFormat === f }" @click="inputFormat = f">
+              {{ f === 'decimal' ? '十进制度' : '度分秒' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">源坐标系</label>
+          <select v-model="source">
+            <option v-for="s in systems" :key="s.key" :value="s.key">{{ s.label }} — {{ s.desc }}</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label class="label">经度 Longitude</label>
+            <input type="text" v-model.trim="lngInput" :class="{ invalid: parsed.entered && !lngOk }" :placeholder="inputFormat === 'decimal' ? '例如 116.397428' : '例如 116°23′29″E'" spellcheck="false" />
+          </div>
+          <div class="field">
+            <label class="label">纬度 Latitude</label>
+            <input type="text" v-model.trim="latInput" :class="{ invalid: parsed.entered && !latOk }" :placeholder="inputFormat === 'decimal' ? '例如 39.909230' : '例如 39°54′33″N'" spellcheck="false" />
+          </div>
+        </div>
+        <p class="hint" style="margin:-6px 0 14px">支持 Ctrl+V 粘贴坐标对、带 lon/lat 参数的地图链接、含其他数字的整段文本或度分秒，自动提取经纬度填入两个输入框。</p>
+        <p v-if="parsed.entered && !parsed.valid" class="err">请输入有效坐标：经度 -180 ~ 180，纬度 -90 ~ 90；度分秒格式支持 ° ′ ″ 及 N/S/E/W。</p>
+
+        <div class="chips">
+          <span class="hint" style="align-self:center;margin-right:2px">快速示例</span>
+          <button v-for="p in presets" :key="p.name" class="chip" @click="applyPreset(p)">{{ p.name }}</button>
+        </div>
+
+        <div v-if="parsed.valid && abroad" class="notice">该坐标位于中国境外：GCJ-02 / BD-09 偏移在境外不适用，转换结果保持原值。</div>
+
+        <div class="field">
+          <label class="label">目标坐标系</label>
+          <select v-model="target">
+            <option v-for="s in systems" :key="s.key" :value="s.key">{{ s.label }} — {{ s.desc }}</option>
+          </select>
+        </div>
+
+        <div class="result-box" v-if="targetCoord">
+          <div class="cap"><span>转换结果 · {{ currentSystem.label }}</span><b>{{ inputFormat === 'dms' ? '度分秒 / 十进制度' : '十进制度 / 度分秒' }}</b></div>
+          <div class="bigpair">
+            <div>
+              <small>经度 LNG</small>
+              <strong>{{ fmt(targetCoord[0], 7) }}</strong>
+              <span class="dms">{{ toDMS(targetCoord[0], false) }}</span>
+            </div>
+            <div>
+              <small>纬度 LAT</small>
+              <strong>{{ fmt(targetCoord[1], 7) }}</strong>
+              <span class="dms">{{ toDMS(targetCoord[1], true) }}</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn ghost" @click="copy(fmt(targetCoord[0], 7) + ', ' + fmt(targetCoord[1], 7))">复制坐标</button>
+            <span class="hint">GCJ-02 反向转换采用迭代逼近，精度约 1e-7°</span>
+          </div>
+          <div class="open-row" v-if="externalLinks">
+            <span class="hint">新页面打开点位：</span>
+            <a class="btn ghost mini" :href="externalLinks.amap" target="_blank" rel="noopener">高德地图</a>
+            <a class="btn ghost mini" :href="externalLinks.baidu" target="_blank" rel="noopener">百度地图</a>
+            <a class="btn ghost mini" :href="externalLinks.tencent" target="_blank" rel="noopener">腾讯地图</a>
+          </div>
+        </div>
+        <div v-else class="notice" style="color:var(--muted);background:#f8f9fc;border-color:var(--line)">填写合法经纬度后，这里会显示转换结果。</div>
+
+        <table v-if="allCoords">
+          <thead><tr><th>坐标系</th><th>经度</th><th>纬度</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="s in systems" :key="s.key" @click="useAsSource(s.key)" title="点击设为源坐标">
+              <td><span class="tag" :class="{ cur: source === s.key }">{{ s.label }}</span></td>
+              <td class="num">{{ fmt(allCoords[s.key][0], 6) }}</td>
+              <td class="num">{{ fmt(allCoords[s.key][1], 6) }}</td>
+              <td><button class="icon-btn" @click.stop="copy(fmt(allCoords[s.key][0], 7) + ', ' + fmt(allCoords[s.key][1], 7))" title="复制">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <div v-show="activeTab === 'distance'" class="tab-panel">
+        <div class="hint" style="margin-bottom:12px">粘贴 2 个数字填入空点位，粘贴 4 个数字一次填入 A / B。</div>
+        <div v-for="key in points" :key="key" class="point">
+          <div class="point-title">
+            <span><i class="dot" :class="key.toLowerCase()"></i> 点 {{ key }} · {{ distConfig[key].name }}</span>
+            <button class="chip" @click="fillPoint(key)">填入示例</button>
+          </div>
+          <select v-model="distConfig[key].sys" :aria-label="'点 ' + key + ' 坐标系'">
+            <option v-for="s in systems" :key="s.key" :value="s.key">{{ s.label }} — {{ s.desc }}</option>
+          </select>
+          <div class="row">
+            <div><input type="text" v-model.trim="distConfig[key].lng" placeholder="经度" aria-label="经度" spellcheck="false" /></div>
+            <div><input type="text" v-model.trim="distConfig[key].lat" placeholder="纬度" aria-label="纬度" spellcheck="false" /></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" @click="swapPoints">交换 A / B</button>
+          <button class="btn ghost" @click="useDemoRoute">京 → 沪 示例</button>
+        </div>
+
+        <div class="distance-result" v-if="distance.valid">
+          <div class="cap">椭球大地线距离（Vincenty，WGS-84 椭球）</div>
+          <div class="value">{{ distance.km }}<small>km</small></div>
+          <div class="sub">约 {{ distance.meters }} 米 · 球面大圆距离 {{ distance.haversine }}</div>
+          <div class="metrics">
+            <div class="metric"><small>初始方位角</small><b>{{ distance.bearing }} {{ distance.dir }}</b></div>
+            <div class="metric"><small>经度差 ΔLng</small><b>{{ distance.dLng }}°</b></div>
+            <div class="metric"><small>纬度差 ΔLat</small><b>{{ distance.dLat }}°</b></div>
+          </div>
+        </div>
+        <div v-else class="notice" style="color:var(--muted);background:#f8f9fc;border-color:var(--line)">请填写 A、B 两点的有效经纬度。</div>
+        <p v-if="distance.iterations === false" class="err">Vincenty 迭代未收敛（近似对跖点），已回退为球面距离。</p>
+        </div>
+      </section>
+      </div>
+
+      <!-- 地图预览 -->
+      <section class="card map-pane">
+        <div class="card-head">
+          <div class="head-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+          </div>
+          <div style="flex:1"><h2>地图预览</h2><p>实时跟随左侧坐标；自动识别粘贴来源，也可原样预览</p></div>
+          <a v-if="mapMode !== 'route'" class="btn ghost mini" :href="mapLink" target="_blank" rel="noopener">新窗口打开</a>
+        </div>
+        <template v-if="mapCoord || (mapMode === 'route' && routeData)">
+          <div class="map-toolbar">
+            <div class="field">
+              <label class="label">底图服务</label>
+              <select v-model="mapProvider">
+                <option value="amapTile">高德地图（国内可用）</option>
+                <option value="osm">OpenStreetMap</option>
+                <option value="google">Google Maps</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label">预览坐标系</label>
+              <select v-model="mapSys">
+                <option value="AUTO">自动匹配底图（推荐）</option>
+                <option value="SOURCE">源坐标（原样粘贴值）</option>
+                <option v-for="s in systems" :key="s.key" :value="s.key">{{ s.label }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label">缩放范围</label>
+              <select v-model="mapLevel">
+                <option value="street">街道</option>
+                <option value="city">城市</option>
+                <option value="region">区域</option>
+              </select>
+            </div>
+            <div class="seg">
+              <button :class="{ on: mapMode === 'point' }" @click="mapMode = 'point'">点位</button>
+              <button :class="{ on: mapMode === 'route' }" :disabled="!distance.valid || mapProvider !== 'amapTile'" @click="mapMode = 'route'">距离线路</button>
+            </div>
+          </div>
+          <div class="map-meta" v-if="mapMode === 'route' && routeData">距离线路：A {{ fmt(Number(distConfig.A.lng), 6) }}, {{ fmt(Number(distConfig.A.lat), 6) }} → B {{ fmt(Number(distConfig.B.lng), 6) }}, {{ fmt(Number(distConfig.B.lat), 6) }} · {{ distance.km }} km · {{ mapBaseNote }}</div>
+          <div class="map-meta" v-else-if="mapCoord">当前预览：{{ currentMapSystem.label }} {{ fmt(mapCoord[0], 7) }}, {{ fmt(mapCoord[1], 7) }} · {{ mapBaseNote }}</div>
+          <div class="map-frame tiles" v-if="mapProvider === 'amapTile' && activeTiles">
+            <div class="tile-canvas" :style="activeTiles.style">
+              <img v-for="t in activeTiles.tiles" :key="t.key" :src="t.url" alt="" draggable="false" />
+            </div>
+            <div class="map-pin" v-if="mapMode !== 'route'" title="当前点位"></div>
+            <svg v-if="mapMode === 'route' && routeData" class="route-overlay" :style="routeData.style" viewBox="0 0 768 768">
+              <line :x1="routeData.a.x" :y1="routeData.a.y" :x2="routeData.b.x" :y2="routeData.b.y" stroke="#e8443a" stroke-width="3" stroke-dasharray="8 5" />
+              <circle :cx="routeData.a.x" :cy="routeData.a.y" r="7" fill="#4564e8" stroke="#fff" stroke-width="2" />
+              <circle :cx="routeData.b.x" :cy="routeData.b.y" r="7" fill="#7a5af0" stroke="#fff" stroke-width="2" />
+              <text :x="(routeData.a.x + routeData.b.x) / 2" :y="(routeData.a.y + routeData.b.y) / 2 - 12" text-anchor="middle" class="route-label">{{ routeData.label }}</text>
+            </svg>
+          </div>
+          <div class="map-frame" v-else><iframe :src="mapUrl" title="地图预览" loading="lazy"></iframe></div>
+        </template>
+        <div v-else class="notice">当前坐标无效，请先在转换卡片中输入合法经纬度。</div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    说明：GCJ-02 与 BD-09 为中国境内使用的加密坐标系；WGS-84 为 GPS 与国际通用坐标系，CGCS2000 在一般精度下可近似等同于 WGS-84。转换采用公开近似算法，不适用于测绘级精度要求。距离结果按两点所在坐标系先归一化到 WGS-84 再计算。
+  </footer>
+  <div class="toast" v-if="toast">{{ toast }}</div>
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
+
+const PI = Math.PI;
+const A = 6378245.0;
+const EE = 0.00669342162296594323;
+const X_PI = PI * 3000.0 / 180.0;
+const toRad = d => d * PI / 180;
+const toDeg = r => r * 180 / PI;
+function lngLatWorld(lng, lat, z) {
+  const n = 2 ** z;
+  const rad = toRad(lat);
+  return { x: (lng + 180) / 360 * n, y: (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / PI) / 2 * n, n };
+}
+
+function outOfChina(lng, lat) {
+  return !(lng > 73.66 && lng < 135.05 && lat > 3.86 && lat < 53.55);
+}
+function transformLat(x, y) {
+  let ret = -100 + 2 * x + 3 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+  ret += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) * 2 / 3;
+  ret += (20 * Math.sin(y * PI) + 40 * Math.sin(y / 3 * PI)) * 2 / 3;
+  ret += (160 * Math.sin(y / 12 * PI) + 320 * Math.sin(y * PI / 30)) * 2 / 3;
+  return ret;
+}
+function transformLng(x, y) {
+  let ret = 300 + x + 2 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+  ret += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) * 2 / 3;
+  ret += (20 * Math.sin(x * PI) + 40 * Math.sin(x / 3 * PI)) * 2 / 3;
+  ret += (150 * Math.sin(x / 12 * PI) + 300 * Math.sin(x / 30 * PI)) * 2 / 3;
+  return ret;
+}
+function wgs84ToGcj02(lng, lat) {
+  if (outOfChina(lng, lat)) return [lng, lat];
+  let dLat = transformLat(lng - 105, lat - 35);
+  let dLng = transformLng(lng - 105, lat - 35);
+  const radLat = toRad(lat);
+  let magic = Math.sin(radLat);
+  magic = 1 - EE * magic * magic;
+  const sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat * 180) / ((A * (1 - EE)) / (magic * sqrtMagic) * PI);
+  dLng = (dLng * 180) / (A / sqrtMagic * Math.cos(radLat) * PI);
+  return [lng + dLng, lat + dLat];
+}
+function gcj02ToWgs84(lng, lat) {
+  if (outOfChina(lng, lat)) return [lng, lat];
+  let wLng = lng, wLat = lat;
+  for (let i = 0; i < 6; i++) {
+    const g = wgs84ToGcj02(wLng, wLat);
+    wLng += lng - g[0];
+    wLat += lat - g[1];
+  }
+  return [wLng, wLat];
+}
+function gcj02ToBd09(lng, lat) {
+  const z = Math.sqrt(lng * lng + lat * lat) + 0.00002 * Math.sin(lat * X_PI);
+  const theta = Math.atan2(lat, lng) + 0.000003 * Math.cos(lng * X_PI);
+  return [z * Math.cos(theta) + 0.0065, z * Math.sin(theta) + 0.006];
+}
+function bd09ToGcj02(lng, lat) {
+  const x = lng - 0.0065, y = lat - 0.006;
+  const z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * X_PI);
+  const theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * X_PI);
+  return [z * Math.cos(theta), z * Math.sin(theta)];
+}
+function toWgs84(sys, lng, lat) {
+  if (sys === 'GCJ02') return gcj02ToWgs84(lng, lat);
+  if (sys === 'BD09') return gcj02ToWgs84(...bd09ToGcj02(lng, lat));
+  return [lng, lat];
+}
+function fromWgs84(sys, lng, lat) {
+  if (sys === 'GCJ02') return wgs84ToGcj02(lng, lat);
+  if (sys === 'BD09') return gcj02ToBd09(...wgs84ToGcj02(lng, lat));
+  return [lng, lat];
+}
+function haversine(lng1, lat1, lng2, lat2) {
+  const R = 6371008.8;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function vincenty(lng1, lat1, lng2, lat2) {
+  const a = 6378137, f = 1 / 298.257223563, b = (1 - f) * a;
+  const L = toRad(lng2 - lng1);
+  const U1 = Math.atan((1 - f) * Math.tan(toRad(lat1)));
+  const U2 = Math.atan((1 - f) * Math.tan(toRad(lat2)));
+  const sinU1 = Math.sin(U1), cosU1 = Math.cos(U1), sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
+  let lambda = L, lambdaP, iter = 100;
+  let sinSigma, cosSigma, sigma, sinAlpha, cosSqAlpha, cos2SigmaM, C;
+  do {
+    const sinLambda = Math.sin(lambda), cosLambda = Math.cos(lambda);
+    sinSigma = Math.sqrt((cosU2 * sinLambda) ** 2 + (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ** 2);
+    if (sinSigma === 0) return { d: 0, ok: true };
+    cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
+    sigma = Math.atan2(sinSigma, cosSigma);
+    sinAlpha = cosU1 * cosU2 * sinLambda / sinSigma;
+    cosSqAlpha = 1 - sinAlpha * sinAlpha;
+    cos2SigmaM = cosSigma - 2 * sinU1 * sinU2 / cosSqAlpha;
+    if (!Number.isFinite(cos2SigmaM)) cos2SigmaM = 0;
+    C = f / 16 * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha));
+    lambdaP = lambda;
+    lambda = L + (1 - C) * f * sinAlpha * (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM)));
+  } while (Math.abs(lambda - lambdaP) > 1e-12 && --iter > 0);
+  if (iter === 0) return { d: null, ok: false };
+  const uSq = cosSqAlpha * (a * a - b * b) / (b * b);
+  const AA = 1 + uSq / 16384 * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq)));
+  const BB = uSq / 1024 * (256 + uSq * (-128 + uSq * (74 - 47 * uSq)));
+  const dSigma = BB * sinSigma * (cos2SigmaM + BB / 4 * (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) - BB / 6 * cos2SigmaM * (-3 + 4 * sinSigma * sinSigma) * (-3 + 4 * cos2SigmaM * cos2SigmaM)));
+  return { d: b * AA * (sigma - dSigma), ok: true };
+}
+function bearing(lng1, lat1, lng2, lat2) {
+  const p1 = toRad(lat1), p2 = toRad(lat2), dl = toRad(lng2 - lng1);
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+const COORD_TOKEN = String.raw`[+-]?\d+(?:\.\d+)?(?:[°度]\d+(?:\.\d+)?(?:[′’'分]\d+(?:\.\d+)?[″"秒]?|[′’'分])?|[°度])?[NSEWnsew南北东西]?`;
+function normalizePasteText(text) {
+  return String(text ?? '')
+    .replace(/%[0-9A-Fa-f]{2}/g, ' ')
+    .replace(/[?&#=]/g, ' ')
+    .replace(/[，；]/g, ',')
+    .replace(/：/g, ':')
+    .replace(/(\d)\s+([°度′’'″"分秒])/g, '$1$2')
+    .replace(/([°度′’'″"分秒])\s+(\d)/g, '$1$2')
+    .replace(/([″"秒\d])\s+([NSEWnsew南北东西])(?=\s|[,;:]|$)/g, '$1$2');
+}
+function parseCoordToken(token) {
+  const m = String(token).match(/^([+-]?\d+(?:\.\d+)?)(?:[°度](\d+(?:\.\d+)?)?(?:[′’'分](\d+(?:\.\d+)?)?[″"秒]?)?)?([NSEWnsew南北东西])?$/);
+  if (!m) return { value: NaN, dir: '' };
+  const dir = m[4] || '';
+  const absolute = Math.abs(Number(m[1])) + Number(m[2] || 0) / 60 + Number(m[3] || 0) / 3600;
+  const negative = dir ? /[SsWw南西]/.test(dir) : Number(m[1]) < 0;
+  return { value: negative ? -absolute : absolute, dir };
+}
+function coordKind(token) {
+  const m = String(token).match(/[NSEWnsew南北东西]$/);
+  return m ? (/[NnSs南北]/.test(m[0]) ? 'lat' : 'lng') : '';
+}
+function validCoordPair(lng, lat) {
+  return Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90;
+}
+function extractCoordPairs(text) {
+  const s = normalizePasteText(text);
+  if (!s) return [];
+  const kwLng = '(?:longitude|lng|lon|east|经度|东经|\\bx\\b)';
+  const kwLat = '(?:latitude|lat|north|纬度|北纬|\\by\\b)';
+  const collect = kw => {
+    const rx = new RegExp('["\']?' + kw + '["\']?\\s*[:=为]?\\s*(' + COORD_TOKEN + ')', 'gi');
+    const out = [];
+    let m;
+    while ((m = rx.exec(s)) !== null) out.push(parseCoordToken(m[1]).value);
+    return out;
+  };
+  const lngs = collect(kwLng);
+  const lats = collect(kwLat);
+  const pairs = [];
+  for (let i = 0; i < Math.min(lngs.length, lats.length); i++) {
+    if (validCoordPair(lngs[i], lats[i])) pairs.push({ lng: lngs[i], lat: lats[i] });
+  }
+  if (pairs.length) return pairs;
+  const pairRe = new RegExp('(' + COORD_TOKEN + ')\\s*[,;:\\s]+\\s*(' + COORD_TOKEN + ')', 'g');
+  const plainInt = t => /^[+-]?\d+$/.test(t) && !coordKind(t);
+  let m;
+  while ((m = pairRe.exec(s)) !== null) {
+    if (m.index > 0 && /[\d-]/.test(s[m.index - 1])) {
+      pairRe.lastIndex = m.index + 1;
+      continue;
+    }
+    if (plainInt(m[1]) !== plainInt(m[2])) {
+      pairRe.lastIndex = m.index + 1;
+      continue;
+    }
+    const p = parseCoordToken(m[1]), q = parseCoordToken(m[2]);
+    const k1 = coordKind(m[1]), k2 = coordKind(m[2]);
+    let lng, lat;
+    if (k1 === 'lng' || k2 === 'lat') { lng = p.value; lat = q.value; }
+    else if (k1 === 'lat' || k2 === 'lng') { lng = q.value; lat = p.value; }
+    else if (Math.abs(p.value) > 90 && Math.abs(q.value) <= 90) { lng = p.value; lat = q.value; }
+    else if (Math.abs(p.value) <= 90 && Math.abs(q.value) > 90) { lng = q.value; lat = p.value; }
+    else { lng = p.value; lat = q.value; }
+    if (validCoordPair(lng, lat)) pairs.push({ lng, lat });
+  }
+  return pairs;
+}
+function extractCoords(text) {
+  return extractCoordPairs(text)[0] || null;
+}
+
+createApp({
+  setup() {
+    const systems = [
+      { key: 'WGS84', label: 'WGS-84', desc: 'GPS / 国际通用' },
+      { key: 'GCJ02', label: 'GCJ-02', desc: '火星坐标 / 高德、腾讯' },
+      { key: 'BD09', label: 'BD-09', desc: '百度坐标' }
+    ];
+    const presets = [
+      { name: '北京', lng: 116.397428, lat: 39.909230 },
+      { name: '上海', lng: 121.473701, lat: 31.230416 },
+      { name: '广州', lng: 113.264434, lat: 23.129162 }
+    ];
+    const activeTab = ref('convert');
+    const source = ref('WGS84');
+    const target = ref('GCJ02');
+    const inputFormat = ref('decimal');
+    const lngInput = ref('116.397428');
+    const latInput = ref('39.909230');
+    const toast = ref('');
+    let toastTimer;
+    function notify(message) {
+      toast.value = message;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.value = ''; }, 1800);
+    }
+
+    function parseCoord(value) {
+      const s = String(value ?? '').trim();
+      if (!s) return NaN;
+      if (inputFormat.value === 'decimal') return Number(s);
+      let str = s.replace(/[°度′’'"″分秒]/g, ' ');
+      let dirSign = 0;
+      const m = str.match(/[NSEWnsew东西南北]/);
+      if (m) {
+        const d = m[0].toUpperCase();
+        dirSign = (d === 'S' || d === 'W' || d === '南' || d === '西') ? -1 : 1;
+        str = str.replace(m[0], ' ');
+      }
+      const parts = str.trim().split(/[\s,，]+/).filter(Boolean).map(Number);
+      if (!parts.length || parts.length > 3 || parts.some(v => !Number.isFinite(v))) return NaN;
+      const [d = 0, mi = 0, sec = 0] = parts;
+      const base = Math.abs(d) + mi / 60 + sec / 3600;
+      return (dirSign || (d < 0 ? -1 : 1)) * base;
+    }
+
+    const lngNum = computed(() => parseCoord(lngInput.value));
+    const latNum = computed(() => parseCoord(latInput.value));
+    const lngOk = computed(() => Number.isFinite(lngNum.value) && lngNum.value >= -180 && lngNum.value <= 180);
+    const latOk = computed(() => Number.isFinite(latNum.value) && latNum.value >= -90 && latNum.value <= 90);
+    const parsed = computed(() => ({
+      lng: lngNum.value, lat: latNum.value,
+      entered: !!(lngInput.value || latInput.value),
+      valid: lngOk.value && latOk.value
+    }));
+    const abroad = computed(() => outOfChina(parsed.value.lng, parsed.value.lat));
+    const allCoords = computed(() => {
+      if (!parsed.value.valid) return null;
+      const wgs = toWgs84(source.value, parsed.value.lng, parsed.value.lat);
+      return {
+        WGS84: wgs,
+        GCJ02: fromWgs84('GCJ02', ...wgs),
+        BD09: fromWgs84('BD09', ...wgs)
+      };
+    });
+    const targetCoord = computed(() => allCoords.value ? allCoords.value[target.value] : null);
+    const currentSystem = computed(() => systems.find(s => s.key === target.value));
+
+    const mapProvider = ref('amapTile');
+    const mapMode = ref('point');
+    const mapSys = ref('AUTO');
+    const mapLevel = ref('street');
+    const effectiveMapSys = computed(() => {
+      if (mapSys.value === 'SOURCE') return source.value;
+      if (mapSys.value === 'AUTO') return mapProvider.value === 'amapTile' ? 'GCJ02' : 'WGS84';
+      return mapSys.value;
+    });
+    const mapCoord = computed(() => {
+      if (!parsed.value.valid || !allCoords.value) return null;
+      return mapSys.value === 'SOURCE' ? [parsed.value.lng, parsed.value.lat] : allCoords.value[effectiveMapSys.value];
+    });
+    const currentMapSystem = computed(() => {
+      if (mapSys.value === 'SOURCE') return { label: '源坐标 ' + source.value + '（原样）' };
+      if (mapSys.value === 'AUTO') return { label: '自动匹配底图 ' + effectiveMapSys.value };
+      return systems.find(s => s.key === mapSys.value);
+    });
+    const mapBaseNote = computed(() => mapProvider.value === 'amapTile' ? '高德底图使用 GCJ-02 坐标' : '海外底图使用 WGS-84 坐标');
+    const mapTiles = computed(() => {
+      if (mapProvider.value !== 'amapTile' || !mapCoord.value) return null;
+      const [lng, lat] = mapCoord.value;
+      const z = { street: 15, city: 12, region: 9 }[mapLevel.value] || 15;
+      const { x: worldX, y: worldY, n } = lngLatWorld(lng, lat, z);
+      const tx = Math.floor(worldX), ty = Math.floor(worldY);
+      const fx = (worldX - tx) * 256, fy = (worldY - ty) * 256;
+      const tiles = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = ((tx + dx) % n + n) % n;
+          const y = Math.max(0, Math.min(n - 1, ty + dy));
+          tiles.push({
+            key: dx + '-' + dy,
+            url: 'https://webrd0' + ((x + y) % 4 + 1) + '.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=' + x + '&y=' + y + '&z=' + z
+          });
+        }
+      }
+      return { tiles, style: { left: 'calc(50% - ' + (256 + fx) + 'px)', top: 'calc(50% - ' + (256 + fy) + 'px)' } };
+    });
+    const mapUrl = computed(() => {
+      if (!mapCoord.value) return '';
+      const [lng, lat] = mapCoord.value;
+      if (mapProvider.value === 'google') {
+        const z = { street: 16, city: 12, region: 8 }[mapLevel.value] || 16;
+        return 'https://maps.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng) + '&z=' + z + '&output=embed';
+      }
+      const d = { street: 0.006, city: 0.03, region: 0.15 }[mapLevel.value] || 0.006;
+      const bbox = [lng - d, lat - d, lng + d, lat + d].join(',');
+      return 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + lat + ',' + lng;
+    });
+    const mapLink = computed(() => {
+      if (!mapCoord.value) return '';
+      const [lng, lat] = mapCoord.value;
+      if (mapProvider.value === 'amapTile') {
+        const gcj = fromWgs84('GCJ02', ...toWgs84(effectiveMapSys.value, lng, lat));
+        return 'https://uri.amap.com/marker?position=' + gcj[0] + ',' + gcj[1] + '&src=geo-tool&coordinate=gaode&callnative=0';
+      }
+      return mapProvider.value === 'google'
+        ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng)
+        : 'https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '#map=14/' + lat + '/' + lng;
+    });
+    const externalLinks = computed(() => {
+      if (!allCoords.value) return null;
+      const gcj = allCoords.value.GCJ02;
+      const bd = allCoords.value.BD09;
+      const name = encodeURIComponent('预览点位');
+      return {
+        amap: 'https://uri.amap.com/marker?position=' + gcj[0] + ',' + gcj[1] + '&name=' + name + '&src=geo-tool&coordinate=gaode&callnative=0',
+        baidu: 'https://api.map.baidu.com/marker?location=' + bd[1] + ',' + bd[0] + '&title=' + name + '&content=&output=html&coord_type=bd09ll',
+        tencent: 'https://apis.map.qq.com/uri/v1/marker?marker=coord:' + gcj[1] + ',' + gcj[0] + ';title:' + name + '&referer=geo-tool'
+      };
+    });
+
+    const distConfig = reactive({
+      A: { name: '地址 1', sys: 'WGS84', lng: '', lat: '' },
+      B: { name: '地址 2', sys: 'GCJ02', lng: '', lat: '' }
+    });
+    const points = ['A', 'B'];
+    function fillPoint(key) {
+      const p = presets[key === 'A' ? 0 : 1];
+      distConfig[key].lng = String(p.lng);
+      distConfig[key].lat = String(p.lat);
+    }
+    function swapPoints() {
+      const a = { ...distConfig.A };
+      distConfig.A = { ...distConfig.B };
+      distConfig.B = a;
+    }
+    function useDemoRoute() {
+      fillPoint('A'); fillPoint('B');
+      distConfig.A.sys = 'WGS84';
+      distConfig.B.sys = 'GCJ02';
+    }
+    const distance = computed(() => {
+      const aLng = Number(distConfig.A.lng), aLat = Number(distConfig.A.lat);
+      const bLng = Number(distConfig.B.lng), bLat = Number(distConfig.B.lat);
+      const valid = [aLng, aLat, bLng, bLat].every(Number.isFinite) &&
+        Math.abs(aLng) <= 180 && Math.abs(bLng) <= 180 && Math.abs(aLat) <= 90 && Math.abs(bLat) <= 90;
+      if (!valid) return { valid: false, iterations: true };
+      const a = toWgs84(distConfig.A.sys, aLng, aLat);
+      const b = toWgs84(distConfig.B.sys, bLng, bLat);
+      const v = vincenty(a[0], a[1], b[0], b[1]);
+      const hav = haversine(a[0], a[1], b[0], b[1]);
+      const meters = v.ok ? v.d : hav;
+      const deg = Math.abs(bLng - aLng), dLat = Math.abs(bLat - aLat);
+      const ang = bearing(a[0], a[1], b[0], b[1]);
+      const dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
+      return {
+        valid: true,
+        iterations: v.ok,
+        km: meters >= 1000 ? (meters / 1000).toLocaleString('zh-CN', { maximumFractionDigits: 1 }) : (meters / 1000).toFixed(3),
+        meters: meters.toLocaleString('zh-CN', { maximumFractionDigits: 0 }),
+        haversine: hav.toLocaleString('zh-CN', { maximumFractionDigits: 0 }) + ' m',
+        bearing: ang.toFixed(1) + '°',
+        dir: dirs[Math.round(ang / 45) % 8],
+        dLng: deg > 180 ? (360 - deg).toFixed(3) : deg.toFixed(3),
+        dLat: dLat.toFixed(3)
+      };
+    });
+    const routeData = computed(() => {
+      if (mapProvider.value !== 'amapTile' || mapMode.value !== 'route' || !distance.value.valid) return null;
+      const toBase = (sys, lng, lat) => fromWgs84('GCJ02', ...toWgs84(sys, lng, lat));
+      const a = toBase(distConfig.A.sys, Number(distConfig.A.lng), Number(distConfig.A.lat));
+      const b = toBase(distConfig.B.sys, Number(distConfig.B.lng), Number(distConfig.B.lat));
+      let z = 15, wa, wb;
+      for (; z > 2; z--) {
+        wa = lngLatWorld(a[0], a[1], z);
+        wb = lngLatWorld(b[0], b[1], z);
+        if (Math.hypot((wa.x - wb.x) * 256, (wa.y - wb.y) * 256) <= 480) break;
+      }
+      const midX = (wa.x + wb.x) / 2, midY = (wa.y + wb.y) / 2;
+      const tx = Math.floor(midX), ty = Math.floor(midY), n = wa.n;
+      const fx = (midX - tx) * 256, fy = (midY - ty) * 256;
+      const tiles = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = ((tx + dx) % n + n) % n;
+          const y = Math.max(0, Math.min(n - 1, ty + dy));
+          tiles.push({ key: dx + '-' + dy, url: 'https://webrd0' + ((x + y) % 4 + 1) + '.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=' + x + '&y=' + y + '&z=' + z });
+        }
+      }
+      const point = p => ({ x: 256 + fx + (p.x - midX) * 256, y: 256 + fy + (p.y - midY) * 256 });
+      return {
+        tiles,
+        style: { left: 'calc(50% - ' + (256 + fx) + 'px)', top: 'calc(50% - ' + (256 + fy) + 'px)' },
+        a: point(wa), b: point(wb), label: distance.value.km + ' km'
+      };
+    });
+    const activeTiles = computed(() => (mapMode.value === 'route' ? routeData.value : mapTiles.value));
+
+    function fmt(n, d = 7) { return Number(n).toFixed(d); }
+    function toDMS(value, isLat) {
+      const dir = isLat ? (value >= 0 ? 'N' : 'S') : (value >= 0 ? 'E' : 'W');
+      let v = Math.abs(value);
+      const deg = Math.floor(v);
+      v = (v - deg) * 60;
+      const min = Math.floor(v);
+      const sec = (v - min) * 60;
+      return deg + '°' + String(min).padStart(2, '0') + '′' + sec.toFixed(2).padStart(5, '0') + '″ ' + dir;
+    }
+    function applyPreset(p) {
+      inputFormat.value = 'decimal';
+      source.value = 'WGS84';
+      lngInput.value = String(p.lng);
+      latInput.value = String(p.lat);
+    }
+    function useAsSource(key) {
+      const c = allCoords.value[key];
+      inputFormat.value = 'decimal';
+      source.value = key;
+      lngInput.value = fmt(c[0], 7);
+      latInput.value = fmt(c[1], 7);
+    }
+    function clipboardText(e) {
+      return ((e.clipboardData || window.clipboardData) || { getData: () => '' }).getData('text');
+    }
+    function detectSource(text) {
+      const t = String(text || '').toLowerCase();
+      if (/uri\.amap\.com|ditu\.amap\.com|amap\.com|gaode|gcj-?02|火星坐标/.test(t)) return 'GCJ02';
+      if (/api\.map\.baidu\.com|ditu\.baidu\.com|baidu\.com|bd-?09|百度/.test(t)) return 'BD09';
+      if (/apis\.map\.qq\.com|map\.qq\.com|tencent|腾讯/.test(t)) return 'GCJ02';
+      if (/openstreetmap\.org|osm\.org|google\.com|wgs-?84|gps/.test(t)) return 'WGS84';
+      return null;
+    }
+    function onPaste(e) {
+      const text = clipboardText(e);
+      const c = extractCoords(text);
+      if (!c) return;
+      e.preventDefault();
+      inputFormat.value = 'decimal';
+      lngInput.value = fmt(c.lng, 7);
+      latInput.value = fmt(c.lat, 7);
+      const detected = detectSource(text);
+      if (detected) source.value = detected;
+      const label = systems.find(s => s.key === (detected || source.value)).label;
+      notify('已识别 ' + label + '：' + fmt(c.lng, 7) + ', ' + fmt(c.lat, 7));
+    }
+    function onDistPaste(e) {
+      const text = clipboardText(e);
+      const pairs = extractCoordPairs(text);
+      if (!pairs.length) return;
+      e.preventDefault();
+      const detected = detectSource(text);
+      const label = detected ? systems.find(s => s.key === detected).label : '';
+      const filled = key => {
+        const p = distConfig[key];
+        return p.lng.trim() !== '' && p.lat.trim() !== '' && validCoordPair(Number(p.lng), Number(p.lat));
+      };
+      const put = (key, c) => {
+        distConfig[key].lng = fmt(c.lng, 7);
+        distConfig[key].lat = fmt(c.lat, 7);
+        if (detected) distConfig[key].sys = detected;
+      };
+      if (pairs.length >= 2) {
+        put('A', pairs[0]);
+        put('B', pairs[1]);
+        notify('已填入 A / B 两个点位' + (label ? ' · ' + label : ''));
+      } else {
+        const key = !filled('A') ? 'A' : (!filled('B') ? 'B' : 'A');
+        put(key, pairs[0]);
+        notify('已填入点 ' + key + (label ? ' · ' + label : ''));
+      }
+    }
+    function onAppPaste(e) {
+      if (activeTab.value === 'distance') onDistPaste(e);
+      else onPaste(e);
+    }
+    onMounted(() => document.body.addEventListener('paste', onAppPaste));
+    onUnmounted(() => document.body.removeEventListener('paste', onAppPaste));
+    async function copy(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      notify('已复制：' + text);
+    }
+    return {
+      systems, presets, activeTab, source, target, inputFormat, lngInput, latInput,
+      parsed, lngOk, latOk, abroad, allCoords, targetCoord, currentSystem,
+      distConfig, points, fillPoint, swapPoints, useDemoRoute, distance,
+      fmt, toDMS, applyPreset, useAsSource, copy, toast, onPaste, onDistPaste, onAppPaste,
+      mapProvider, mapMode, mapSys, mapLevel, mapCoord, currentMapSystem, mapBaseNote, mapTiles,
+      routeData, activeTiles, mapUrl, mapLink, externalLinks
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
