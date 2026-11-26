@@ -31,6 +31,7 @@ window.config = {
         { name: '镜像库', short: 'CDN', url: 'https://cdn.199311.xyz/lib.html', color: '#7355B0' },
         { name: 'MD文件预览', short: 'MD', url: './md/index.html', color: '#2655bb' },
         { name: 'MD文件转换', short: 'MD转换', url: './mde/index.html', color: '#2f67e0' },
+        { name: 'Any转MD', short: '转MD', url: './md/any/index.html', color: '#6F4EEB' },
         { name: 'HTML预览', short: 'HTML', url: './run.html', color: '#16a34a' },
         { name: '文本转PDF', short: 'PDF', url: './pdf/txt.html', color: '#c52d22' },
         { name: '表格工具', short: 'Excel', url: './excel/index.html', color: '#077c32' },
