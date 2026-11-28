@@ -87,6 +87,16 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .tool.active{background:var(--accent-soft);color:var(--accent4)}
 .tool.danger{color:var(--danger)}
 .tool-sep{flex:none;width:1px;height:18px;background:var(--line2)}
+.eraser-bar{position:absolute;left:50%;bottom:calc(52px + env(safe-area-inset-bottom,0px));z-index:22;transform:translateX(-50%);display:flex;align-items:center;gap:8px;max-width:calc(100vw - 20px);padding:6px 10px;border:1px solid var(--float-line);border-radius:14px;background:var(--float-bg);box-shadow:0 12px 30px -12px var(--shadow);backdrop-filter:blur(12px);color:var(--text2);font-size:11px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
+.eraser-size-row{display:flex;align-items:center;gap:6px}
+.eraser-size-row .range{flex:1;width:96px;margin:0}
+.eraser-step{flex:none;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer}
+.eraser-step:hover{background:var(--surface2)}
+.eraser-actions{display:flex;gap:6px}
+.eraser-actions .btn{flex:1;justify-content:center;padding:4px 8px}
+.eraser-tip{color:var(--muted)}
+@media(min-width:640px){.eraser-bar{left:64px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;align-items:stretch;gap:6px}.eraser-size-row .range{width:auto}}
+@media(max-width:639px){.eraser-bar{flex-direction:column;align-items:stretch}}
 .inspector{position:absolute;top:0;right:0;z-index:25;width:264px;height:100%;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--panel);box-shadow:-10px 0 30px -20px var(--shadow);transform:translateX(100%);transition:transform .22s ease-out}
 .inspector.show{transform:translateX(0)}
 .insp-hd{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);color:var(--heading);font-size:13px;font-weight:700}
@@ -187,6 +197,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="tool" :disabled="!canUndo" title="撤销 (Ctrl+Z)" @click="undo">↶<span class="pc-only">撤销</span></button>
       <button class="tool" :disabled="!canRedo" title="前进 / 重做 (Ctrl+Shift+Z)" @click="redo">↷<span class="pc-only">前进</span></button>
       <span class="tool-sep"></span>
+      <button class="tool" :class="{active:state.eraser}" :disabled="state.count===0" title="橡皮擦：无需先选中，点一张图片即锁定，只擦这一张；一次笔画可撤销" @click="toggleEraser()">🧽<span class="pc-only">擦除</span></button>
+      <span class="tool-sep"></span>
       <button class="tool" :disabled="!hasSelection" title="逆时针旋转 90°" @click="rotate(-90)">↺</button>
       <button class="tool" :disabled="!hasSelection" title="顺时针旋转 90°" @click="rotate(90)">↻</button>
       <button class="tool" :disabled="!hasSelection" title="水平翻转" @click="flip('flipX')">↔️</button>
@@ -202,6 +214,21 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="tool danger" :disabled="!hasSelection" title="删除 (Delete)" @click="remove">🗑️<span class="pc-only">删除</span></button>
       <span class="tool-sep"></span>
       <button class="tool" :class="{active:showInspector}" :disabled="!hasSelection" title="图片属性（也可双击图片打开）" @click="showInspector=!showInspector">🎛️<span class="pc-only">属性</span></button>
+    </div>
+
+    <div class="eraser-bar" v-if="state.eraser" @wheel.stop>
+      <div class="eraser-size-row">
+        <span>大小</span>
+        <button class="eraser-step" title="减小 1px" @click="stepEraserSize(-1)">－</button>
+        <input class="range" type="range" min="1" max="120" step="1" v-model.number="state.eraserSize">
+        <button class="eraser-step" title="增大 1px" @click="stepEraserSize(1)">＋</button>
+        <span class="param-value">{{ state.eraserSize }}px</span>
+      </div>
+      <div class="eraser-actions">
+        <button class="btn btn-ghost" @click="cancelEraser">取消</button>
+        <button class="btn btn-ghost" @click="exitEraser">完成</button>
+      </div>
+      <span class="eraser-tip pc-only">{{ eraseTargetName ? '仅擦：' + eraseTargetName : '点一张图片开始擦除' }} · 屏幕像素直径 · 撤销可回退一笔</span>
     </div>
 
     <aside class="inspector" :class="{show:showInspector && hasSelection}" @wheel.stop>
@@ -272,6 +299,9 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
             <button class="btn btn-ghost" @click="duplicate">复制</button>
             <button class="btn btn-ghost danger-btn" @click="remove">删除</button>
           </div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" :disabled="!state.sel.eraseCount" @click="clearErasures">清除擦除（{{ state.sel.eraseCount }}）</button>
+          </div>
         </div>
       </div>
     </aside>
@@ -314,6 +344,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const previewDpi = PREVIEW_DPI;
       const PAPER_GAP = 6;   // 适应窗口时白纸四周与工作区边缘的留白
       const THEME_KEY = 'scan_cleaner_theme';
+      const ERASER_SIZE_KEY = 'pt_eraser_size';
       const MAX_HISTORY = 40;
 
       const state = reactive({
@@ -326,6 +357,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         panX: 0,
         panY: 0,
         locked: false,
+        eraser: false,           // 橡皮擦模式：拖动图片擦除局部像素
+        eraserSize: 20,          // 笔刷直径，按屏幕上看到的像素计
         dpi: 200,
         format: 'png',
         transparent: false,
@@ -337,18 +370,27 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           id: null, name: '', angle: 0, scale: 100,
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
           cropL: 0, cropT: 0, cropR: 0, cropB: 0,
-          frameWidth: 0, frameColor: '#000000'
+          frameWidth: 0, frameColor: '#000000', eraseCount: 0
         }
       });
       const dpiOptions = [75, 96, 150, 200, 250, 300, 350, 400];
       const theme = ref('light');
       try { theme.value = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { /* 默认白天 */ }
+      try {
+        const v = Number(localStorage.getItem(ERASER_SIZE_KEY));
+        if (Number.isFinite(v) && v >= 1 && v <= 120) state.eraserSize = Math.round(v);
+      } catch (e) { /* 保留默认大小 */ }
+      watch(() => state.eraserSize, v => {
+        try { localStorage.setItem(ERASER_SIZE_KEY, String(v)); } catch (e) { /* 忽略 */ }
+      });
       const workspaceEl = ref(null);
       const fileInputEl = ref(null);
       const saveOpen = ref(false);
       const saveUrl = ref('');
       const shareFallbackTip = ref('');
       const showInspector = ref(false);
+      let eraseTarget = null;          // 橡皮锁定的图片；用普通变量，避免 ref 把 Fabric 对象转成代理
+      const eraseTargetName = ref('');
       const toastText = ref('');
       const viewport = reactive({ w: 0, h: 0 });   // 无限画布时 Fabric 画布即工作区大小，平移交给 viewportTransform
       const hasSelection = computed(() => !!state.sel.id);
@@ -401,6 +443,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       let addOffset = 0;
       let refreshTimer = null;
       let toastTimer = null;
+      let erasing = null;         // { o, stroke }，正在绘制的擦除笔画
+      let eraseLive = null;       // 当前笔画直接绘制的画布，避免每帧重做色调处理
 
       function notify(msg) {
         toastText.value = msg;
@@ -552,12 +596,69 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function zoomIn() { zoomAt(state.zoom * 1.25, window.innerWidth / 2, window.innerHeight / 2); }
       function zoomOut() { zoomAt(state.zoom / 1.25, window.innerWidth / 2, window.innerHeight / 2); }
       /* 锁定后视图不再被手势改变；工具栏上的显式缩放按钮仍可用 */
+      function updateSelection() {
+        if (canvas) canvas.selection = !state.locked && !state.eraser;
+      }
+      function updateObjectSelectability() {
+        if (!canvas) return;
+        canvas.getObjects().forEach(o => {
+          if (!o.imgId) return;
+          o.selectable = !state.eraser;
+          o.lockMovementX = state.eraser;
+          o.lockMovementY = state.eraser;
+          o.lockRotation = state.eraser;
+          o.lockScalingX = state.eraser;
+          o.lockScalingY = state.eraser;
+          o.lockSkewingX = state.eraser;
+          o.lockSkewingY = state.eraser;
+        });
+        canvas.requestRenderAll();
+      }
       function toggleLock() {
         state.locked = !state.locked;
         panning = null;
         pinchDist = 0;
-        if (canvas) canvas.selection = !state.locked;
+        if (state.locked) cancelErase();
+        updateSelection();
         notify(state.locked ? '画布已锁定，手势不会再移动视图' : '画布已解锁，可拖动 / 缩放视图');
+      }
+      function toggleEraser(force) {
+        const next = typeof force === 'boolean' ? force : !state.eraser;
+        if (next === state.eraser) return;
+        const selected = activeObj();
+        cancelErase();
+        state.eraser = next;
+        if (next) {
+          // 保留已选图片的焦点，只把它锁住并禁用拖动，避免“失去焦点”的感觉
+          eraseTarget = selected || null;
+          showInspector.value = false;
+          lastTapAt = 0;
+          lastTapId = null;
+          const src = selected && sources.get(selected.imgId);
+          eraseTargetName.value = src ? src.name : '';
+          notify(src ? '仅擦除：' + src.name : '点一张图片开始擦除，之后只擦这张');
+        } else {
+          eraseTarget = null;
+          eraseTargetName.value = '';
+        }
+        updateSelection();
+        updateObjectSelectability();
+      }
+      function exitEraser() { toggleEraser(false); }
+      function cancelEraser() {
+        cancelErase();   // 丢弃正在画的一笔
+        const o = eraseTarget;
+        if (o && o.erasures && o.erasures.length) {
+          o.erasures = [];
+          setObjectElement(o, o._eraseBase);
+          commit();
+        }
+        toggleEraser(false);
+        notify('已取消橡皮擦');
+      }
+      function stepEraserSize(delta) {
+        const v = Number(state.eraserSize);
+        state.eraserSize = Math.min(120, Math.max(1, (Number.isFinite(v) ? v : 20) + delta));
       }
 
       const pointers = new Map();
@@ -568,6 +669,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function onPointerDown(e) {
         if (e.pointerType === 'touch') pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (pointers.size === 2) {
+          cancelErase();   // 双指缩放时结束当前笔画，避免误擦
           if (state.locked) { pinchDist = 0; return; }
           const [a, b] = [...pointers.values()];
           pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -594,7 +696,17 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const p = t && t[0];
         return p ? { x: p.clientX, y: p.clientY } : null;
       }
+      function onEraserPointerDown(e) {
+        if (!state.eraser || !canvas) return;
+        const hit = canvas.findTarget(e);
+        startErase({ e, target: hit });
+      }
+      function onEraserPointerMove(e) {
+        if (!state.eraser || !canvas) return;
+        moveErase({ e });
+      }
       function onCanvasMouseDown(opt) {
+        if (state.eraser) return;   // 橡皮交给 canvas DOM 事件处理，避免被 Fabric 内部状态拦截
         const target = opt.target;
         const id = target && target.imgId ? target.imgId : null;
         const now = Date.now();
@@ -615,13 +727,17 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         panning = { x: p.x, y: p.y, px: state.panX, py: state.panY };
       }
       function onCanvasMouseMove(opt) {
+        if (state.eraser) return;   // 橡皮交给 canvas DOM 事件处理
         if (!panning || state.locked) return;
         const p = evtPoint(opt.e);
         if (!p) return;
         state.panX = panning.px + (p.x - panning.x);
         state.panY = panning.py + (p.y - panning.y);
       }
-      function onCanvasMouseUp() { panning = null; }
+      function onCanvasMouseUp() {
+        if (erasing) endErase();
+        panning = null;
+      }
 
       /* ================= 对象构建与像素处理 ================= */
 
@@ -685,17 +801,86 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         };
       }
 
+      /* 擦除笔迹按图片保存：源图像素坐标 + 半径，撤销 / 改色调 / 导出都能重建 */
+      function copyErasures(list) {
+        return (list || []).map(s => ({
+          radius: s.radius,
+          points: (s.points || []).map(p => ({ x: p.x, y: p.y }))
+        }));
+      }
+      function eraseStrokes(ctx, strokes) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#000';
+        ctx.fillStyle = '#000';
+        (strokes || []).forEach(s => {
+          const pts = s.points || [];
+          if (!pts.length) return;
+          const r = Math.max(0.1, s.radius || 0.1);
+          if (pts.length === 1) {
+            ctx.beginPath();
+            ctx.arc(pts[0].x, pts[0].y, r, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+          }
+          ctx.lineWidth = r * 2;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+      function buildErasedCanvas(base, strokes) {
+        const out = document.createElement('canvas');
+        out.width = base.width;
+        out.height = base.height;
+        const ctx = out.getContext('2d');
+        ctx.drawImage(base, 0, 0);
+        eraseStrokes(ctx, strokes);
+        return out;
+      }
+      /* Fabric 7 的变换矩阵以对象中心为原点；换算回源图像素还要补上半宽高与 crop 偏移 */
+      function sceneToSource(o, p) {
+        const inv = fabric.util.invertTransform(o.calcTransformMatrix());
+        const local = fabric.util.transformPoint(new fabric.Point(p.x, p.y), inv);
+        return {
+          x: local.x + o.width / 2 + (o.cropX || 0),
+          y: local.y + o.height / 2 + (o.cropY || 0)
+        };
+      }
+      function setObjectElement(o, el) {
+        const keep = {
+          width: o.width, height: o.height, cropX: o.cropX, cropY: o.cropY,
+          scaleX: o.scaleX, scaleY: o.scaleY,
+          left: o.left, top: o.top, angle: o.angle,
+          flipX: o.flipX, flipY: o.flipY
+        };
+        o.setElement(el);
+        o.set({ ...keep, dirty: true });   // Fabric 7 的 setElement 不会清 2D 对象缓存
+        o.setCoords();
+        if (canvas) canvas.requestRenderAll();
+      }
+
       function createObject(rec) {
         const src = sources.get(rec.id);
         if (!src) return null;
-        const el = ImageUtils.applyTone(src.original, {
+        const base = ImageUtils.applyTone(src.original, {
           mode: rec.tone, brightness: rec.brightness, contrast: rec.contrast,
           threshold: rec.threshold, radius: 30
         });
+        const erasures = copyErasures(rec.erasures);
+        const el = erasures.length ? buildErasedCanvas(base, erasures) : base;
         const img = new fabric.FabricImage(el, {
           left: rec.left, top: rec.top,
           scaleX: rec.scaleX, scaleY: rec.scaleY,
           angle: rec.angle, flipX: rec.flipX, flipY: rec.flipY, opacity: rec.opacity,
+          selectable: !state.eraser,
+          lockMovementX: state.eraser, lockMovementY: state.eraser,
+          lockRotation: state.eraser, lockScalingX: state.eraser, lockScalingY: state.eraser,
+          lockSkewingX: state.eraser, lockSkewingY: state.eraser,
           originX: 'left', originY: 'top',
           width: rec.width, height: rec.height,
           cropX: rec.cropX, cropY: rec.cropY
@@ -705,8 +890,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           brightness: rec.brightness, contrast: rec.contrast, threshold: rec.threshold,
           cropL: rec.cropL || 0, cropT: rec.cropT || 0,
           cropR: rec.cropR || 0, cropB: rec.cropB || 0,
-          frameWidth: rec.frameWidth || 0, frameColor: rec.frameColor || '#000000'
+          frameWidth: rec.frameWidth || 0, frameColor: rec.frameColor || '#000000',
+          erasures
         });
+        img._eraseBase = base;
         styleObject(img);
         applyFrame(img);
         return img;
@@ -721,33 +908,104 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           width: o.width, height: o.height, cropX: o.cropX, cropY: o.cropY,
           tone: o.tone, brightness: o.brightness, contrast: o.contrast, threshold: o.threshold,
           cropL: o.cropL, cropT: o.cropT, cropR: o.cropR, cropB: o.cropB,
-          frameWidth: o.frameWidth || 0, frameColor: o.frameColor || '#000000'
+          frameWidth: o.frameWidth || 0, frameColor: o.frameColor || '#000000',
+          erasures: copyErasures(o.erasures)
         };
       }
 
-      /* 换像素源时保留裁剪框与变换，setElement 可能重置 width/height，先存后恢复 */
+      /* 换像素源时重做色调，再把该图的擦除笔迹盖回去 */
       function refreshPixels(o) {
         if (!o || !canvas || canvas.getObjects().indexOf(o) < 0) return;
         const src = sources.get(o.imgId);
         if (!src) return;
-        const keep = {
-          width: o.width, height: o.height, cropX: o.cropX, cropY: o.cropY,
-          scaleX: o.scaleX, scaleY: o.scaleY,
-          left: o.left, top: o.top, angle: o.angle,
-          flipX: o.flipX, flipY: o.flipY
-        };
-        const el = ImageUtils.applyTone(src.original, {
+        const base = ImageUtils.applyTone(src.original, {
           mode: o.tone, brightness: o.brightness, contrast: o.contrast,
           threshold: o.threshold, radius: 30
         });
-        o.setElement(el);
-        o.set(keep);
-        o.setCoords();
-        canvas.renderAll();
+        o._eraseBase = base;
+        setObjectElement(o, (o.erasures && o.erasures.length) ? buildErasedCanvas(base, o.erasures) : base);
       }
       function scheduleRefresh(o) {
         if (refreshTimer) clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => refreshPixels(o), 140);
+      }
+
+      /* ================= 橡皮擦 ================= */
+
+      function startErase(opt) {
+        if (erasing || pointers.size > 1 || !canvas) return;
+        const e = opt.e || {};
+        if (typeof e.clientX !== 'number') return;
+        // 已锁定图片时直接以它为擦除对象，不再依赖 Fabric 的命中结果
+        let o = eraseTarget;
+        if (o && canvas.getObjects().indexOf(o) < 0) { eraseTarget = null; o = null; eraseTargetName.value = ''; }
+        if (!o) {
+          const hit = opt.target || canvas.findTarget(e);
+          o = hit && hit.imgId ? hit : null;
+          if (o) { eraseTarget = o; eraseTargetName.value = (sources.get(o.imgId) || {}).name || '图片'; }
+        }
+        const src = o && sources.get(o.imgId);
+        if (!o || !src || !o._eraseBase) return;
+        const p = sceneToSource(o, canvas.getScenePoint(e));
+        if (p.x < 0 || p.y < 0 || p.x > src.original.width || p.y > src.original.height) return;
+        // 面板上的大小是屏幕像素直径，半径要除以 2，避免擦出来比标称粗一倍
+        const screenSize = Math.max(1, Number(state.eraserSize) || 20);
+        const shownScale = Math.max(0.01, (o.scaleX || 1) * (state.zoom || 1));
+        const radius = Math.max(0.1, Math.min(2000, (screenSize / 2) / shownScale));
+        const stroke = { radius, points: [p] };
+        if (!o.erasures) o.erasures = [];
+        o.erasures.push(stroke);
+        erasing = { o, stroke };
+        eraseLive = buildErasedCanvas(o._eraseBase, o.erasures);
+        setObjectElement(o, eraseLive);
+      }
+      function moveErase(opt) {
+        if (!erasing || !eraseLive) return;
+        const e = opt.e || {};
+        if (typeof e.clientX !== 'number') return;
+        const p = sceneToSource(erasing.o, canvas.getScenePoint(e));
+        const pts = erasing.stroke.points;
+        const last = pts[pts.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) < Math.max(1, erasing.stroke.radius * 0.25)) return;
+        pts.push(p);
+        const ctx = eraseLive.getContext('2d');
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = erasing.stroke.radius * 2;
+        ctx.strokeStyle = '#000';
+        ctx.beginPath();
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        ctx.restore();
+        erasing.o.set('dirty', true);
+        canvas.requestRenderAll();
+      }
+      /* commitStroke=false 表示撤销 / 双指缩放 / 切换模式时丢弃这一笔 */
+      function finishErase(commitStroke) {
+        if (!erasing) return;
+        const { o, stroke } = erasing;
+        erasing = null;
+        eraseLive = null;
+        if (!commitStroke || !stroke.points.length) o.erasures.pop();
+        const el = (o.erasures && o.erasures.length)
+          ? buildErasedCanvas(o._eraseBase, o.erasures) : o._eraseBase;
+        setObjectElement(o, el);
+        syncSel();
+        if (commitStroke && stroke.points.length) commit();
+      }
+      function endErase() { finishErase(true); }
+      function cancelErase() { finishErase(false); }
+      function clearErasures() {
+        const o = activeObj();
+        if (!o || !o.erasures || !o.erasures.length) return;
+        o.erasures = [];
+        setObjectElement(o, o._eraseBase);
+        syncSel();
+        commit();
+        notify('已清除该图片的擦除笔迹');
       }
 
       /* ================= 撤销 / 重做 ================= */
@@ -777,6 +1035,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state.orientation = snap.orientation || 'portrait';
         if (modeChanged) applyCanvasMode();
         canvas.discardActiveObject();
+        const targetIdx = eraseTarget ? canvas.getObjects().indexOf(eraseTarget) : -1;
         canvas.getObjects().slice().forEach(o => canvas.remove(o));
         snap.objects.forEach(rec => {
           const o = createObject(rec);
@@ -785,13 +1044,15 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.renderAll();
         state.count = snap.objects.length;
         state.sel.id = null;
+        eraseTarget = targetIdx >= 0 ? (canvas.getObjects()[targetIdx] || null) : null;
+        if (targetIdx >= 0 && !eraseTarget) eraseTargetName.value = '';
         if (modeChanged) { fitView(); syncViewport(); }
         histIdx = i;
         state.histIdx = i;
         restoring = false;
       }
-      function undo() { if (histIdx > 0) restoreAt(histIdx - 1); }
-      function redo() { if (histIdx < history.length - 1) restoreAt(histIdx + 1); }
+      function undo() { cancelErase(); if (histIdx > 0) restoreAt(histIdx - 1); }
+      function redo() { cancelErase(); if (histIdx < history.length - 1) restoreAt(histIdx + 1); }
 
       /* ================= 图片添加与选择 ================= */
 
@@ -801,7 +1062,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const img = createObject(defaultRecord(id, srcCanvas));
         if (!img) return;
         canvas.add(img);
-        canvas.setActiveObject(img);
+        if (!state.eraser) canvas.setActiveObject(img);
         canvas.renderAll();
         syncSel();
       }
@@ -825,7 +1086,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 
       function syncSel() {
         const o = activeObj();
-        if (!o) { state.sel.id = null; return; }
+        if (!o) { state.sel.id = null; state.sel.eraseCount = 0; return; }
         const src = sources.get(o.imgId);
         state.sel.id = o.imgId;
         state.sel.name = src ? src.name : '图片';
@@ -841,6 +1102,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state.sel.cropB = o.cropB;
         state.sel.frameWidth = o.frameWidth || 0;
         state.sel.frameColor = o.frameColor || '#000000';
+        state.sel.eraseCount = (o.erasures || []).filter(s => s.points && s.points.length).length;
       }
 
       /* ================= 属性面板操作 ================= */
@@ -969,7 +1231,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         Object.assign(o, {
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
           cropL: 0, cropT: 0, cropR: 0, cropB: 0,
-          frameWidth: 0, frameColor: '#000000'
+          frameWidth: 0, frameColor: '#000000', erasures: []
         });
         o.set({
           width: src.original.width, height: src.original.height,
@@ -984,7 +1246,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.renderAll();
         syncSel();
         commit();
-        notify('已还原全部属性');
+        notify('已还原全部属性（含擦除）');
       }
       /* 以图片视觉中心为轴旋转：先记录中心，改完角度再把中心放回原位 */
       function setAngleKeepCenter(o, angle) {
@@ -1271,7 +1533,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (mod && key === 'y') { e.preventDefault(); redo(); return; }
         if (mod && key === 'd') { e.preventDefault(); duplicate(); return; }
         if (key === 'delete' || key === 'backspace') { e.preventDefault(); remove(); return; }
-        if (key === 'escape' && canvas) { canvas.discardActiveObject(); canvas.renderAll(); state.sel.id = null; return; }
+        if (key === 'escape' && canvas) {
+          if (state.eraser) toggleEraser(false);
+          else { canvas.discardActiveObject(); canvas.renderAll(); state.sel.id = null; }
+          return;
+        }
 
         /* 选中图片：方向键微移、+/- 缩放图片；未选中：方向键平移、+/- 缩放画布视图 */
         const step = e.shiftKey ? 10 : 1;
@@ -1345,6 +1611,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         canvas.on('mouse:down', onCanvasMouseDown);
         canvas.on('mouse:move', onCanvasMouseMove);
         canvas.on('mouse:up', onCanvasMouseUp);
+        if (canvas.upperCanvasEl) {
+          canvas.upperCanvasEl.addEventListener('pointerdown', onEraserPointerDown);
+          canvas.upperCanvasEl.addEventListener('pointermove', onEraserPointerMove);
+        }
 
         // 不监听 afterprint 清理打印容器：系统预览改动纸张方向会重新渲染页面
         window.addEventListener('resize', onResize);
@@ -1382,11 +1652,12 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state, theme, dpiOptions, previewDpi, hasSelection, canUndo, canRedo,
         sheetW, sheetH, saveTip, displayW, displayH, paperStyle, wrapStyle,
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
+        eraseTargetName, cancelEraser, stepEraserSize,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
-        zoomIn, zoomOut, fitView, toggleLock, toggleOrientation, onOrientationCheck,
+        zoomIn, zoomOut, fitView, toggleLock, toggleEraser, exitEraser, toggleOrientation, onOrientationCheck,
         toggleInfinite, onPaddingChange,
         openFileDialog, onFileChange, undo, redo,
-        setTone, onParamInput, commit, clearBorder, resetCrop, onKeepAreaChange, resetAll, rotate, flip, layer,
+        setTone, onParamInput, commit, clearBorder, resetCrop, onKeepAreaChange, resetAll, clearErasures, rotate, flip, layer,
         fitToPage, duplicate, remove,
         openOutput, refreshPreview, downloadImage, sharePreview, tryPrint
       };
