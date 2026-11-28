@@ -124,6 +124,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 .color{width:34px;height:26px;padding:2px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);cursor:pointer}
 .color::-webkit-color-swatch-wrapper{padding:0}
 .color::-webkit-color-swatch{border:0;border-radius:4px}
+.text-input{display:block;width:100%;min-height:84px;resize:vertical;padding:8px 9px;border:1px solid var(--line2);border-radius:8px;outline:none;background:var(--panel);color:var(--text);font:13px/1.5 system-ui,-apple-system,sans-serif}
+.text-input:focus{border-color:var(--accent-line2)}
+.text-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.text-actions .orient-btn{flex:1;min-width:0;padding:5px 2px;text-align:center}
+.text-actions .orient-btn i{font-family:Georgia,serif}
 .save-sheet{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--overlay);backdrop-filter:blur(4px)}
 .save-panel{width:100%;max-width:420px;max-height:100%;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);box-shadow:0 25px 50px -12px var(--shadow)}
 .save-hd{flex:none;display:flex;align-items:center;justify-content:space-between;color:var(--heading);font-size:14px;font-weight:600}
@@ -142,7 +147,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;left:50%;bottom:76px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:60;transform:translateX(-50%);padding:8px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--float-bg);color:var(--text2);font-size:12px;box-shadow:0 25px 50px -12px var(--shadow);pointer-events:none;white-space:nowrap}
 @media(min-width:640px){.pc-only{display:inline}.hd{padding:0 16px}.brand{font-size:15px}.inspector{width:288px}.toolbar{left:12px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;align-items:stretch;width:46px;max-width:none;max-height:calc(100% - 24px);overflow-x:hidden;overflow-y:auto}.toolbar .tool{width:100%;min-width:0;padding:0}.toolbar .pc-only{display:none}.toolbar .tool-sep{width:auto;height:1px;margin:2px 6px}}
-@media(max-width:639px){.toolbar .tool-sep{display:none}.inspector{top:auto;bottom:0;right:0;left:0;width:100%;height:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%)}.inspector.show{transform:translateY(0)}.toolbar{padding: 2px 4px;bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}.subbar .mode-label{display:none}.subbar .pad-input{width:32px}}
+@media(max-width:639px){.toolbar .tool-sep{display:none}.inspector{position:fixed;top:auto;left:0;right:0;bottom:0;width:100%;height:56vh;height:min(56vh,520px);max-height:none;padding-bottom:env(safe-area-inset-bottom, 0px);border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .22s ease-out}.inspector:not(.show){display:none}.inspector.show{display:flex;transform:translateY(0)}.toolbar{padding: 2px 4px;bottom:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px))}.toolbar.mobile-hidden{display:none}.tool.desktop-only{display:none}.subbar .mode-label{display:none}.subbar .pad-input{width:32px}}
   </style>
 </head>
 <body>
@@ -156,6 +161,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
     </div>
     <div class="row tight">
       <label class="btn btn-ghost" title="添加图片"><span class="ic">➕</span><span class="pc-only">加图</span><input class="file-input" type="file" ref="fileInputEl" multiple accept="image/*" @change="onFileChange"></label>
+      <button class="btn btn-ghost" title="添加文字图层（随后在属性框输入内容）" @click="addTextLayer"><span class="ic">T</span><span class="pc-only">加字</span></button>
       <button class="btn btn-ghost" title="输出预览 / 打印" :disabled="state.count===0" @click="openOutput">🖨️</button>
       <button class="btn btn-primary" :disabled="state.count===0" @click="downloadImage">导出</button>
     </div>
@@ -189,7 +195,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <div class="empty-card" @click="openFileDialog">
         <span class="ic">🧩</span>
         <h2 class="empty-title">点此添加图片开始拼图</h2>
-        <p class="empty-desc">{{ state.infinite ? '满屏无限白底，可不断加图' : '固定 A4 纸面，可不断加图' }}<br>拖动 / 缩放 / 旋转 / 裁剪 / 黑白<br><span class="pc-only">扫描件可先在「扫描处理」做好白底再添加；支持拖拽文件、Ctrl+V 粘贴<br>方向键 / + - ：选中图片时微调位置与大小，未选中时平移、缩放画布（Shift 加速）</span></p>
+        <p class="empty-desc">{{ state.infinite ? '满屏无限白底，可不断加图 / 加字' : '固定 A4 纸面，可不断加图 / 加字' }}<br>图片可裁剪 / 黑白；点顶部 T 加文字，双击编辑<br><span class="pc-only">扫描件可先在「扫描处理」做好白底再添加；支持拖拽文件、Ctrl+V 粘贴<br>方向键 / + - ：选中图片时微调位置与大小，未选中时平移、缩放画布（Shift 加速）</span></p>
       </div>
     </div>
 
@@ -213,7 +219,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       <button class="tool" :disabled="!hasSelection" title="复制 (Ctrl+D)" @click="duplicate">⧉<span class="pc-only">复制</span></button>
       <button class="tool danger" :disabled="!hasSelection" title="删除 (Delete)" @click="remove">🗑️<span class="pc-only">删除</span></button>
       <span class="tool-sep"></span>
-      <button class="tool" :class="{active:showInspector}" :disabled="!hasSelection" title="图片属性（也可双击图片打开）" @click="showInspector=!showInspector">🎛️<span class="pc-only">属性</span></button>
+      <button class="tool" :class="{active:showInspector}" :disabled="!hasSelection" title="图层属性：图片或文字，也可双击图层打开" @click="showInspector=!showInspector">🎛️<span class="pc-only">属性</span></button>
     </div>
 
     <div class="eraser-bar" v-if="state.eraser" @wheel.stop>
@@ -232,8 +238,61 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
     </div>
 
     <aside class="inspector" :class="{show:showInspector && hasSelection}" @wheel.stop>
-      <div class="insp-hd"><span class="insp-name" :title="state.sel.name">🖼️ {{ state.sel.name }}</span><button class="icon-btn" @click="showInspector=false">✖</button></div>
+      <div class="insp-hd"><span class="insp-name" :title="state.sel.name">{{ state.sel.type==='text' ? '🔤' : '🖼️' }} {{ state.sel.name }}</span><button class="icon-btn" @click="showInspector=false">✖</button></div>
       <div class="insp-body">
+        <template v-if="state.sel.type==='text'">
+          <div>
+            <label class="field-label">文字内容</label>
+            <textarea ref="textInputEl" class="text-input" :value="state.sel.text" placeholder="输入文字，支持换行" @input="onTextInput('text',$event)" @change="commit"></textarea>
+            <p class="param-tip">画布上像图片一样拖动 / 缩放 / 旋转；双击文字或点 🎛️ 再次打开这里。</p>
+          </div>
+
+          <div>
+            <label class="field-label">字体与字号</label>
+            <select class="select" style="width:100%" :value="state.sel.fontFamily" @input="onTextInput('fontFamily',$event)" @change="commit">
+              <option v-for="f in fontFamilies" :key="f" :value="f">{{ f }}</option>
+            </select>
+            <div class="param-head" style="margin-top:8px"><span class="param-name">字号</span><span class="param-value">{{ state.sel.fontSize }}px</span></div>
+            <input class="range" type="range" min="8" max="200" step="1" :value="state.sel.fontSize" @input="onTextInput('fontSize',$event)" @change="commit">
+            <div class="text-actions">
+              <button class="orient-btn" :class="{active:state.sel.fontWeight==='bold'}" title="加粗" @click="toggleTextStyle('fontWeight','bold','normal')">B</button>
+              <button class="orient-btn" :class="{active:state.sel.fontStyle==='italic'}" title="斜体" @click="toggleTextStyle('fontStyle','italic','normal')"><i>I</i></button>
+              <label class="orient-btn" title="文字颜色" style="display:inline-flex;align-items:center;justify-content:center;gap:4px"><input class="color" type="color" style="width:24px;height:20px" :value="state.sel.fill" @input="onTextInput('fill',$event)" @change="commit"><span>颜色</span></label>
+            </div>
+          </div>
+
+          <div>
+            <div class="param-head"><span class="param-name">旋转角度</span><span class="param-value">{{ state.sel.angle }}°</span></div>
+            <input class="range" type="range" min="0" max="360" step="1" :value="state.sel.angle" @input="onParamInput('angle',$event)" @change="commit">
+            <div class="param-head"><span class="param-name">整体缩放</span><span class="param-value">{{ state.sel.scale }}%</span></div>
+            <input class="range" type="range" min="5" max="400" step="1" :value="state.sel.scale" @input="onParamInput('scale',$event)" @change="commit">
+            <p class="param-tip">整体缩放以当前字号为基准；「还原」会把角度和缩放归零并保持当前显示大小。</p>
+          </div>
+
+          <div>
+            <label class="field-label">对齐</label>
+            <div class="seg">
+              <button :class="{active:state.sel.textAlign==='left'}" @click="setTextAlign('left')">左</button>
+              <button :class="{active:state.sel.textAlign==='center'}" @click="setTextAlign('center')">中</button>
+              <button :class="{active:state.sel.textAlign==='right'}" @click="setTextAlign('right')">右</button>
+              <button :class="{active:state.sel.textAlign==='justify'}" @click="setTextAlign('justify')">两端</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="param-head"><span class="param-name">行距</span><span class="param-value">{{ state.sel.lineHeight.toFixed(2) }}</span></div>
+            <input class="range" type="range" min="0.8" max="2.4" step="0.05" :value="state.sel.lineHeight" @input="onTextInput('lineHeight',$event)" @change="commit">
+            <div class="param-head"><span class="param-name">字间距</span><span class="param-value">{{ state.sel.charSpacing }}</span></div>
+            <input class="range" type="range" min="-100" max="400" step="10" :value="state.sel.charSpacing" @input="onTextInput('charSpacing',$event)" @change="commit">
+            <p class="param-tip">字间距单位为 1/1000 em；字号按画面显示像素计。</p>
+          </div>
+
+          <div>
+            <div class="btn-row"><button class="btn btn-ghost" title="恢复 1 倍缩放、0° 旋转、不翻转；当前显示字号保持不变" @click="resetTextTransform">↺ 还原</button><button class="btn btn-ghost" @click="fitToPage">{{ state.infinite ? '适应画面' : '适应 A4' }}</button></div>
+            <div class="btn-row"><button class="btn btn-ghost" @click="duplicate">复制</button><button class="btn btn-ghost danger-btn" @click="remove">删除</button></div>
+          </div>
+        </template>
+        <template v-else>
         <div>
           <label class="field-label">色彩 / 黑白</label>
           <div class="seg">
@@ -303,6 +362,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
             <button class="btn btn-ghost" :disabled="!state.sel.eraseCount" @click="clearErasures">清除擦除（{{ state.sel.eraseCount }}）</button>
           </div>
         </div>
+        </template>
       </div>
     </aside>
 
@@ -333,7 +393,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
 </div>
 
 <script>
-  const { createApp, reactive, ref, computed, watch, onMounted } = Vue;
+  const { createApp, reactive, ref, computed, watch, nextTick, onMounted } = Vue;
 
   createApp({
     setup() {
@@ -367,7 +427,10 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         histIdx: 0,
         histLen: 1,
         sel: {
-          id: null, name: '', angle: 0, scale: 100,
+          id: null, type: 'image', name: '', angle: 0, scale: 100,
+          text: '', fontFamily: 'Arial', fontSize: 36, fill: '#0f172a',
+          fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left',
+          lineHeight: 1.2, charSpacing: 0,
           tone: 'color', brightness: 0, contrast: 1, threshold: 140,
           cropL: 0, cropT: 0, cropR: 0, cropB: 0,
           frameWidth: 0, frameColor: '#000000', eraseCount: 0
@@ -389,6 +452,8 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       const saveUrl = ref('');
       const shareFallbackTip = ref('');
       const showInspector = ref(false);
+      const textInputEl = ref(null);
+      const fontFamilies = ['Arial', 'Microsoft YaHei', 'PingFang SC', 'Georgia', 'Times New Roman', 'Courier New'];
       let eraseTarget = null;          // 橡皮锁定的图片；用普通变量，避免 ref 把 Fabric 对象转成代理
       const eraseTargetName = ref('');
       const toastText = ref('');
@@ -603,6 +668,11 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (!canvas) return;
         canvas.getObjects().forEach(o => {
           if (!o.imgId) return;
+          if (o.layerType === 'text') {
+            o.selectable = !state.eraser;
+            o.evented = !state.eraser;   // 擦除模式下让点击穿透文字，不会误选文字图层
+            return;
+          }
           o.selectable = !state.eraser;
           o.lockMovementX = state.eraser;
           o.lockMovementY = state.eraser;
@@ -626,15 +696,16 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const next = typeof force === 'boolean' ? force : !state.eraser;
         if (next === state.eraser) return;
         const selected = activeObj();
+        const imageTarget = selected && selected.layerType !== 'text' ? selected : null;
         cancelErase();
         state.eraser = next;
         if (next) {
           // 保留已选图片的焦点，只把它锁住并禁用拖动，避免“失去焦点”的感觉
-          eraseTarget = selected || null;
+          eraseTarget = imageTarget;
           showInspector.value = false;
           lastTapAt = 0;
           lastTapId = null;
-          const src = selected && sources.get(selected.imgId);
+          const src = imageTarget && sources.get(imageTarget.imgId);
           eraseTargetName.value = src ? src.name : '';
           notify(src ? '仅擦除：' + src.name : '点一张图片开始擦除，之后只擦这张');
         } else {
@@ -713,6 +784,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const doubleTap = !!id && now - lastTapAt < 320 && lastTapId === id;
         if (doubleTap) {
           showInspector.value = true;
+          if (target && target.layerType === 'text') focusTextInput();
           lastTapAt = 0;
           lastTapId = null;
         } else {
@@ -790,7 +862,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         const s = Math.min(area.width * 0.72 / src.width, area.height * 0.72 / src.height, 1);
         const off = (addOffset++ % 5) * 18;
         return {
-          id,
+          id, type: 'image',
           left: area.left + (area.width - src.width * s) / 2 + off,
           top: area.top + (area.height - src.height * s) / 2 + off,
           scaleX: s, scaleY: s, angle: 0, flipX: false, flipY: false, opacity: 1,
@@ -864,7 +936,33 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (canvas) canvas.requestRenderAll();
       }
 
+      function createTextObject(rec) {
+        const textbox = new fabric.FabricText(rec.text || '文字', {
+          left: rec.left, top: rec.top,
+          fontSize: rec.fontSize || 36,
+          fontFamily: rec.fontFamily || 'Arial',
+          fill: rec.fill || '#0f172a',
+          fontWeight: rec.fontWeight || 'normal',
+          fontStyle: rec.fontStyle || 'normal',
+          textAlign: rec.textAlign || 'left',
+          lineHeight: rec.lineHeight || 1.2,
+          charSpacing: rec.charSpacing || 0,
+          scaleX: rec.scaleX == null ? 1 : rec.scaleX,
+          scaleY: rec.scaleY == null ? 1 : rec.scaleY,
+          angle: rec.angle || 0,
+          flipX: !!rec.flipX, flipY: !!rec.flipY,
+          opacity: rec.opacity == null ? 1 : rec.opacity,
+          originX: 'left', originY: 'top',
+          selectable: !state.eraser,
+          evented: !state.eraser
+        });
+        Object.assign(textbox, { imgId: rec.id, layerType: 'text' });
+        styleObject(textbox);
+        return textbox;
+      }
+
       function createObject(rec) {
+        if (rec.type === 'text') return createTextObject(rec);
         const src = sources.get(rec.id);
         if (!src) return null;
         const base = ImageUtils.applyTone(src.original, {
@@ -886,7 +984,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
           cropX: rec.cropX, cropY: rec.cropY
         });
         Object.assign(img, {
-          imgId: rec.id, tone: rec.tone,
+          imgId: rec.id, layerType: 'image', tone: rec.tone,
           brightness: rec.brightness, contrast: rec.contrast, threshold: rec.threshold,
           cropL: rec.cropL || 0, cropT: rec.cropT || 0,
           cropR: rec.cropR || 0, cropB: rec.cropB || 0,
@@ -900,12 +998,31 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       }
 
       function readObject(o) {
-        return {
+        const common = {
           id: o.imgId,
+          type: o.layerType || 'image',
           left: o.left, top: o.top, angle: o.angle,
           scaleX: o.scaleX, scaleY: o.scaleY,
           flipX: o.flipX, flipY: o.flipY, opacity: o.opacity,
-          width: o.width, height: o.height, cropX: o.cropX, cropY: o.cropY,
+          width: o.width, height: o.height
+        };
+        if (o.layerType === 'text') {
+          return {
+            ...common,
+            text: o.text,
+            fontFamily: o.fontFamily,
+            fontSize: o.fontSize,
+            fill: o.fill,
+            fontWeight: o.fontWeight,
+            fontStyle: o.fontStyle,
+            textAlign: o.textAlign,
+            lineHeight: o.lineHeight,
+            charSpacing: o.charSpacing
+          };
+        }
+        return {
+          ...common,
+          cropX: o.cropX, cropY: o.cropY,
           tone: o.tone, brightness: o.brightness, contrast: o.contrast, threshold: o.threshold,
           cropL: o.cropL, cropT: o.cropT, cropR: o.cropR, cropB: o.cropB,
           frameWidth: o.frameWidth || 0, frameColor: o.frameColor || '#000000',
@@ -941,7 +1058,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         if (o && canvas.getObjects().indexOf(o) < 0) { eraseTarget = null; o = null; eraseTargetName.value = ''; }
         if (!o) {
           const hit = opt.target || canvas.findTarget(e);
-          o = hit && hit.imgId ? hit : null;
+          o = hit && hit.imgId && hit.layerType !== 'text' ? hit : null;
           if (o) { eraseTarget = o; eraseTargetName.value = (sources.get(o.imgId) || {}).name || '图片'; }
         }
         const src = o && sources.get(o.imgId);
@@ -1087,11 +1204,28 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function syncSel() {
         const o = activeObj();
         if (!o) { state.sel.id = null; state.sel.eraseCount = 0; return; }
-        const src = sources.get(o.imgId);
+        const isText = o.layerType === 'text';
         state.sel.id = o.imgId;
-        state.sel.name = src ? src.name : '图片';
+        state.sel.type = isText ? 'text' : 'image';
         state.sel.angle = Math.round(o.angle) % 360;
         state.sel.scale = Math.round(o.scaleX * 100);
+        if (isText) {
+          const preview = String(o.text || '').replace(/\s+/g, ' ').trim();
+          state.sel.name = preview ? (preview.length > 18 ? preview.slice(0, 18) + '…' : preview) : '文字';
+          state.sel.text = o.text || '';
+          state.sel.fontFamily = o.fontFamily || 'Arial';
+          state.sel.fontSize = Math.round((o.fontSize || 36) * Math.abs(o.scaleX || 1));
+          state.sel.fill = o.fill || '#0f172a';
+          state.sel.fontWeight = o.fontWeight || 'normal';
+          state.sel.fontStyle = o.fontStyle || 'normal';
+          state.sel.textAlign = o.textAlign || 'left';
+          state.sel.lineHeight = o.lineHeight || 1.2;
+          state.sel.charSpacing = o.charSpacing || 0;
+          state.sel.eraseCount = 0;
+          return;
+        }
+        const src = sources.get(o.imgId);
+        state.sel.name = src ? src.name : '图片';
         state.sel.tone = o.tone;
         state.sel.brightness = o.brightness;
         state.sel.contrast = o.contrast;
@@ -1103,6 +1237,101 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state.sel.frameWidth = o.frameWidth || 0;
         state.sel.frameColor = o.frameColor || '#000000';
         state.sel.eraseCount = (o.erasures || []).filter(s => s.points && s.points.length).length;
+      }
+
+      function focusTextInput() {
+        nextTick(() => {
+          const el = textInputEl.value;
+          if (el) { el.focus(); el.select(); }
+        });
+      }
+      function updateTextObject(props) {
+        const o = activeObj();
+        if (!o || o.layerType !== 'text' || !canvas) return;
+        const left = o.left, top = o.top;
+        o.set(props);
+        if (typeof o.initDimensions === 'function') o.initDimensions();
+        o.set({ left, top });
+        o.setCoords();
+        canvas.requestRenderAll();
+        syncSel();
+      }
+      function onTextInput(key, e) {
+        const o = activeObj();
+        if (!o || o.layerType !== 'text') return;
+        let v;
+        if (key === 'text' || key === 'fill' || key === 'fontFamily') {
+          v = e.target.value;
+          state.sel[key] = v;
+        } else if (key === 'fontSize') {
+          const wanted = Math.min(200, Math.max(8, parseInt(e.target.value, 10) || 36));
+          v = wanted / Math.abs(o.scaleX || 1);
+          state.sel.fontSize = wanted;
+        } else {
+          v = parseFloat(e.target.value);
+          state.sel[key] = v;
+        }
+        updateTextObject({ [key]: v });
+      }
+      function toggleTextStyle(key, on, off) {
+        const o = activeObj();
+        if (!o || o.layerType !== 'text') return;
+        const next = o[key] === on ? off : on;
+        state.sel[key] = next;
+        updateTextObject({ [key]: next });
+        commit();
+      }
+      function setTextAlign(v) {
+        const o = activeObj();
+        if (!o || o.layerType !== 'text') return;
+        state.sel.textAlign = v;
+        updateTextObject({ textAlign: v });
+        commit();
+      }
+      function resetTextTransform() {
+        const o = activeObj();
+        if (!o || o.layerType !== 'text' || !canvas) return;
+        const visualSize = Math.round((o.fontSize || 36) * Math.abs(o.scaleX || 1));
+        const center = o.getCenterPoint();
+        o.set({
+          fontSize: Math.max(8, visualSize),
+          scaleX: 1, scaleY: 1,
+          angle: 0, flipX: false, flipY: false, opacity: 1
+        });
+        if (typeof o.initDimensions === 'function') o.initDimensions();
+        o.setPositionByOrigin(center, 'center', 'center');
+        o.setCoords();
+        canvas.requestRenderAll();
+        syncSel();
+        commit();
+        notify('已还原文字的缩放 / 旋转 / 翻转');
+      }
+      function addTextLayer() {
+        if (!canvas || state.busy) return;
+        if (state.eraser) toggleEraser(false);
+        const area = workArea();
+        const id = 'txt_' + Math.random().toString(36).slice(2, 10);
+        const rec = {
+          id, type: 'text', text: '双击编辑文字',
+          left: 0, top: 0,
+          fontSize: 36, fontFamily: 'Arial', fill: '#0f172a',
+          fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left',
+          lineHeight: 1.2, charSpacing: 0,
+          scaleX: 1, scaleY: 1, angle: 0, flipX: false, flipY: false, opacity: 1
+        };
+        const o = createTextObject(rec);
+        o.set({
+          left: area.left + (area.width - o.width * o.scaleX) / 2,
+          top: area.top + (area.height - o.height * o.scaleY) / 2
+        });
+        o.setCoords();
+        canvas.add(o);
+        canvas.setActiveObject(o);
+        canvas.renderAll();
+        syncSel();
+        showInspector.value = true;
+        focusTextInput();
+        notify('已添加文字图层，在属性框输入内容');
       }
 
       /* ================= 属性面板操作 ================= */
@@ -1118,6 +1347,22 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
       function onParamInput(key, e) {
         const o = activeObj();
         if (!o) return;
+        if (o.layerType === 'text' && (key === 'angle' || key === 'scale')) {
+          const v = parseInt(e.target.value, 10);
+          state.sel[key] = v;
+          if (key === 'angle') {
+            setAngleKeepCenter(o, v);
+          } else {
+            const center = o.getCenterPoint();
+            const s = v / 100;
+            o.set({ scaleX: s, scaleY: s });
+            o.setPositionByOrigin(center, 'center', 'center');
+            o.setCoords();
+            canvas.renderAll();
+          }
+          syncSel();
+          return;
+        }
         const v = key === 'contrast' ? parseFloat(e.target.value)
                 : key === 'frameColor' ? e.target.value
                 : parseInt(e.target.value, 10);
@@ -1652,6 +1897,7 @@ button,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none
         state, theme, dpiOptions, previewDpi, hasSelection, canUndo, canRedo,
         sheetW, sheetH, saveTip, displayW, displayH, paperStyle, wrapStyle,
         workspaceEl, fileInputEl, saveOpen, saveUrl, showInspector, toastText,
+        textInputEl, fontFamilies, addTextLayer, onTextInput, toggleTextStyle, setTextAlign, resetTextTransform,
         eraseTargetName, cancelEraser, stepEraserSize,
         toggleTheme, onWheel, onPointerDown, onPointerMove, onPointerUp,
         zoomIn, zoomOut, fitView, toggleLock, toggleEraser, exitEraser, toggleOrientation, onOrientationCheck,
